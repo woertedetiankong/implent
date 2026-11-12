@@ -44,6 +44,7 @@ code{font-family:var(--f-mono);font-size:.82em;background:var(--paper);border:1p
 p{margin:0}
 .z0{--z:var(--z0);--zs:var(--z0s)} .z1{--z:var(--z1);--zs:var(--z1s)} .z2{--z:var(--z2);--zs:var(--z2s)}
 .z3{--z:var(--z3);--zs:var(--z3s)} .z4{--z:var(--z4);--zs:var(--z4s)} .z5{--z:var(--z5);--zs:var(--z5s)}
+.zx{--z:var(--muted);--zs:var(--track)} /* changed files that no part owns: they sit in no wing, so they take no wing's colour */
 .pic{display:flex;align-items:center;justify-content:center;background:var(--z);color:var(--on);border-radius:8px;flex:none}
 
 /* heading */
@@ -309,9 +310,10 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function ic(name){return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="'+(ICONS[name]||ICONS.box)+'"/></svg>';}
   function pic(name){return '<span class="pic">'+ic(name)+'</span>';}
   var T={zh:{
-    stamp:'生成于 {d}',sumA:'{n} 块，分在 {g} 个区。',sumOn:'亮着的 {k} 块有还没提交的改动。',sumOff:'现在没有未提交的改动。',
+    stamp:'生成于 {d}',sumA:'{n} 块，分在 {g} 个区。',sumOn:'亮着的 {k} 块有还没提交的改动。',sumOff:'现在没有未提交的改动。',sumUn:'另有 {n} 个改动的文件不在清单里。',sumUnOnly:'有 {n} 个还没提交的文件不在清单里。',
     kOn:'这次动到了',kCare:'要小心',kDots:'近 {d} 天改得多不多',kWin:'哪个窗口在动',
-    pending:'还没提交的改动',landed:'{f} 个文件，落在 {k} 块',none:'点任意一块，看它是怎么工作的',
+    pending:'还没提交的改动',landed:'{f} 个文件，落在 {k} 块',landedOff:'另有 {n} 个不在清单里',onlyOff:'{n} 个文件，都不在清单里',none:'点任意一块，看它是怎么工作的',
+    askList:'“未归类”的文件还不属于任何一块。想把它们画进地图，对 AI 说：',sayList:'把没归类的文件补进清单',
     sumWin:'{w} 个窗口在动。',nWin:'{w} 个窗口',fromOne:'来自“{t}”',who:'谁在动哪里',sep:'，',
     unknownWin:'没记到是哪个窗口',unknownSub:'手动改的，或记录里找不到',lastAt:'最后改动 {t}',otherTree:'在 {b} 工作区',
     both:'都动过',nowBy:'正在动这一块',
@@ -333,9 +335,10 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     noteRel:'“关系图”和“它用到”读的是 {l} 的引用语句，别的语言和走网络的连接量不到。',
     note:'本页由 bearings 根据 {p} 和最近 {n} 次提交自动生成。流程图画的是清单里写下的描述；“常和它一起动”是统计出来的，不代表代码上一定有依赖。'
   },en:{
-    stamp:'Generated {d}',sumA:'{n} parts in {g} wings.',sumOn:'The {k} lit parts have uncommitted changes.',sumOff:'Nothing is uncommitted right now.',
+    stamp:'Generated {d}',sumA:'{n} parts in {g} wings.',sumOn:' The {k} lit parts have uncommitted changes.',sumOff:' Nothing is uncommitted right now.',sumUn:' {n} more changed files are not on the list.',sumUnOnly:' {n} uncommitted files are not on the list.',
     kOn:'touched this time',kCare:'handle with care',kDots:'how busy in the last {d} days',kWin:'which window is on it',
-    pending:'Uncommitted changes',landed:'{f} files across {k} parts',none:'Pick any part to see how it works',
+    pending:'Uncommitted changes',landed:'{f} files across {k} parts',landedOff:'{n} more not on the list',onlyOff:'{n} files, none on the list',none:'Pick any part to see how it works',
+    askList:'"Unmapped" files belong to no part yet. To put them on the map, say to the AI:',sayList:'Add the unmapped files to the parts list',
     sumWin:' {w} windows are at work.',nWin:'{w} windows',fromOne:'from "{t}"',who:'Who is working where',sep:', ',
     unknownWin:'No window on record',unknownSub:'changed by hand, or not in the records',lastAt:'last edit {t}',otherTree:'in the {b} worktree',
     both:'both changed',nowBy:'working on this part now',
@@ -389,7 +392,13 @@ details .tags{flex-direction:row;flex-wrap:wrap}
 
   $('title').textContent=D.project;
   $('stamp').textContent=f(T.stamp,{d:D.generated});
-  $('sum').textContent=f(T.sumA,{n:D.parts.length,g:groups.length})+(hasPending?f(T.sumOn,{k:D.pending.parts.length})+(multi&&known.length?f(T.sumWin,{w:known.length}):''):T.sumOff);
+  // Uncommitted work lands in parts, which light up, or in files no part owns (listed under the name ""), which
+  // cannot light anything: the summary has to say those apart, or new work outside the list would go unseen.
+  var litParts=D.pending.parts.filter(function(x){return x.part;}).length;
+  var offList=D.pending.parts.reduce(function(a,x){return a+(x.part?0:x.n);},0);
+  $('sum').textContent=f(T.sumA,{n:D.parts.length,g:groups.length})+
+    (litParts?f(T.sumOn,{k:litParts})+(offList?f(T.sumUn,{n:offList}):''):(offList?f(T.sumUnOnly,{n:offList}):T.sumOff))+
+    (hasPending&&multi&&known.length?f(T.sumWin,{w:known.length}):'');
   $('key').innerHTML=(multi?'<span><span class="wb kwb">A</span>'+T.kWin+'</span>':'')+'<span><i class="kroom"></i>'+T.kOn+'</span><span><i class="kcare"></i>'+T.kCare+'</span><span style="color:var(--z0)">'+dots(8)+'<span style="color:var(--muted)">'+f(T.kDots,{d:D.recentDays})+'</span></span>';
   $('note').textContent=f(T.note,{n:D.history,p:D.list})+(D.measured.length?' '+f(T.noteRel,{l:D.measured.join(T.sep)}):'')+(known.length?' '+T.noteWin:'');
 
@@ -629,12 +638,16 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function unselRows(){Array.prototype.forEach.call(document.querySelectorAll('.trow.sel'),function(r){r.classList.remove('sel');});}
   function backBtn(){return '<button class="back" type="button" data-go="home">'+T.back+'</button>';}
   function total(list){return list.reduce(function(a,x){return a+x.n;},0);}
-  function stackBar(list){return '<div class="stack" role="img" aria-label="'+esc(list.map(function(x){return x.name+' '+x.n;}).join(', '))+'">'+list.map(function(x){
-    var p=byName[x.name];return '<i class="'+(p?p.z:'z0')+'" style="flex:'+x.n+' 0 0"></i>';}).join('')+'</div>';}
+  function landedText(list){ // "N files across K parts", counting apart the files that no part owns
+    var on=list.filter(function(x){return byName[x.name];}),off=total(list)-total(on);
+    if(!on.length)return f(T.onlyOff,{n:off});
+    return f(T.landed,{f:total(on),k:on.length})+(off?T.sep+f(T.landedOff,{n:off}):'');}
+  function stackBar(list){return '<div class="stack" role="img" aria-label="'+esc(list.map(function(x){return (byName[x.name]?x.name:T.unmapped)+' '+x.n;}).join(', '))+'">'+list.map(function(x){
+    var p=byName[x.name];return '<i class="'+(p?p.z:'zx')+'" style="flex:'+x.n+' 0 0"></i>';}).join('')+'</div>';}
   function legend(list){
     var h='<div class="legend">';
     list.forEach(function(x){var p=byName[x.name],flag=p&&p.sensitive?'<span class="flag">'+T.care+'</span>':'';
-      h+='<div class="lrow '+(p?p.z:'z0')+'">'+pic(p?p.icon:'box')+'<b>'+esc(p?x.name:T.unmapped)+'</b><span class="n">'+flag+x.n+'</span></div>';});
+      h+='<div class="lrow '+(p?p.z:'zx')+'">'+pic(p?p.icon:'box')+'<b>'+esc(p?x.name:T.unmapped)+'</b><span class="n">'+flag+x.n+'</span></div>';});
     return h+'</div><details><summary>'+T.seeFiles+'</summary><div class="in">'+list.map(function(x){
       return '<div><b>'+esc(byName[x.name]?x.name:T.unmapped)+'</b></div>'+x.files.map(function(fl){return '<code>'+esc(fl)+'</code>';}).join('')+(x.n>x.files.length?'<span class="sub">'+f(T.more,{n:x.n-x.files.length})+'</span>':'');}).join('')+'</div></details>';
   }
@@ -645,7 +658,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     WIN.forEach(function(w,k){
       h+='<button type="button" class="lane" data-win="'+k+'" aria-pressed="'+(curWin===k)+'">'+wb(w)+
         '<span class="lt">'+esc(winName(w))+'<span class="ls">'+esc(winSub(w))+'</span></span><span class="chips">'+
-        w.parts.map(function(x){var p=byName[x.name];return '<span class="chip '+(p?p.z:'z0')+'">'+pic(p?p.icon:'box')+esc(p?x.name:T.unmapped)+'<span class="n">'+x.n+'</span></span>';}).join('')+'</span></button>';});
+        w.parts.map(function(x){var p=byName[x.name];return '<span class="chip '+(p?p.z:'zx')+'">'+pic(p?p.icon:'box')+esc(p?x.name:T.unmapped)+'<span class="n">'+x.n+'</span></span>';}).join('')+'</span></button>';});
     h+='</div>';
     (D.pending.shared||[]).slice(0,3).forEach(function(x){
       h+='<div class="both"><span class="wbs">'+x.who.map(function(key){return wb(WIN.filter(function(w){return w.key===key;})[0]);}).join('')+'</span>'+T.both+'<code>'+esc(x.file)+'</code></div>';});
@@ -659,11 +672,13 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     var list=src.map(function(x){return {name:x.name,n:x.n,files:x.files};}),map={};
     list.forEach(function(x){if(byName[x.name])map[x.name]=x.n;});
     light(map,null,multi?(curWin==null?WIN:[WIN[curWin]]):null);
-    var meta=f(T.landed,{f:total(list),k:list.length});
+    var meta=landedText(list);
     if(multi&&curWin==null&&known.length)meta+=T.sep+f(T.nWin,{w:known.length});
     else if(!multi&&known.length)meta+=T.sep+f(T.fromOne,{t:winName(known[0])});
+    // files that no part owns: say what that means and the sentence that puts them on the map
+    var askList=list.some(function(x){return !byName[x.name];})?'<div class="ask">'+T.askList+'<span class="say">'+esc(T.sayList)+'</span></div>':'';
     setStage('<div class="band"><h2>'+(curWin==null?T.pending:wb(WIN[curWin])+' '+esc(winName(WIN[curWin])))+'</h2><span class="meta">'+meta+'</span></div><div class="body">'+
-      (multi?lanes():'')+stackBar(list)+legend(list)+'</div>');
+      (multi?lanes():'')+stackBar(list)+legend(list)+askList+'</div>');
   }
   // A part nobody has drawn yet still has a picture: who uses it and whom it uses, taken from the measured links.
   function around(u,links,find){
@@ -752,7 +767,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     var list=c.parts.map(function(x){return {name:x.name,n:x.n,files:x.files};});
     list.forEach(function(x){if(byName[x.name])map[x.name]=x.n;});
     light(map,null);
-    setStage('<div class="band"><span class="meta">'+c.date+'</span><h2>'+esc(c.subject)+'</h2><span class="meta">'+f(T.landed,{f:total(list),k:list.length})+'</span>'+backBtn()+'</div><div class="body">'+stackBar(list)+legend(list)+'</div>');
+    setStage('<div class="band"><span class="meta">'+c.date+'</span><h2>'+esc(c.subject)+'</h2><span class="meta">'+landedText(list)+'</span>'+backBtn()+'</div><div class="body">'+stackBar(list)+legend(list)+'</div>');
   }
 
   // ---- footprints ----

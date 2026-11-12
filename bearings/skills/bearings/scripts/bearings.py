@@ -756,8 +756,10 @@ def read(root, f):
 def code_links(root, files, parts):
     """Returns ({(unit_a, unit_b): [files, examples]}, languages): the files in a that import from b."""
     tracked = set(files)
-    # Python: dotted module name -> file, from the package layout; then looser names for src/ layouts
-    py, loose = {}, []
+    # Python: every dotted name a file can be imported by -> [(the folder that name starts from, file,
+    # whether the package layout says so)]. `a/b/c.py` is `c`, `b.c` or `a.b.c` depending on which folder
+    # is on the import path: folders holding an __init__.py settle it, the longer names are looser guesses.
+    py = collections.defaultdict(list)
     for f in files:
         if not f.endswith(".py"):
             continue
@@ -767,13 +769,32 @@ def code_links(root, files, parts):
             i -= 1
         if bits[-1] == "__init__":
             bits = bits[:-1]
-        if bits[i:]:
-            py[".".join(bits[i:])] = f
-        loose.append((bits, f))
-    for bits, f in loose:
-        for k in range(len(bits) - 1):
-            py.setdefault(".".join(bits[k:]), f)
-    # JavaScript: path aliases from tsconfig, and the packages of a workspace
+        for k in range(len(bits)):
+            if k == i or k < len(bits) - 1:
+                py[".".join(bits[k:])].append(("/".join(bits[:k]), f, k == i))
+
+    def py_file(name, folder, text):
+        """The file a dotted name means to code in `folder` (whose source is `text`), or None. Several
+        files can answer to one name (`utils`, `config`) and a file can carry a standard-library name
+        (`logging.py`), so: a name that one of the importer's own folders provides wins, the nearest
+        one first; failing that, a package elsewhere in the repo counts when exactly one place provides
+        it; a lone script in some other folder counts only when the importer puts that folder on its
+        path itself (it touches sys.path and names the folder), since otherwise it cannot reach it."""
+        found = py.get(name)
+        if not found:
+            return None
+        near = [c for c in found if not c[0] or (folder + "/").startswith(c[0] + "/")]
+        if near:
+            return max(near, key=lambda c: (len(c[0]), c[2]))[1]
+        if "." not in name:
+            found = [c for c in found if c[1].endswith("/__init__.py") or ("sys.path" in text and re.search(
+                r"""['"/\\]%s['"/\\]""" % re.escape(posixpath.basename(c[0])), text))]
+        found = [c for c in found if c[2]] or found
+        return found[0][1] if len(found) == 1 else None
+
+    # JavaScript: path aliases from tsconfig, and the packages of a workspace.
+    # An alias is (the folder its tsconfig sits in, prefix, target folder): `@/` in one app of a
+    # monorepo is not `@/` in the app next to it.
     aliases, packages = [], []
     for f in files:
         base = posixpath.basename(f)
@@ -782,11 +803,12 @@ def code_links(root, files, parts):
                 opts = loose_json(read(root, f)).get("compilerOptions") or {}
             except (ValueError, AttributeError):
                 continue
-            home = posixpath.join(posixpath.dirname(f), opts.get("baseUrl") or ".")
+            scope = posixpath.dirname(f)
+            home = posixpath.join(scope, opts.get("baseUrl") or ".")
             for pattern, targets in (opts.get("paths") or {}).items():
                 if pattern.endswith("*") and targets and str(targets[0]).endswith("*"):
                     to = posixpath.normpath(posixpath.join(home, targets[0][:-1]))
-                    aliases.append((pattern[:-1], "" if to == "." else to + "/"))
+                    aliases.append((scope, pattern[:-1], "" if to == "." else to + "/"))
         elif base == "package.json" and "/" in f and "node_modules" not in f:
             try:
                 name = json.loads(read(root, f)).get("name")
@@ -795,8 +817,8 @@ def code_links(root, files, parts):
             if name:
                 packages.append((str(name), posixpath.dirname(f)))
     if not aliases and any(f.startswith("src/") for f in files):
-        aliases = [("@/", "src/"), ("~/", "src/")]
-    aliases.sort(key=lambda x: -len(x[0]))
+        aliases = [("", "@/", "src/"), ("", "~/", "src/")]
+    aliases.sort(key=lambda x: (-len(x[0]), -len(x[1])))  # the nearest tsconfig first, then the longest prefix
     packages.sort(key=lambda x: -len(x[0]))
     # Go: module path -> folder, and one file per folder to stand for the package
     gomods, godirs = [], {}
@@ -823,6 +845,7 @@ def code_links(root, files, parts):
     def targets(f, ext, text):
         if ext == ".py":
             here = f.split("/")[:-1]
+            folder = "/".join(here)
             for dots, module, names in PY_FROM.findall(text):
                 names = [x.split(" as ")[0].strip() for x in names.strip("() \t").split(",")]
                 mod = module.split(".") if module else []
@@ -839,16 +862,18 @@ def code_links(root, files, parts):
                                 break
                 elif module:
                     for name in names:
-                        hit = py.get(module + "." + name) or py.get(module)
+                        hit = py_file(module + "." + name, folder, text) or py_file(module, folder, text)
                         if hit:
                             yield hit
             for line in PY_IMPORT.findall(text):
                 for module in line.split(","):
                     bits = module.split(" as ")[0].strip().split(".")
-                    while bits and ".".join(bits) not in py:
+                    while bits:
+                        hit = py_file(".".join(bits), folder, text)
+                        if hit:
+                            yield hit
+                            break
                         bits.pop()
-                    if bits:
-                        yield py[".".join(bits)]
         elif ext == ".go":
             head = text.split("\nfunc ", 1)[0]
             for spec in GO_STR.findall(head):
@@ -859,16 +884,20 @@ def code_links(root, files, parts):
                             yield hit
                         break
         else:
+            mine = [a for a in aliases if not a[0] or f.startswith(a[0] + "/")]  # from tsconfigs above this file
             for spec in JS_SPEC.findall(text):
                 hit = None
                 if spec.startswith("."):
                     hit = js_file(posixpath.join(posixpath.dirname(f), spec))
                 else:
-                    for prefix, to in aliases:
-                        if spec.startswith(prefix):
+                    decides = None  # the nearest tsconfig that knows the prefix; one further up gets no say
+                    for scope, prefix, to in mine:
+                        if spec.startswith(prefix) and decides in (None, scope):
+                            decides = scope
                             hit = js_file(to + spec[len(prefix):])
-                            break
-                    else:
+                            if hit:
+                                break
+                    if not hit:
                         for name, folder in packages:
                             if spec == name or spec.startswith(name + "/"):
                                 rest = spec[len(name):].lstrip("/")
@@ -1004,14 +1033,16 @@ def cmd_check(root, parts, t, args):
 
 def history(root, parts):
     """The last HISTORY commits, each with the parts it changed. Outside code is not the project's work."""
-    raw = git(root, "log", "-n", str(HISTORY), "--no-merges", "--date=short", "--name-only",
+    # -z gives file names as they are. Without it git quotes every name that is not plain ASCII
+    # ("docs/\344\275\277...md"), and a file with a Chinese name would match no part.
+    raw = git(root, "log", "-z", "-n", str(HISTORY), "--no-merges", "--date=short", "--name-only",
               "--format=%x01%h%x02%ad%x02%ct%x02%s").decode("utf-8", "replace")
     commits = []
     for block in raw.split("\x01")[1:]:
-        head, _, rest = block.partition("\n")
-        rev, date, when, subject = (head.split("\x02", 3) + ["", "", ""])[:4]
+        head, _, rest = block.partition("\0")
+        rev, date, when, subject = (head.rstrip("\n").split("\x02", 3) + ["", "", ""])[:4]
         groups, subs = {}, set()
-        for f in filter(None, (line.strip() for line in rest.splitlines())):
+        for f in filter(None, (name.strip("\n") for name in rest.split("\0"))):
             unit = leaf(f, parts)
             if unit is not None and unit.outside:
                 continue
@@ -1194,8 +1225,10 @@ def cmd_web(root, parts, t, args):
     def short(groups):
         return [{"name": g["name"], "n": g["n"], "files": g["files"][:6]} for g in groups]
     pending = {
-        "parts": [{"part": g["name"], "n": g["n"], "files": g["files"], "sensitive": by_name[g["name"]].sensitive}
-                  for g in short(grouped(rows, parts)) if g["name"]],
+        # changed files that no part owns come last, under the name "": the page says they are not on the list
+        "parts": [{"part": g["name"], "n": g["n"], "files": g["files"],
+                   "sensitive": by_name[g["name"]].sensitive if g["name"] else ""}
+                  for g in short(grouped(rows, parts))],
         "windows": [{"key": w["key"], "tool": w["tool"], "title": w["title"], "task": w["task"], "last": w["last"],
                      "where": "、".join(w["where"]) if lang == "zh" else ", ".join(w["where"]),
                      "unknown": w["unknown"], "n": len(w["rows"]), "guessed": w["guessed"], "parts": short(grouped(w["rows"], parts))}
@@ -1210,8 +1243,10 @@ def cmd_web(root, parts, t, args):
             "links": lifted(links, "top"), "measured": langs, "routes": args.routes}
     here = os.path.dirname(os.path.abspath(__file__))
     page = open(os.path.join(here, "map_template.html"), encoding="utf-8").read()
+    # Every "<" in the data is written as <. A commit subject holding both "<!--" and "<script" would
+    # otherwise put the browser in a state where the page's own </script> no longer ends the script.
     page = page.replace("__PROJECT__", data["project"]).replace(
-        "/*__DATA__*/null", json.dumps(data, ensure_ascii=False).replace("</", "<\\/"))
+        "/*__DATA__*/null", json.dumps(data, ensure_ascii=False).replace("<", "\\u003c"))
     if not args.fragment:
         page = ('<!doctype html>\n<html lang="%s">\n<head>\n<meta charset="utf-8">\n'
                 '<meta name="viewport" content="width=device-width, initial-scale=1">\n</head>\n<body style="margin:0">\n'
