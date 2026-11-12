@@ -714,7 +714,7 @@ def read(root, f):
 
 
 def code_links(root, files, parts):
-    """Returns ({(unit_a, unit_b): [n, examples]}, languages). n counts the files in a that import from b."""
+    """Returns ({(unit_a, unit_b): [files, examples]}, languages): the files in a that import from b."""
     tracked = set(files)
     # Python: dotted module name -> file, from the package layout; then looser names for src/ layouts
     py, loose = {}, []
@@ -856,8 +856,8 @@ def code_links(root, files, parts):
             if b is None or b is a or b in seen:
                 continue
             seen.add(b)
-            link = links.setdefault((a, b), [0, []])
-            link[0] += 1
+            link = links.setdefault((a, b), [set(), []])
+            link[0].add(f)
             if len(link[1]) < 3:
                 link[1].append([f, g])
     return links, [name for name, _ in langs.most_common()]
@@ -866,7 +866,7 @@ def code_links(root, files, parts):
 def lifted(links, level):
     """Links between top-level parts (level "top"), or between the sub-parts inside one part (a Part)."""
     out = {}
-    for (a, b), (n, examples) in links.items():
+    for (a, b), (sources, examples) in links.items():
         if level == "top":
             ka, kb = a.top, b.top
         elif a.parent is level and b.parent is level:
@@ -875,11 +875,11 @@ def lifted(links, level):
             continue
         if ka is kb:
             continue
-        link = out.setdefault((ka, kb), [0, []])
-        link[0] += n
+        link = out.setdefault((ka, kb), [set(), []])
+        link[0] |= sources  # a file that reaches several rooms of one part still counts once
         link[1] = (link[1] + examples)[:3]
-    return [{"a": a.name, "b": b.name, "n": n, "ex": ex} for (a, b), (n, ex) in
-            sorted(out.items(), key=lambda kv: -kv[1][0])]
+    return [{"a": a.name, "b": b.name, "n": len(sources), "ex": ex} for (a, b), (sources, ex) in
+            sorted(out.items(), key=lambda kv: -len(kv[1][0]))]
 
 
 def cmd_links(root, parts, t, args):
