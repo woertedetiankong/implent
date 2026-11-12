@@ -1,12 +1,21 @@
 # implent
 
-用 AI 写代码时，帮人看懂自己的项目。
+用 AI 写代码时，让 AI 接得上，让人看得懂。
 
-AI 写得比人读得快。代码是它写的，人就不再像自己动手时那样顺带弄懂项目。这个仓库里的技能 `bearings` 给人一张图来看：项目分成哪几块、每一块是怎么工作的、最近的改动落在了哪里。
+仓库里有两个配合使用的插件，Claude Code 和 Codex 都能用：
 
-它只做展示。它不规定 AI 怎么写代码，不拦任何改动，也不要求 AI 动手前先来问你。
+| 插件 | 给谁用 | 做什么 |
+|---|---|---|
+| `bearings` | 人 | 把项目画成一张导览图：分成哪几块、每块怎么工作、最近的改动落在哪 |
+| `implementation-journal` | AI | 跨会话的记忆：任务书、决定日志、交接、下次开场白，让下一个会话接着干 |
 
-> 现在是原型。只在一个真实项目上试过，名字 `bearings` 也是临时的。
+两个都只做记录和展示。它们不规定 AI 怎么写代码，不拦任何改动。
+
+它们怎么配合：AI 干活时用 `implementation-journal` 记下决定和进度；收尾时顺手更新 `bearings` 的清单；你想知道项目现在什么样，就打开导览图。两个可以各自单独安装。
+
+> `bearings` 现在是原型，只在一个真实项目上试过，名字也是临时的。`implementation-journal` 已经在十几个项目里用过，这里是精简后的版本。
+
+# bearings：给人看的导览图
 
 ## 你会看到什么
 
@@ -31,12 +40,7 @@ AI 写得比人读得快。代码是它写的，人就不再像自己动手时�
 ```text
 /plugin marketplace add woertedetiankong/implent
 /plugin install bearings@implent
-```
-
-Claude Code 2.1.275 及以上也可以一步完成：
-
-```text
-/plugin install bearings --marketplace woertedetiankong/implent
+/plugin install implementation-journal@implent
 ```
 
 以后更新：
@@ -47,14 +51,15 @@ Claude Code 2.1.275 及以上也可以一步完成：
 
 ### Codex
 
-把技能文件夹复制过去（还没有实际验证过）：
+把技能文件夹复制过去（`bearings` 在 Codex 里还没有实际验证过）：
 
 ```sh
 git clone https://github.com/woertedetiankong/implent.git
 cp -R implent/bearings/skills/bearings ~/.codex/skills/
+cp -R implent/implementation-journal/skills/implementation-journal ~/.codex/skills/
 ```
 
-## 使用
+## 使用 bearings
 
 在你的项目里对 AI 说：
 
@@ -106,6 +111,29 @@ python3 $B check --commit <提交>  # 某一次提交落在哪几块
 - `flow` 代码块描述它怎么工作：`甲 -> 乙: 传什么` 是一个箭头，`名字 | 说明 | 图标 | 外部` 是一个方框。
 
 完整的写法见 [`bearings/skills/bearings/SKILL.md`](bearings/skills/bearings/SKILL.md)。
+
+# implementation-journal：给 AI 的记忆
+
+做里程碑级别的工作时，AI 在项目的 `docs/tasks/<日期>-<名字>/` 下维护三份文件，外加一份开场白：
+
+- `task-brief.md`：这次要做什么，做到什么算完。
+- `implementation-log.md`：只记真正的决定、走不通的路和实测数字，只追加不改写。
+- `handoff.md`：停下之前重写，说明现在到哪了、下一步、不能碰的红线、怎么验证现状。
+- `docs/tasks/NEXT-SESSION.md`：下次开场白，贴给新会话就能接着干。
+
+收尾时它还会把已经过时的 README 和文档改对，并在项目有 `docs/parts.md` 时更新导览图的清单。
+
+在 Claude Code 里，插件带两个钩子：开新会话时自动带上开场白；改完记录后自动校验格式。Codex 没有钩子，靠技能说明里的步骤完成同样的事。
+
+校验脚本可以手动运行：
+
+```sh
+python3 /path/to/implent/implementation-journal/skills/implementation-journal/scripts/validate_journal.py docs/tasks
+```
+
+小改动不需要用它，它只用于跨会话、跨模块的工作。
+
+和原来的版本相比，这里去掉了三样东西：给人看的里程碑报告页（改由 `bearings` 来做）、任务索引、wiki 模板。已有项目里的这些旧文件不受影响，只是不会再更新。
 
 ## 已知的不足
 

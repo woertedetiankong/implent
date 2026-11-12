@@ -1,12 +1,19 @@
 {
   "name": "implent",
-  "owner": { "name": "woertedetiankong" },
-  "description": "Tools that help people understand projects built with AI.",
+  "owner": {
+    "name": "woertedetiankong"
+  },
+  "description": "Two companions for building with AI: bearings lets people see the project, implementation-journal lets the next AI session pick up the work.",
   "plugins": [
     {
       "name": "bearings",
       "source": "./bearings",
       "description": "A visual map of a project that AI is building: its parts, a flow diagram of how each part works, and where recent work landed."
+    },
+    {
+      "name": "implementation-journal",
+      "source": "./implementation-journal",
+      "description": "Cross-session memory for AI coding work: task dossier, decisions-only log, restart-ready handoff, docs kept in step."
     }
   ]
 }
