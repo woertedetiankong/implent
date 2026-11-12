@@ -1,6 +1,6 @@
 ---
 name: bearings
-description: "Help a person understand a project that AI is building: keep a plain-language list of the project's parts and a flow diagram of how each part works, and turn them into a visual map page (the project as a building of rooms, each room's flow diagram, where recent work landed). Use when the user asks to see or understand the project, asks for the project map, asks how a part works or what recent work touched, asks to set up a parts list, or when finished work changed how a part works and docs/parts.md exists. This skill only describes the project; it never limits how code is written."
+description: "Help a person understand a project that AI is building: keep a plain-language list of the project's parts and a flow diagram of how each part works, and turn them into a visual map page (the project as a building of rooms, each room's flow diagram, where recent work landed). Use when the user asks to see or understand the project, asks for the project map, asks how a part works or what recent work touched, asks which window or session is changing what, asks to set up a parts list, or when finished work changed how a part works and docs/parts.md exists. This skill only describes the project; it never limits how code is written."
 ---
 
 # Bearings
@@ -44,12 +44,23 @@ A part can carry a flow diagram of how it works, as a fenced block whose languag
 
 ## What to do, and when
 
-The script is `scripts/bearings.py` in this skill folder (Claude Code: `${CLAUDE_SKILL_DIR}/scripts/bearings.py`; Codex: `~/.codex/skills/bearings/scripts/bearings.py`). Run it with python3 from inside the repo. It only reads the project.
+The script is `scripts/bearings.py` in this skill folder (Claude Code: `${CLAUDE_SKILL_DIR}/scripts/bearings.py`; Codex: `~/.codex/skills/bearings/scripts/bearings.py`). Run it with python3 from inside the repo. It only reads: the project, and, to tell windows apart, the session records Claude Code and Codex keep on this machine.
 
 - **The user wants to see the project** ("show me the project", "open the map", "how does X work"): run `bearings.py web --open`. It writes one HTML page under the repo's git directory and opens it. Say in one sentence what they will see.
 - **There is no parts list yet** and the user wants one: read the repo, draft `docs/parts.md` with a flow diagram for each part that has a story to tell, run `bearings.py parts` until no file is unmapped, then ask the user to correct the names.
 - **You finished work that changed the picture**: a new area of the project, files that `bearings.py parts` reports as unmapped, or a part that now works differently from its flow diagram. Update `docs/parts.md` in the same change and mention it in one line. If the picture is still true, do nothing.
 - **The user asks what a piece of work touched**: `bearings.py check` lists the parts the uncommitted work touched; `--commit <rev>` does the same for one past commit, `--since <rev>` for everything after one. Report it using the part names as written.
+
+### Several windows at once
+
+People often run several Claude Code or Codex sessions on one project. `git` cannot say which of them changed a file, so the script reads the session records both tools keep on the machine and splits the uncommitted work by window:
+
+- `bearings.py check` adds a "by window" list when more than one window has uncommitted work: a letter, the window's name (its journal task if it is writing in a `docs/tasks/<task>/` dossier, otherwise the session's title or opening request), and the parts it touched.
+- The map shows the same thing as "who is working where", marks each lit room with the letters of the windows in it, and names files two windows both changed. It also counts uncommitted work in the repository's other worktrees.
+- A file changed with an edit tool is matched for certain. A file changed by a shell command is matched by time, and only when exactly one window fits. Anything else is listed as having no window on record; say so rather than guessing.
+- `--no-windows` skips the session records. Nothing is sent anywhere; the window names end up in the generated page, so mention that if the user is about to share the page.
+
+When the user asks what "this window" did and several windows are at work, find this session in the list by its name and report that row.
 
 ## What this skill does not do
 

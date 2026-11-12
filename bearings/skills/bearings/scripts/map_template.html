@@ -72,7 +72,10 @@ p{margin:0}
 .room .nm{font-weight:700;font-size:14.5px;line-height:1.3;overflow-wrap:anywhere}
 .room .dots{margin-top:auto;color:var(--z)}
 .room .lock{position:absolute;right:11px;bottom:10px;font-size:16px;color:var(--z)}
-.room .cnt{position:absolute;top:11px;right:11px;height:24px;min-width:28px;padding:0 9px;border-radius:12px;background:var(--on);color:var(--z);
+.room .tr{position:absolute;top:11px;right:11px;display:flex;gap:5px;align-items:center}
+.room .who{display:none;gap:3px}
+.room.lit .who{display:inline-flex}
+.room .cnt{height:24px;min-width:28px;padding:0 9px;border-radius:12px;background:var(--on);color:var(--z);
   font-family:var(--f-num);font-size:17px;font-weight:700;line-height:24px;text-align:center;display:none;font-variant-numeric:tabular-nums}
 .room:hover{background-color:var(--sheet)}
 .room.lit,.room.lit:hover,.room.sel,.room.sel:hover{background-color:var(--z);background-image:none;color:var(--on)}
@@ -82,6 +85,13 @@ p{margin:0}
 .room.lit .cnt{display:block}
 .room.mate .cnt{display:block;background:var(--z);color:var(--on)}
 .room.dim>*{opacity:.5}
+/* a window: one Claude Code or Codex session, marked like a line on a transit map */
+.wb{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;flex:none;
+  background:var(--ink);color:var(--paper);font-family:var(--f-num);font-size:14.5px;font-weight:700;line-height:1}
+.wb.q{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1.5px var(--muted)}
+.room .wb{box-shadow:0 0 0 1.5px var(--on)}
+.room .wb.q{color:var(--on);box-shadow:inset 0 0 0 1.5px var(--on)}
+.room .more{font-family:var(--f-num);font-size:14px;font-weight:700}
 
 /* the sheet for what is picked */
 .stage{border:3px solid var(--ink);border-radius:12px;background:var(--sheet);overflow:hidden;scroll-margin-top:14px}
@@ -137,6 +147,26 @@ details .tags{flex-direction:row;flex-wrap:wrap}
 .lrow .pic{width:28px;height:28px;font-size:17px;border-radius:7px}
 .lrow b{font-weight:600}
 .lrow .n{font-family:var(--f-num);font-size:18px;font-weight:700;display:inline-flex;gap:8px;align-items:center;font-variant-numeric:tabular-nums}
+.lanes{display:flex;flex-direction:column;border:1.5px solid var(--hair);border-radius:10px;overflow:hidden}
+.lane{display:grid;grid-template-columns:30px minmax(0,1fr) minmax(0,1.5fr);gap:6px 14px;align-items:center;width:100%;
+  padding:10px 14px;border:0;border-top:1px solid var(--hair);background:none;text-align:left;cursor:pointer}
+.lane:first-child{border-top:0}
+.lane:hover{background:var(--paper)}
+.lane[aria-pressed="true"]{background:var(--paper);box-shadow:inset 4px 0 0 var(--ink)}
+.lane .wb{width:28px;height:28px;font-size:18px}
+.lane .lt{font-weight:700;font-size:15px;line-height:1.35;overflow-wrap:anywhere}
+.lane .ls{display:block;font-size:12.5px;font-weight:400;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:7px;background:var(--zs);border-radius:8px;padding:3px 10px 3px 3px;font-size:13.5px;font-weight:600}
+.chip .pic{width:22px;height:22px;font-size:14px;border-radius:6px}
+.chip .n{font-family:var(--f-num);font-size:15.5px;color:var(--z);font-variant-numeric:tabular-nums}
+.both{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:13.5px}
+.both .wbs{display:inline-flex;gap:3px}
+.nowby{display:flex;flex-wrap:wrap;gap:6px 9px;align-items:center;font-size:14.5px;font-weight:600}
+.nowby .sub{font-weight:400}
+.kwb{width:18px;height:18px;font-size:12px}
+.band .wb{background:var(--paper);color:var(--ink);width:30px;height:30px;font-size:19px;vertical-align:-5px;margin-right:6px}
+.band .wb.q{background:transparent;color:var(--paper);box-shadow:inset 0 0 0 1.5px var(--paper)}
 .flag{font-family:var(--f-text);font-size:11.5px;font-weight:700;color:var(--warn);border:1.5px solid var(--warn);border-radius:5px;padding:0 6px;line-height:17px;white-space:nowrap}
 
 /* footprints */
@@ -168,6 +198,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   .trow .s{display:none}
   .thead,.trow{grid-template-columns:3.2em max-content}
   .body{padding:14px}
+  .lane{grid-template-columns:30px minmax(0,1fr)} .lane .chips{grid-column:2}
 }
 @media (prefers-reduced-motion:reduce){ .fdot{display:none} }
 </style>
@@ -219,8 +250,12 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function pic(name){return '<span class="pic">'+ic(name)+'</span>';}
   var T={zh:{
     stamp:'生成于 {d}',sumA:'{n} 块，分在 {g} 个区。',sumOn:'亮着的 {k} 块有还没提交的改动。',sumOff:'现在没有未提交的改动。',
-    kOn:'这次动到了',kCare:'要小心',kDots:'近 {d} 天改得多不多',
+    kOn:'这次动到了',kCare:'要小心',kDots:'近 {d} 天改得多不多',kWin:'哪个窗口在动',
     pending:'还没提交的改动',landed:'{f} 个文件，落在 {k} 块',none:'点任意一块，看它是怎么工作的',
+    sumWin:'{w} 个窗口在动。',nWin:'{w} 个窗口',fromOne:'来自“{t}”',who:'谁在动哪里',sep:'，',
+    unknownWin:'没记到是哪个窗口',unknownSub:'手动改的，或记录里找不到',lastAt:'最后改动 {t}',otherTree:'在 {b} 工作区',
+    both:'都动过',nowBy:'正在动这一块',
+    noteWin:'“谁在动哪里”读的是本机 Claude Code 和 Codex 的会话记录：编辑工具改的文件是确定的，命令改的文件按改动时间推断。',
     care:'要小心',
     partMeta:'{n} 个文件，近 {d} 天改动 {r} 次',
     rules:'规矩',noRules:'还没有为这一块记下规矩。',moreRules:'还有 {n} 条',
@@ -232,8 +267,12 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     note:'本页由 bearings 根据 docs/parts.md 和最近 {n} 次提交自动生成。流程图画的是清单里写下的描述；“常和它一起动”是统计出来的，不代表代码上一定有依赖。'
   },en:{
     stamp:'Generated {d}',sumA:'{n} parts in {g} wings.',sumOn:'The {k} lit parts have uncommitted changes.',sumOff:'Nothing is uncommitted right now.',
-    kOn:'touched this time',kCare:'handle with care',kDots:'how busy in the last {d} days',
+    kOn:'touched this time',kCare:'handle with care',kDots:'how busy in the last {d} days',kWin:'which window is on it',
     pending:'Uncommitted changes',landed:'{f} files across {k} parts',none:'Pick any part to see how it works',
+    sumWin:' {w} windows are at work.',nWin:'{w} windows',fromOne:'from "{t}"',who:'Who is working where',sep:', ',
+    unknownWin:'No window on record',unknownSub:'changed by hand, or not in the records',lastAt:'last edit {t}',otherTree:'in the {b} worktree',
+    both:'both changed',nowBy:'working on this part now',
+    noteWin:'"Who is working where" reads the Claude Code and Codex session records on this machine: files changed with the edit tools are certain, files changed by shell commands are matched by time.',
     care:'care',
     partMeta:'{n} files, {r} changes in {d} days',
     rules:'Rules',noRules:'No rules recorded for this part yet.',moreRules:'{n} more',
@@ -254,12 +293,18 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   D.parts.forEach(function(p){var g=p.group||'';if(!(g in gi)){gi[g]=groups.length;groups.push({name:g,parts:[]});}p.z='z'+(gi[g]%6);groups[gi[g]].parts.push(p);});
   var byName={};D.parts.forEach(function(p){byName[p.name]=p;});
   var hasPending=D.pending.parts.length>0;
+  var WIN=D.pending.windows||[],multi=WIN.length>1,known=WIN.filter(function(w){return !w.unknown;});
+  function winName(w){return w.unknown?T.unknownWin:(w.task||w.title||w.tool);}
+  function winSub(w){var a=w.unknown?[T.unknownSub]:[w.tool].concat(w.last?[f(T.lastAt,{t:w.last})]:[]);
+    if(w.where)a.push(f(T.otherTree,{b:w.where}));return a.join(T.sep);}
+  function wb(w,cls){return '<span class="wb'+(w.unknown?' q':'')+(cls?' '+cls:'')+'" title="'+esc(winName(w))+'">'+esc(w.key.charAt(0))+'</span>';}
+  function winsOn(name,list){return list.filter(function(w){return w.parts.some(function(x){return x.name===name;});});}
 
   $('title').textContent=D.project;
   $('stamp').textContent=f(T.stamp,{d:D.generated});
-  $('sum').textContent=f(T.sumA,{n:D.parts.length,g:groups.length})+(hasPending?f(T.sumOn,{k:D.pending.parts.length}):T.sumOff);
-  $('key').innerHTML='<span><i class="kroom"></i>'+T.kOn+'</span><span><i class="kcare"></i>'+T.kCare+'</span><span style="color:var(--z0)">'+dots(8)+'<span style="color:var(--muted)">'+f(T.kDots,{d:D.recentDays})+'</span></span>';
-  $('note').textContent=f(T.note,{n:D.history});
+  $('sum').textContent=f(T.sumA,{n:D.parts.length,g:groups.length})+(hasPending?f(T.sumOn,{k:D.pending.parts.length})+(multi&&known.length?f(T.sumWin,{w:known.length}):''):T.sumOff);
+  $('key').innerHTML=(multi?'<span><span class="wb kwb">A</span>'+T.kWin+'</span>':'')+'<span><i class="kroom"></i>'+T.kOn+'</span><span><i class="kcare"></i>'+T.kCare+'</span><span style="color:var(--z0)">'+dots(8)+'<span style="color:var(--muted)">'+f(T.kDots,{d:D.recentDays})+'</span></span>';
+  $('note').textContent=f(T.note,{n:D.history})+(known.length?' '+T.noteWin:'');
 
   // ---- flow diagram ----
   function tw(s,size){var w=0;for(var i=0;i<s.length;i++)w+=s.charCodeAt(i)>255?size:size*0.56;return w;}
@@ -368,26 +413,29 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       var b=document.createElement('button');b.type='button';b.id='room-'+D.parts.indexOf(p);b.className='room'+(p.sensitive?' care':'');
       if(i===n-1&&n%cols)b.style.gridColumn='span '+(cols-n%cols+1);
       b.setAttribute('aria-label',p.name);
-      b.innerHTML='<span class="cnt"></span>'+(p.sensitive?'<span class="lock">'+ic('lock')+'</span>':'')+pic(p.icon)+'<span class="nm">'+esc(p.name)+'</span>'+dots(p.recent);
+      b.innerHTML='<span class="tr"><span class="who"></span><span class="cnt"></span></span>'+(p.sensitive?'<span class="lock">'+ic('lock')+'</span>':'')+pic(p.icon)+'<span class="nm">'+esc(p.name)+'</span>'+dots(p.recent);
       b.addEventListener('click',function(){selectPart(p.name);});
       w.querySelector('.rooms').appendChild(b);rooms[p.name]=b;
     });
     $('plan').appendChild(w);
   });
   $('plan').style.gridTemplateColumns=planCols.join(' ');
-  function light(map,sel){ // with a room picked, the map marks its companions; otherwise it lights where work landed
+  function light(map,sel,wins){ // with a room picked, the map marks its companions; otherwise it lights where work landed
     var any=Object.keys(map).length>0;
     D.parts.forEach(function(p){
       var r=rooms[p.name],on=Object.prototype.hasOwnProperty.call(map,p.name);
       r.classList.toggle('lit',on&&!sel);r.classList.toggle('mate',on&&!!sel);r.classList.toggle('sel',p.name===sel);
       r.classList.toggle('dim',!sel&&any&&!on);
       r.querySelector('.cnt').textContent=on?map[p.name]:'';
+      var here=on&&wins?winsOn(p.name,wins):[]; // which windows are in this room
+      r.querySelector('.who').innerHTML=here.slice(0,3).map(function(w){return wb(w);}).join('')+(here.length>3?'<span class="more">+</span>':'');
     });
   }
   var quiet=true;
   function setHash(h){try{history.replaceState(null,'',h?'#'+h:location.pathname+location.search);}catch(e){}}
   function setStage(html,cls){var c=$('stage');c.className='stage '+(cls||'z0');c.innerHTML=html;
     Array.prototype.forEach.call(c.querySelectorAll('[data-go]'),function(b){b.addEventListener('click',function(){var g=b.getAttribute('data-go');if(g==='home')home();else selectPart(g);});});
+    Array.prototype.forEach.call(c.querySelectorAll('[data-win]'),function(b){b.addEventListener('click',function(){var k=+b.getAttribute('data-win');home(curWin===k?null:k);});});
     if(!quiet)c.scrollIntoView({block:'nearest',behavior:'smooth'});}
   function unselRows(){Array.prototype.forEach.call(document.querySelectorAll('.trow.sel'),function(r){r.classList.remove('sel');});}
   function backBtn(){return '<button class="back" type="button" data-go="home">'+T.back+'</button>';}
@@ -402,13 +450,30 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       return '<div><b>'+esc(byName[x.name]?x.name:T.unmapped)+'</b></div>'+x.files.map(function(fl){return '<code>'+esc(fl)+'</code>';}).join('')+(x.n>x.files.length?'<span class="sub">'+f(T.more,{n:x.n-x.files.length})+'</span>':'');}).join('')+'</div></details>';
   }
 
-  function home(){
-    unselRows();setHash('');curFlow=null;
+  var curWin=null;
+  function lanes(){ // one row per window; picking a row keeps only that window's rooms lit
+    var h='<div class="blk"><h3>'+T.who+'</h3><div class="lanes">';
+    WIN.forEach(function(w,k){
+      h+='<button type="button" class="lane" data-win="'+k+'" aria-pressed="'+(curWin===k)+'">'+wb(w)+
+        '<span class="lt">'+esc(winName(w))+'<span class="ls">'+esc(winSub(w))+'</span></span><span class="chips">'+
+        w.parts.map(function(x){var p=byName[x.name];return '<span class="chip '+(p?p.z:'z0')+'">'+pic(p?p.icon:'box')+esc(p?x.name:T.unmapped)+'<span class="n">'+x.n+'</span></span>';}).join('')+'</span></button>';});
+    h+='</div>';
+    (D.pending.shared||[]).slice(0,3).forEach(function(x){
+      h+='<div class="both"><span class="wbs">'+x.who.map(function(key){return wb(WIN.filter(function(w){return w.key===key;})[0]);}).join('')+'</span>'+T.both+'<code>'+esc(x.file)+'</code></div>';});
+    return h+'</div>';
+  }
+  function home(k){
+    unselRows();setHash('');curFlow=null;curWin=(k==null||!multi)?null:k;
     if(!hasPending){light({},null);setStage('<div class="band"><h2>'+T.none+'</h2></div>');return;}
-    var list=D.pending.parts.map(function(x){return {name:x.part,n:x.n,files:x.files};}),map={};
-    list.forEach(function(x){map[x.name]=x.n;});
-    light(map,null);
-    setStage('<div class="band"><h2>'+T.pending+'</h2><span class="meta">'+f(T.landed,{f:total(list),k:list.length})+'</span></div><div class="body">'+stackBar(list)+legend(list)+'</div>');
+    var src=curWin==null?D.pending.parts.map(function(x){return {name:x.part,n:x.n,files:x.files};}):WIN[curWin].parts;
+    var list=src.map(function(x){return {name:x.name,n:x.n,files:x.files};}),map={};
+    list.forEach(function(x){if(byName[x.name])map[x.name]=x.n;});
+    light(map,null,multi?(curWin==null?WIN:[WIN[curWin]]):null);
+    var meta=f(T.landed,{f:total(list),k:list.length});
+    if(multi&&curWin==null&&known.length)meta+=T.sep+f(T.nWin,{w:known.length});
+    else if(!multi&&known.length)meta+=T.sep+f(T.fromOne,{t:winName(known[0])});
+    setStage('<div class="band"><h2>'+(curWin==null?T.pending:wb(WIN[curWin])+' '+esc(winName(WIN[curWin])))+'</h2><span class="meta">'+meta+'</span></div><div class="body">'+
+      (multi?lanes():'')+stackBar(list)+legend(list)+'</div>');
   }
   function selectPart(name){
     unselRows();var p=byName[name],map={};setHash('p'+D.parts.indexOf(p));
@@ -416,6 +481,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     light(map,name);
     var h='<div class="band wingc">'+pic(p.icon)+'<div><h2>'+esc(p.name)+'</h2><span class="meta">'+f(T.partMeta,{n:p.files,d:D.recentDays,r:p.recent})+'</span></div><p class="what">'+rich(p.what)+'</p>'+backBtn()+'</div><div class="body">';
     if(p.sensitive)h+='<div class="care-line">'+ic('lock')+'<span>'+esc(p.sensitive)+'</span></div>';
+    var at=winsOn(p.name,known);
+    if(at.length)h+='<div class="nowby">'+at.map(function(w){return wb(w)+'<span>'+esc(winName(w))+'</span>';}).join('')+'<span class="sub">'+T.nowBy+'</span></div>';
     h+='<div class="blk"><h3>'+T.how+'</h3>';
     curFlow=p.flow&&p.flow.nodes.length?p.flow:null;
     if(curFlow){h+='<div class="canvas" id="canvas"></div>';
