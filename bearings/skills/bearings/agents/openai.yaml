@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bearings"
+  short_description: "A visual map of the project: its parts, how each works, where work landed"
+  default_prompt: "Use $bearings to open the project map so I can see the project's parts, how each part works, and where recent work landed."

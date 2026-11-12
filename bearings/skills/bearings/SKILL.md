@@ -44,7 +44,7 @@ A part can carry a flow diagram of how it works, as a fenced block whose languag
 
 ## What to do, and when
 
-The script is `scripts/bearings.py` in this skill folder (Claude Code: `${CLAUDE_SKILL_DIR}/scripts/bearings.py`). Run it with python3 from inside the repo. It only reads the project.
+The script is `scripts/bearings.py` in this skill folder (Claude Code: `${CLAUDE_SKILL_DIR}/scripts/bearings.py`; Codex: `~/.codex/skills/bearings/scripts/bearings.py`). Run it with python3 from inside the repo. It only reads the project.
 
 - **The user wants to see the project** ("show me the project", "open the map", "how does X work"): run `bearings.py web --open`. It writes one HTML page under the repo's git directory and opens it. Say in one sentence what they will see.
 - **There is no parts list yet** and the user wants one: read the repo, draft `docs/parts.md` with a flow diagram for each part that has a story to tell, run `bearings.py parts` until no file is unmapped, then ask the user to correct the names.
