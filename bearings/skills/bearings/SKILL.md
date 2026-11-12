@@ -83,7 +83,7 @@ Nobody writes this down. The script reads the import statements (Python, JavaScr
 
 ## What to do, and when
 
-The script is `scripts/bearings.py` in this skill folder (Claude Code: `${CLAUDE_SKILL_DIR}/scripts/bearings.py`; Codex: `~/.codex/skills/bearings/scripts/bearings.py`). Run it with python3 from inside the repo. It only reads: the project, and, to tell windows apart, the session records Claude Code and Codex keep on this machine.
+The script is `scripts/bearings.py` in this skill folder (Claude Code: `${CLAUDE_SKILL_DIR}/scripts/bearings.py`; Codex: `~/.codex/skills/bearings/scripts/bearings.py`). Run it with python3 from inside the repo; `bearings.py --help` prints every keyword of the list format, so there is no need to read the script. It only reads: the project, and, to tell windows apart, the session records Claude Code and Codex keep on this machine.
 
 - **The user wants to see the project** ("show me the project", "open the map", "how does X work"): run `bearings.py web --open`. It writes one HTML page under the repo's git directory and opens it. Say in one sentence what they will see.
 - **There is no parts list yet** and the user wants one. The first draft is the parts, done well; rooms are only listed.

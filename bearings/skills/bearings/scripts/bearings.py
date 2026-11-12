@@ -1225,8 +1225,27 @@ def cmd_web(root, parts, t, args):
         webbrowser.open("file://" + os.path.abspath(out))
 
 
+LIST_FORMAT = """\
+the parts list (docs/parts.md, PARTS.md or .bearings/parts.md), every keyword it understands:
+  # Wing            groups the parts under it        (with one `#` title on top, every level sits one deeper)
+  ## Part           first plain line: what it is for
+  ### Room          a room inside the part above; same fields as a part
+  - `dir/` `a/*.py` paths it owns: a trailing / owns the folder, * stops at a slash, ** crosses them
+  图标：name        or  Icon: name        mic speaker phone play book search plug user card database mail
+                                          home grid spark layout lang cloud flask note lock box
+  敏感：why         or  Sensitive: why    drawn hatched
+  外来：what        or  Vendored: what    code written elsewhere: dashed, counted apart
+  规矩：rule（source，date）  or  Rule: ...
+  ```flow           inside a part or room: how it works.  ```flow Title  outside every part: a route
+    A -> B: label     an arrow;  <->  points both ways
+    Name | note | icon | 外部     a box;  外部 / external marks a service outside the project
+    a box named exactly like a part or room is a door to it
+"""
+
+
 def main():
-    ap = argparse.ArgumentParser(prog="bearings", description=__doc__.split("\n\n")[0])
+    ap = argparse.ArgumentParser(prog="bearings", description=__doc__.split("\n\n")[0], epilog=LIST_FORMAT,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--file", help="parts list, relative to the repo root (default: docs/parts.md)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("parts", help="list parts and unmapped files")
