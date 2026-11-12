@@ -403,7 +403,9 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   }
   function flowSvg(flow,avail,opt){
     // Wide: layers run left to right and wrap onto further bands, like lines of text. Narrow: layers run top to bottom.
-    var GX=104,GY=18,PAD=24,BG=58,SKIP=30,nodes=flow.nodes,idx={};
+    // An arrow that leaves its band, or steps back, travels in the gap under a band. Every such arrow gets a lane of
+    // its own there and its own spot on the box it leaves and the box it reaches, so no two run on top of each other.
+    var GX=104,GY=18,PAD=24,SKIP=30,LANE=20,nodes=flow.nodes,idx={};
     avail=Math.max(280,avail||900);
     nodes.forEach(function(n,i){idx[n.name]=i;n.out=[];n.inn=[];});
     flow.edges.forEach(function(e){nodes[idx[e.a]].out.push(idx[e.b]);});
@@ -415,7 +417,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       if(back[u+'>'+v]||u===v)return;if(layer[v]<layer[u]+1){layer[v]=layer[u]+1;changed=true;}});}
     flow.edges.forEach(function(e){var u=idx[e.a],v=idx[e.b];if(!back[u+'>'+v])nodes[v].inn.push(u);});
     var cols=[];nodes.forEach(function(n,i){(cols[layer[i]]=cols[layer[i]]||[]).push(i);});
-    var W=172,per=Math.floor((avail-PAD*2+GX)/(W+GX)),vertical=per<2,pos=[],VW,VH;
+    var W=172,per=Math.floor((avail-PAD*2+GX)/(W+GX)),vertical=per<2,pos=[],bands=[],VW,VH;
     function size(n,w){n.w=w;n.lab=wrap(n.name,14,w-62,2);n.nt=n.note?wrap(n.note,11.5,w-24,2):[];
       n.top=12+Math.max(34,n.lab.length*18);n.h=n.top+(n.nt.length?5+n.nt.length*15:0)+11;}
     function sortBySources(col,key){col.sort(function(a,b){function bc(i){var s=nodes[i].inn.filter(function(u){return pos[u];});
@@ -431,46 +433,62 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       VW=avail;VH=y-46+PAD;
     }else{
       nodes.forEach(function(n){size(n,W);});
-      var bands=[],top=PAD;
-      cols.forEach(function(col,c){var r=Math.floor(c/per);(bands[r]=bands[r]||{cols:[],h:0}).cols.push(col);
+      cols.forEach(function(col,c){var r=Math.floor(c/per);(bands[r]=bands[r]||{cols:[],h:0,lanes:[]}).cols.push(col);
         col.h=col.reduce(function(t,i){return t+nodes[i].h+GY;},-GY);bands[r].h=Math.max(bands[r].h,col.h);});
-      flow.edges.forEach(function(e){var lu=layer[idx[e.a]],lv=layer[idx[e.b]];
-        if(lv-lu>1&&Math.floor(lu/per)===Math.floor(lv/per))bands[Math.floor(lu/per)].skip=true;});
+      flow.edges.forEach(function(e){var lu=layer[idx[e.a]],lv=layer[idx[e.b]],bu=Math.floor(lu/per),bv=Math.floor(lv/per);
+        if(lu===lv)e.kind='same';
+        else if(bu===bv&&lv-lu>1){e.kind='skip';bands[bu].skip=true;}
+        else if(bu===bv&&lv>lu)e.kind='next';
+        else{e.kind='lane';e.gap=Math.min(bu,bv);e.lane=bands[e.gap].lanes.length;bands[e.gap].lanes.push(e);}});
+      var top=PAD;
       bands.forEach(function(bd,r){if(bd.skip)top+=SKIP;bd.top=top;
         bd.cols.forEach(function(col,k){
           if(r*per+k>0)sortBySources(col,'cy');
           var y=top+(bd.h-col.h)/2,x=PAD+k*(W+GX);
-          col.forEach(function(i,q){pos[i]={x:x,y:y,cx:x+W/2,cy:y+nodes[i].h/2,band:r,first:q===0,last:q===col.length-1};y+=nodes[i].h+GY;});});
-        top+=bd.h+BG;});
-      var used=Math.min(per,cols.length);VW=PAD*2+used*W+(used-1)*GX;VH=top-BG+PAD;
+          col.forEach(function(i,q){pos[i]={x:x,y:y,cx:x+W/2,cy:y+nodes[i].h/2,band:r,first:q===0,last:q===col.length-1,ports:{}};y+=nodes[i].h+GY;});});
+        var more=r<bands.length-1;bd.floor=top+bd.h;
+        top+=bd.h+(bd.lanes.length?24+(bd.lanes.length-1)*LANE+(more?34:10):(more?40:0));});
+      var used=Math.min(per,cols.length);VW=PAD*2+used*W+(used-1)*GX;VH=top+PAD;
+      // which side of its box each lane arrow leaves by and arrives at, and its place among the arrows sharing that side
+      bands.forEach(function(bd){bd.lanes.forEach(function(e){var u=idx[e.a],v=idx[e.b],a=pos[u],b=pos[v];
+        e.s1=a.band===e.gap?(a.last?'b':'r'):(a.first?'t':'l');e.s2=b.band===e.gap?(b.last?'b':'r'):(b.first?'t':'l');
+        e.k1=a.ports[e.s1]=(a.ports[e.s1]||0);a.ports[e.s1]++;e.k2=b.ports[e.s2]=(b.ports[e.s2]||0);b.ports[e.s2]++;});});
     }
-    var s='<svg class="flow" width="'+VW+'" height="'+VH+'" viewBox="0 0 '+VW+' '+VH+'" role="img" aria-label="'+esc(flow.edges.map(function(e){return e.a+' → '+e.b+(e.label?'（'+e.label+'）':'');}).join('；'))+'">'+
-      '<defs><marker id="fah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="fah" d="M0,0 L10,5 L0,10 z"/></marker></defs>';
-    var labels='',movers='',crossings={};
+    function port(i,side,k){var p=pos[i],n=nodes[i],off=k-(p.ports[side]-1)/2;
+      if(side==='b')return {x:p.cx+off*20,y:p.y+n.h,ex:0,ey:2};
+      if(side==='t')return {x:p.cx+off*20,y:p.y,ex:0,ey:-2};
+      if(side==='r')return {x:p.x+n.w,y:p.cy+off*14,gx:p.x+n.w+14+k*8,ex:2,ey:0};
+      return {x:p.x,y:p.cy+off*14,gx:p.x-14-k*8,ex:-2,ey:0};}
+    var s='',labs=[],movers='';
     flow.edges.forEach(function(e,k){
       var u=idx[e.a],v=idx[e.b],a=pos[u],b=pos[v],A=nodes[u],B=nodes[v],d,lx,ly;
-      if(vertical||layer[v]===layer[u]){
+      if(vertical||e.kind==='same'){
         var down=a.y<=b.y,y1=down?a.y+A.h:a.y,y2=down?b.y-2:b.y+B.h+2,my=(y1+y2)/2;
         d='M'+a.cx+','+y1+' C'+a.cx+','+my+' '+b.cx+','+my+' '+b.cx+','+y2;lx=(a.cx+b.cx)/2;ly=my;
-      }else if(layer[v]-layer[u]>1&&a.band===b.band){ // jumps over a column: go over the top of the band
-        var ty=Math.min.apply(null,nodes.map(function(m,i){return pos[i].band===a.band?pos[i].y:1e9;}))-SKIP+10;
+      }else if(e.kind==='skip'){ // jumps over a column: go over the top of the band
+        var ty=bands[a.band].top-SKIP+10;
         d='M'+a.cx+','+a.y+' L'+a.cx+','+ty+' L'+b.cx+','+ty+' L'+b.cx+','+(b.y-2);lx=(a.cx+b.cx)/2;ly=ty;
-      }else if(layer[v]>layer[u]&&a.band===b.band){
+      }else if(e.kind==='next'){
         var x1=a.x+A.w,x2=b.x-2,mx=(x1+x2)/2;
         d='M'+x1+','+a.cy+' C'+mx+','+a.cy+' '+mx+','+b.cy+' '+x2+','+b.cy;lx=mx;ly=(a.cy+b.cy)/2-14;
-      }else{ // onto another band, or a step back: run along the gap between bands
-        var gk=Math.min(a.band,b.band),n=crossings[gk]=(crossings[gk]||0)+1;
-        var floor=Math.max.apply(null,nodes.map(function(m,i){return pos[i].band===gk?pos[i].y+m.h:0;}));
-        var gy=floor+BG/2+(n-1)*9-4,fwd=b.band>a.band;
-        // leave from the bottom unless another box sits below; arrive from the top unless another box sits above
-        var out=a.last?'M'+a.cx+','+(a.y+A.h)+' L'+a.cx+','+gy:'M'+(a.x+A.w)+','+a.cy+' L'+(a.x+A.w+14)+','+a.cy+' L'+(a.x+A.w+14)+','+gy;
-        var into=!fwd?' L'+b.cx+','+gy+' L'+b.cx+','+(b.y+B.h+2):(b.first?' L'+b.cx+','+gy+' L'+b.cx+','+(b.y-2):' L'+(b.x-14)+','+gy+' L'+(b.x-14)+','+b.cy+' L'+(b.x-2)+','+b.cy);
-        d=out+into;lx=(a.cx+b.cx)/2;ly=gy;
+      }else{ // onto another band, or a step back: along its own lane in the gap under a band
+        var bd=bands[e.gap],gy=bd.floor+24+e.lane*LANE,S=port(u,e.s1,e.k1),E=port(v,e.s2,e.k2),xs=S.gx==null?S.x:S.gx,xe=E.gx==null?E.x:E.gx;
+        d='M'+S.x+','+S.y+(S.gx==null?'':' L'+S.gx+','+S.y)+' L'+xs+','+gy+' L'+xe+','+gy+(E.gx==null?'':' L'+E.gx+','+E.y)+' L'+(E.x+E.ex)+','+(E.y+E.ey);
+        lx=xs+(xe-xs)*(e.lane+1)/(bd.lanes.length+1);ly=gy; // labels step along the gap so they never stack
       }
       s+='<path class="fe'+(opt&&opt.dash(e)?' loose':'')+'" d="'+d+'" marker-end="url(#fah)"'+(e.both?' marker-start="url(#fah)"':'')+'/>';
       movers+='<circle class="fdot" r="3.6"><animateMotion dur="2.6s" begin="'+(k*0.45).toFixed(2)+'s" repeatCount="indefinite" path="'+d+'"/></circle>';
-      if(e.label){var lw=tw(e.label,12)+14;labels+='<rect class="felbg" x="'+(lx-lw/2)+'" y="'+(ly-10.5)+'" width="'+lw+'" height="21" rx="6"/><text class="fel" x="'+lx+'" y="'+(ly+4)+'" text-anchor="middle">'+esc(e.label)+'</text>';}
+      if(e.label)labs.push({t:e.label,x:lx,y:ly,w:tw(e.label,12)+14,lane:e.kind==='lane'});
     });
+    // no label may sit on another: one on a lane slides along it, any other steps down
+    var labels='';
+    labs.forEach(function(l,i){
+      for(var tries=0;tries<8;tries++){var hit=null;
+        for(var j=0;j<i;j++){var m=labs[j];if(Math.abs(l.x-m.x)<(l.w+m.w)/2+4&&Math.abs(l.y-m.y)<22){hit=m;break;}}
+        if(!hit)break;
+        if(l.lane)l.x=hit.x+(hit.w+l.w)/2+8;else l.y=hit.y+23;}
+      l.x=Math.max(l.w/2+2,Math.min(VW-l.w/2-2,l.x));VH=Math.max(VH,l.y+16);
+      labels+='<rect class="felbg" x="'+(l.x-l.w/2)+'" y="'+(l.y-10.5)+'" width="'+l.w+'" height="21" rx="6"/><text class="fel" x="'+l.x+'" y="'+(l.y+4)+'" text-anchor="middle">'+esc(l.t)+'</text>';});
     s+=movers;
     nodes.forEach(function(n,i){var p=pos[i];
       s+='<g class="fn'+(n.ext?' ext':'')+(opt?opt.cls(n):'')+'"'+(opt?opt.attr(n):'')+'><rect class="fb" x="'+p.x+'" y="'+p.y+'" width="'+n.w+'" height="'+n.h+'" rx="10"/>'+
@@ -479,7 +497,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       n.lab.forEach(function(t,k){s+='<text class="fl" x="'+(p.x+54)+'" y="'+(ly+k*18)+'">'+esc(t)+'</text>';});
       n.nt.forEach(function(t,k){s+='<text class="fnote" x="'+(p.x+12)+'" y="'+(p.y+n.top+16+k*15)+'">'+esc(t)+'</text>';});
       s+='</g>';});
-    return s+labels+'</svg>';
+    return '<svg class="flow" width="'+VW+'" height="'+VH+'" viewBox="0 0 '+VW+' '+VH+'" role="img" aria-label="'+esc(flow.edges.map(function(e){return e.a+' → '+e.b+(e.label?'（'+e.label+'）':'');}).join('；'))+'">'+
+      '<defs><marker id="fah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="fah" d="M0,0 L10,5 L0,10 z"/></marker></defs>'+s+labels+'</svg>';
   }
   var curFlow=null,curOpt=null;
   function wire(c){Array.prototype.forEach.call(c.querySelectorAll('[data-node]'),function(g){

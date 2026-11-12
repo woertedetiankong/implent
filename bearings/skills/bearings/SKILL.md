@@ -33,7 +33,8 @@ A part that holds several distinct things (a dozen models, the pages of an app, 
 
 - Give a part rooms when it has more than about 150 files, or when one flow diagram can only show a "typical" case. Three to twelve rooms. Small parts stay flat.
 - A room's paths lie inside its part's paths and are more specific (`models/` on the part, `models/higgs/` on the room). Files no room claims stay with the part itself.
-- A room where something runs gets its own flow diagram, usually three to six boxes: what comes in, the steps particular to this room, what goes out. The part's diagram shows what its rooms have in common. A room that is only a collection (assets, pages of documentation, folders of tests, outside code) needs none.
+- Each level is drawn with the boxes of the level below it. A route's boxes are parts. The diagram of a part that has rooms uses those rooms as its boxes, named exactly so they become doors, plus whoever starts and ends the story: it shows how the rooms work together. A room's diagram shows the steps inside that room. If a part's diagram and one of its rooms' diagrams tell the same story, the part's is drawn at the wrong level; redraw it with rooms as boxes.
+- A room where something runs gets its own flow diagram, usually three to six boxes: what comes in, the steps particular to this room, what goes out. A room that is only a collection (assets, pages of documentation, folders of tests, outside code) needs none.
 - A room nobody has drawn is shown with its measured links only, which tells a reader what it touches but not how it works. So draw the rooms of the central parts in the first draft, and tell the user how many rooms are still undrawn; `bearings.py parts` lists them.
 
 ### Code from outside
