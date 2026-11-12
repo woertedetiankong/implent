@@ -65,4 +65,4 @@ Durable knowledge goes into the README and the docs the repo already has. Do not
 
 A wiki maintained by an automated documenter (for example `openwiki/`, generated and refreshed by the OpenWiki CLI and its CI runs) is not journal territory. It describes what the code is and its own updater owns it: read it as context, never hand-reconcile into it, and do not duplicate its code-derivable facts into other docs. Decisions, constraints, and other knowledge not derivable from code still go to the journal's own targets: dossiers, logs, and README/docs.
 
-The `bearings` parts list (`docs/parts.md`), when a repo has one, is a doc like any other for this purpose: it is the picture people read, and it is updated when a part's paths or way of working changed.
+The `bearings` parts list (`docs/parts.md`, or `PARTS.md` / `.bearings/parts.md` where the project keeps it), when a repo has one, is a doc like any other for this purpose: it is the picture people read, and it is updated when a part's paths or way of working changed.

@@ -23,7 +23,7 @@ If code and product intent conflict, document the mismatch as a risk or open que
 | New architecture decision | Decision record, task handoff |
 | Changed user/operator workflow | README, runbook, workflow docs |
 | Cross-module contract or shared implementation rule | Architecture docs immediately when confirmed; task handoff cross-module references |
-| A part of the project now works differently, or a new area exists | The `bearings` parts list (`docs/parts.md`) when the repo has one: that part's paths and flow diagram |
+| A part of the project now works differently, or a new area exists | The `bearings` parts list (`docs/parts.md`, or `PARTS.md` / `.bearings/parts.md` where the project keeps it) when the repo has one: that part's paths and flow diagram |
 | Deprecated behavior | Remove or rewrite current-facing docs; preserve rationale in log/decision page if useful |
 | Validation discovery | Handoff validation section; docs only if durable |
 | Follow-up work | Long-term plan backlog or handoff follow-ups, not scattered TODO prose |

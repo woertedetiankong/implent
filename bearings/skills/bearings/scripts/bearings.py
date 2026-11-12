@@ -8,6 +8,7 @@ it never tells anyone what to change or leave alone.
   bearings.py parts                        list the parts, their file counts and unmapped files
   bearings.py check [--since REF | --commit REV] [--json]
                                            which parts the uncommitted work (or one past commit) touched
+  bearings.py links [--json]               which part uses which, measured from import statements
   bearings.py web [--out FILE] [--open]    write the project map as one HTML page
 
 Uncommitted work is split by window: which Claude Code or Codex session edited each file,
@@ -18,20 +19,24 @@ Read-only towards the project: the only file it writes is the map page, under th
 unless --out says otherwise. Python 3 standard library only.
 """
 import argparse
+import collections
 import datetime
 import glob
 import json
 import mmap
 import os
+import posixpath
 import re
 import subprocess
 import sys
 import webbrowser
 
-PARTS_FILES = ("docs/parts.md", "PARTS.md", ".claude/parts.md")
+PARTS_FILES = ("docs/parts.md", "PARTS.md", ".bearings/parts.md", ".claude/parts.md")
 SENSITIVE_RE = re.compile(r"^\s*(?:敏感|Sensitive)\s*[:：]\s*(.+)$", re.I)
 ICON_RE = re.compile(r"^\s*(?:图标|Icon)\s*[:：]\s*([a-z-]+)\s*$", re.I)
-FLOW_OPEN_RE = re.compile(r"^\s*```\s*flow\s*$", re.I)
+FLOW_OPEN_RE = re.compile(r"^\s*```\s*flow\b[ \t]*(.*?)\s*$", re.I)  # a title may follow, for a project route
+HEAD_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
+EXTERNAL_RE = re.compile(r"^\s*(?:外来|Vendored|Third-party)\s*[:：]\s*(.+)$", re.I)
 FLOW_EDGE_RE = re.compile(r"^\s*(.+?)\s*(<->|->)\s*(.+?)\s*(?:[:：]\s*(.*))?$")
 EXTERNAL_WORDS = ("外部", "external")
 RULE_RE = re.compile(r"^\s*(?:规矩|Rule)\s*[:：]\s*(.+)$", re.I)
@@ -63,6 +68,12 @@ TEXT = {
         "unknown_window": "没记到是哪个窗口",
         "last_at": "最后改动 {t}",
         "sep": "，",
+        "outside_more": "（另有 {n} 个外来）",
+        "outside": "外来：{why}",
+        "uses": "{a} 用到 {b}（{n} 个文件）",
+        "links_head": "从代码里量出来的连接，{n} 条（{langs}）：",
+        "links_none": "没有量到连接。能量的语言：Python、JavaScript/TypeScript、Go。",
+        "mutual": "互相用到：{pairs}",
     },
     "en": {
         "no_parts": "No parts list found ({files}). Have the agent draft one first, following the skill.",
@@ -82,6 +93,12 @@ TEXT = {
         "unknown_window": "no window on record",
         "last_at": "last edit {t}",
         "sep": ", ",
+        "outside_more": " (plus {n} from outside)",
+        "outside": "from outside: {why}",
+        "uses": "{a} uses {b} ({n} files)",
+        "links_head": "{n} links measured from the code ({langs}):",
+        "links_none": "No links measured. Languages it can measure: Python, JavaScript/TypeScript, Go.",
+        "mutual": "use each other: {pairs}",
     },
 }
 
@@ -114,9 +131,21 @@ def zlist(raw):
 # Parts list ---------------------------------------------------------------
 
 class Part:
-    def __init__(self, name):
+    """A part of the project, or a sub-part inside one (then .parent is set)."""
+
+    def __init__(self, name, parent=None):
         self.name, self.what, self.sensitive, self.patterns, self.rules = name, "", "", [], []
         self.group, self.icon, self.flow = "", "", None
+        self.parent, self.children, self.external = parent, [], ""
+
+    @property
+    def top(self):
+        return self.parent or self
+
+    @property
+    def outside(self):
+        """Code copied in from elsewhere: it is drawn apart and left out of the project's own counts."""
+        return self.external or (self.parent.external if self.parent else "")
 
 
 def flow_node(flow, name):
@@ -165,43 +194,80 @@ def compile_pattern(pattern):
     return re.compile("^" + rx + "$").match
 
 
+def title_form(lines):
+    """A list may start with one `#` title, for projects whose Markdown rules allow a single top-level
+    heading. Every level then sits one deeper: `##` is a wing, `###` a part, `####` a sub-part."""
+    tops, deeper, owning, level, fenced = 0, False, False, 0, False
+    for line in lines:
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        if fenced:
+            continue
+        head = HEAD_RE.match(line)
+        if head:
+            level = len(head.group(1))
+            tops += level == 1
+            deeper = deeper or level == 3
+        elif level == 2 and line.lstrip().startswith(("- ", "* ")) and "`" in line:
+            owning = True  # a `##` that owns paths is a part, so `#` is a wing
+    return tops == 1 and deeper and not owning
+
+
 def load_parts(root, explicit=None):
+    """Returns (parts, path, routes). Routes are flow blocks outside any part: paths through the whole project."""
     candidates = [explicit] if explicit else list(PARTS_FILES)
     for rel in candidates:
         path = rel if os.path.isabs(rel) else os.path.join(root, rel)
         if os.path.isfile(path):
             break
     else:
-        return None, None
-    parts, cur, group, in_flow = [], None, "", False
-    for line in open(path, encoding="utf-8"):
-        line = line.rstrip("\n")
-        if in_flow:
+        return None, None, []
+    lines = open(path, encoding="utf-8").read().split("\n")
+    shift = 1 if title_form(lines) else 0
+    parts, routes, cur, top, group, flow = [], [], None, None, "", None
+    for line in lines:
+        if flow is not None:
             if line.strip().startswith("```"):
-                in_flow = False
+                flow = None
             else:
-                flow_line(cur.flow, line)
+                flow_line(flow, line)
             continue
-        if cur is not None and FLOW_OPEN_RE.match(line):
-            in_flow, cur.flow = True, cur.flow or {"nodes": [], "edges": []}
+        opened = FLOW_OPEN_RE.match(line)
+        if opened:
+            if cur is not None:
+                flow = cur.flow = cur.flow or {"nodes": [], "edges": []}
+            else:
+                flow = {"title": opened.group(1), "nodes": [], "edges": []}
+                routes.append(flow)
             continue
-        if line.startswith("# "):  # a top-level heading groups the parts under it
-            group, cur = line[2:].strip(), None
-            continue
-        if line.startswith("## "):
-            cur = Part(line[3:].strip())
-            cur.group = group
-            parts.append(cur)
+        head = HEAD_RE.match(line)
+        if head:
+            level, name = len(head.group(1)) - shift, head.group(2)
+            if level == 1:    # a wing groups the parts under it
+                group, cur, top = name, None, None
+            elif level == 2:
+                cur = top = Part(name)
+                cur.group = group
+                parts.append(cur)
+            elif level == 3 and top is not None:
+                cur = Part(name, top)
+                cur.group = group
+                top.children.append(cur)
+            elif level < 1:
+                cur = top = None
             continue
         if cur is None or not line.strip():
             continue
         sens = SENSITIVE_RE.match(line)
         rule = RULE_RE.match(line)
         icon = ICON_RE.match(line)
+        ext = EXTERNAL_RE.match(line)
         if icon:
             cur.icon = icon.group(1).lower()
         elif sens:
             cur.sensitive = sens.group(1).strip()
+        elif ext:
+            cur.external = ext.group(1).strip()
         elif rule:
             cur.rules.append(rule.group(1).strip())
         elif line.lstrip().startswith(("- ", "* ")):
@@ -209,16 +275,28 @@ def load_parts(root, explicit=None):
                 cur.patterns.append((pat, compile_pattern(pat), literal_len(pat)))
         elif not cur.what and not line.startswith(("#", ">")):
             cur.what = line.strip()
-    return parts, path
+    return parts, path, routes
+
+
+def leaf(path, parts, seen={}):
+    """The part or sub-part that owns a path: the most specific pattern wins."""
+    key = (id(parts), path)
+    if key not in seen:
+        best, best_rank = None, (-1, 0)
+        for part in parts:
+            for unit in [part] + part.children:
+                for _, match, length in unit.patterns:
+                    rank = (length, 1 if unit.parent else 0)  # on a tie the room inside wins
+                    if rank > best_rank and match(path):
+                        best, best_rank = unit, rank
+        seen[key] = best
+    return seen[key]
 
 
 def owner(path, parts):
-    best, best_len = None, -1
-    for part in parts:
-        for _, match, length in part.patterns:
-            if length > best_len and match(path):
-                best, best_len = part, length
-    return best
+    """The top-level part that owns a path."""
+    unit = leaf(path, parts)
+    return unit.top if unit else None
 
 
 def language(parts):
@@ -503,8 +581,9 @@ def in_flight(root, parts, look=True, everywhere=False):
                 near = [s for s in found if any(a - 1 <= made <= b + 2 for a, b in s["runs"])]
                 if len(near) == 1:
                     who, guess = [(near[0], made)], True
-            part = owner(f, parts)
-            rows.append({"file": f, "tree": w, "part": part.name if part else "", "who": who, "guess": guess})
+            unit = leaf(f, parts)
+            rows.append({"file": f, "tree": w, "part": unit.top.name if unit else "",
+                         "sub": unit.name if unit and unit.parent else "", "who": who, "guess": guess})
 
     windows, by_id = [], {}
     for row in rows:
@@ -549,26 +628,51 @@ def grouped(rows, parts):
 
 # Commands -----------------------------------------------------------------
 
+def tally(files, parts):
+    """Files per part and sub-part as {unit: [own, outside]}, plus the unmapped files.
+    A part's numbers include its sub-parts'; outside code is counted apart."""
+    n, unmapped = collections.defaultdict(lambda: [0, 0]), []
+    for f in files:
+        unit = leaf(f, parts)
+        if unit is None:
+            unmapped.append(f)
+            continue
+        which = 1 if unit.outside else 0
+        n[unit][which] += 1
+        if unit.parent:
+            n[unit.parent][which] += 1
+    return n, unmapped
+
+
 def cmd_parts(root, parts, t, args):
     files = zlist(git(root, "ls-files", "-z"))
-    counts, unmapped = {p.name: 0 for p in parts}, []
-    for f in files:
-        part = owner(f, parts)
-        if part:
-            counts[part.name] += 1
-        else:
-            unmapped.append(f)
+    n, unmapped = tally(files, parts)
     if args.json:
-        print(json.dumps({"parts": [{"name": p.name, "what": p.what, "sensitive": p.sensitive,
-                                     "files": counts[p.name], "paths": [x[0] for x in p.patterns]} for p in parts],
-                          "unmapped": unmapped}, ensure_ascii=False, indent=2))
+        def row(p):
+            out = {"name": p.name, "what": p.what, "sensitive": p.sensitive,
+                   "files": n[p][0], "paths": [x[0] for x in p.patterns]}
+            if n[p][1]:
+                out["outside"] = n[p][1]
+            if p.external:
+                out["external"] = p.external
+            if p.children:
+                out["subs"] = [row(c) for c in p.children]
+            return out
+        print(json.dumps({"parts": [row(p) for p in parts], "unmapped": unmapped}, ensure_ascii=False, indent=2))
         return
-    col = max(width(p.name) for p in parts) + 2
+    col = max(width(u.name) + (4 if u.parent else 0) for p in parts for u in [p] + p.children) + 2
     print(t["parts_head"].format(n=len(parts), files=len(files)))
     for p in parts:
-        mark = "  [" + t["sensitive"].format(why=p.sensitive) + "]" if p.sensitive else ""
-        print("  " + pad(p.name, col) + pad(t["files"].format(n=counts[p.name]), 12) + p.what + mark)
-    empty = [p.name for p in parts if not counts[p.name]]
+        for u in [p] + p.children:
+            marks = [t["sensitive"].format(why=u.sensitive)] if u.sensitive else []
+            marks += [t["outside"].format(why=u.external)] if u.external else []
+            mark = "  [" + "] [".join(marks) + "]" if marks else ""
+            count = t["files"].format(n=n[u][1] if u.outside else n[u][0])
+            if n[u][1] and not u.outside:
+                count += t["outside_more"].format(n=n[u][1])
+            indent = "      " if u.parent else "  "
+            print(indent + pad(u.name, col - len(indent) + 2) + pad(count, 12) + (" " if width(count) >= 12 else "") + u.what + mark)
+    empty = [u.name for p in parts for u in [p] + p.children if not sum(n[u])]
     if empty:
         print(t["empty_part"].format(names="、".join(empty)))
     if unmapped:
@@ -577,6 +681,227 @@ def cmd_parts(root, parts, t, args):
             print("  " + f)
     else:
         print(t["unmapped_none"])
+
+
+# Links measured from the code ---------------------------------------------
+# Which part uses which, read from import statements. Unlike the flow diagrams, nobody writes
+# these down: they are counted. Python, JavaScript/TypeScript and Go are read; other languages,
+# and links that go over a network, are not seen.
+
+LANGS = {".py": "Python", ".go": "Go", ".ts": "TypeScript", ".tsx": "TypeScript", ".mts": "TypeScript",
+         ".cts": "TypeScript", ".js": "JavaScript", ".jsx": "JavaScript", ".mjs": "JavaScript", ".cjs": "JavaScript"}
+JS_EXT = (".ts", ".tsx", ".mts", ".js", ".jsx", ".mjs", ".cjs", ".d.ts", ".json")
+PY_FROM = re.compile(r"^[ \t]*from[ \t]+(\.*)([\w.]*)[ \t]+import[ \t]+(\([^)]*\)|[^\n#]+)", re.M)
+PY_IMPORT = re.compile(r"^[ \t]*import[ \t]+([\w., \t]+)", re.M)
+JS_SPEC = re.compile(r"""(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\(\s*)['"]([^'"\n]+)['"]""")
+GO_STR = re.compile(r'"([\w.\-/]+)"')
+SOURCE_MAX = 1500000   # bytes; larger files are generated or data
+
+
+def loose_json(text):
+    """tsconfig files allow comments and trailing commas."""
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    text = re.sub(r"^\s*//.*$", "", text, flags=re.M)
+    return json.loads(re.sub(r",(\s*[}\]])", r"\1", text))
+
+
+def read(root, f):
+    try:
+        with open(os.path.join(root, f), "rb") as fh:
+            return fh.read(SOURCE_MAX + 1).decode("utf-8", "replace")
+    except OSError:
+        return ""
+
+
+def code_links(root, files, parts):
+    """Returns ({(unit_a, unit_b): [n, examples]}, languages). n counts the files in a that import from b."""
+    tracked = set(files)
+    # Python: dotted module name -> file, from the package layout; then looser names for src/ layouts
+    py, loose = {}, []
+    for f in files:
+        if not f.endswith(".py"):
+            continue
+        bits = f[:-3].split("/")
+        i = len(bits) - 1
+        while i > 0 and "/".join(bits[:i]) + "/__init__.py" in tracked:
+            i -= 1
+        if bits[-1] == "__init__":
+            bits = bits[:-1]
+        if bits[i:]:
+            py[".".join(bits[i:])] = f
+        loose.append((bits, f))
+    for bits, f in loose:
+        for k in range(len(bits) - 1):
+            py.setdefault(".".join(bits[k:]), f)
+    # JavaScript: path aliases from tsconfig, and the packages of a workspace
+    aliases, packages = [], []
+    for f in files:
+        base = posixpath.basename(f)
+        if re.fullmatch(r"[tj]sconfig(\.[\w-]+)?\.json", base):
+            try:
+                opts = loose_json(read(root, f)).get("compilerOptions") or {}
+            except (ValueError, AttributeError):
+                continue
+            home = posixpath.join(posixpath.dirname(f), opts.get("baseUrl") or ".")
+            for pattern, targets in (opts.get("paths") or {}).items():
+                if pattern.endswith("*") and targets and str(targets[0]).endswith("*"):
+                    to = posixpath.normpath(posixpath.join(home, targets[0][:-1]))
+                    aliases.append((pattern[:-1], "" if to == "." else to + "/"))
+        elif base == "package.json" and "/" in f and "node_modules" not in f:
+            try:
+                name = json.loads(read(root, f)).get("name")
+            except (ValueError, AttributeError):
+                continue
+            if name:
+                packages.append((str(name), posixpath.dirname(f)))
+    if not aliases and any(f.startswith("src/") for f in files):
+        aliases = [("@/", "src/"), ("~/", "src/")]
+    aliases.sort(key=lambda x: -len(x[0]))
+    packages.sort(key=lambda x: -len(x[0]))
+    # Go: module path -> folder, and one file per folder to stand for the package
+    gomods, godirs = [], {}
+    for f in files:
+        if posixpath.basename(f) == "go.mod":
+            m = re.search(r"^module\s+(\S+)", read(root, f), re.M)
+            if m:
+                gomods.append((m.group(1), posixpath.dirname(f)))
+        elif f.endswith(".go"):
+            godirs.setdefault(posixpath.dirname(f), f)
+
+    def js_file(stem):
+        stem = posixpath.normpath(stem)
+        if stem in tracked:
+            return stem
+        bare = re.sub(r"\.(js|jsx|mjs|cjs)$", "", stem)  # `./x.js` written for a `./x.ts` source
+        for cand in (bare, stem):
+            for ext in JS_EXT:
+                for path in (cand + ext, cand + "/index" + ext):
+                    if path in tracked:
+                        return path
+        return None
+
+    def targets(f, ext, text):
+        if ext == ".py":
+            here = f.split("/")[:-1]
+            for dots, module, names in PY_FROM.findall(text):
+                names = [x.split(" as ")[0].strip() for x in names.strip("() \t").split(",")]
+                mod = module.split(".") if module else []
+                if dots:  # relative: resolved on the path
+                    up = len(dots) - 1
+                    if up > len(here):
+                        continue
+                    stem = "/".join(here[: len(here) - up] + mod)
+                    for name in names:
+                        for path in (stem + "/" + name + ".py", stem + "/" + name + "/__init__.py",
+                                     stem + ".py", stem + "/__init__.py"):
+                            if path.lstrip("/") in tracked:
+                                yield path.lstrip("/")
+                                break
+                elif module:
+                    for name in names:
+                        hit = py.get(module + "." + name) or py.get(module)
+                        if hit:
+                            yield hit
+            for line in PY_IMPORT.findall(text):
+                for module in line.split(","):
+                    bits = module.split(" as ")[0].strip().split(".")
+                    while bits and ".".join(bits) not in py:
+                        bits.pop()
+                    if bits:
+                        yield py[".".join(bits)]
+        elif ext == ".go":
+            head = text.split("\nfunc ", 1)[0]
+            for spec in GO_STR.findall(head):
+                for mod, folder in gomods:
+                    if spec == mod or spec.startswith(mod + "/"):
+                        hit = godirs.get(posixpath.normpath(posixpath.join(folder, spec[len(mod):].lstrip("/"))))
+                        if hit:
+                            yield hit
+                        break
+        else:
+            for spec in JS_SPEC.findall(text):
+                hit = None
+                if spec.startswith("."):
+                    hit = js_file(posixpath.join(posixpath.dirname(f), spec))
+                else:
+                    for prefix, to in aliases:
+                        if spec.startswith(prefix):
+                            hit = js_file(to + spec[len(prefix):])
+                            break
+                    else:
+                        for name, folder in packages:
+                            if spec == name or spec.startswith(name + "/"):
+                                rest = spec[len(name):].lstrip("/")
+                                hit = (js_file(folder + "/" + rest) or js_file(folder + "/src/" + rest)) if rest else \
+                                    (js_file(folder + "/src/index") or js_file(folder + "/index") or folder + "/package.json")
+                                break
+                if hit:
+                    yield hit
+
+    links, langs = {}, collections.Counter()
+    for f in files:
+        ext = posixpath.splitext(f)[1]
+        if ext not in LANGS:
+            continue
+        a = leaf(f, parts)
+        if a is None or a.outside:
+            continue
+        text = read(root, f)
+        if len(text) > SOURCE_MAX:
+            continue
+        langs[LANGS[ext]] += 1
+        seen = set()
+        for g in targets(f, ext, text):
+            b = leaf(g, parts)
+            if b is None or b is a or b in seen:
+                continue
+            seen.add(b)
+            link = links.setdefault((a, b), [0, []])
+            link[0] += 1
+            if len(link[1]) < 3:
+                link[1].append([f, g])
+    return links, [name for name, _ in langs.most_common()]
+
+
+def lifted(links, level):
+    """Links between top-level parts (level "top"), or between the sub-parts inside one part (a Part)."""
+    out = {}
+    for (a, b), (n, examples) in links.items():
+        if level == "top":
+            ka, kb = a.top, b.top
+        elif a.parent is level and b.parent is level:
+            ka, kb = a, b
+        else:
+            continue
+        if ka is kb:
+            continue
+        link = out.setdefault((ka, kb), [0, []])
+        link[0] += n
+        link[1] = (link[1] + examples)[:3]
+    return [{"a": a.name, "b": b.name, "n": n, "ex": ex} for (a, b), (n, ex) in
+            sorted(out.items(), key=lambda kv: -kv[1][0])]
+
+
+def cmd_links(root, parts, t, args):
+    files = zlist(git(root, "ls-files", "-z"))
+    links, langs = code_links(root, files, parts)
+    top = lifted(links, "top")
+    if args.json:
+        print(json.dumps({"languages": langs, "links": top,
+                          "inside": {p.name: lifted(links, p) for p in parts if p.children and lifted(links, p)}},
+                         ensure_ascii=False, indent=2))
+        return
+    if not top:
+        print(t["links_none"])
+        return
+    print(t["links_head"].format(n=len(top), langs="、".join(langs) if t is TEXT["zh"] else ", ".join(langs)))
+    weight = {(x["a"], x["b"]): x["n"] for x in top}
+    for x in top:
+        print("  " + t["uses"].format(a=x["a"], b=x["b"], n=x["n"]))
+    both = sorted({tuple(sorted(k)) for k, n in weight.items()  # a real two-way tie, not one stray import
+                   if min(n, weight.get((k[1], k[0]), 0)) * 4 >= max(n, weight.get((k[1], k[0]), 0))})
+    if both:
+        print(t["mutual"].format(pairs="；".join("%s ⇄ %s" % pair for pair in both)))
 
 
 def cmd_check(root, parts, t, args):
@@ -638,32 +963,46 @@ def cmd_check(root, parts, t, args):
 
 
 def history(root, parts):
-    """The last HISTORY commits, each with the parts it changed."""
+    """The last HISTORY commits, each with the parts it changed. Outside code is not the project's work."""
     raw = git(root, "log", "-n", str(HISTORY), "--no-merges", "--date=short", "--name-only",
               "--format=%x01%h%x02%ad%x02%s").decode("utf-8", "replace")
     commits = []
     for block in raw.split("\x01")[1:]:
         head, _, rest = block.partition("\n")
         rev, date, subject = (head.split("\x02") + ["", ""])[:3]
-        groups = {}
+        groups, subs = {}, set()
         for f in filter(None, (line.strip() for line in rest.splitlines())):
-            part = owner(f, parts)
-            groups.setdefault(part.name if part else "", []).append(f)
-        commits.append({"hash": rev, "date": date, "subject": subject, "groups": groups})
+            unit = leaf(f, parts)
+            if unit is not None and unit.outside:
+                continue
+            groups.setdefault(unit.top.name if unit else "", []).append(f)
+            if unit is not None and unit.parent:
+                subs.add(unit)
+        if groups:
+            commits.append({"hash": rev, "date": date, "subject": subject, "groups": groups, "subs": subs})
     return commits
 
 
 def cmd_web(root, parts, t, args):
     lang = language(parts)
     files = zlist(git(root, "ls-files", "-z"))
-    counts = {p.name: 0 for p in parts}
-    for f in files:
-        part = owner(f, parts)
-        if part:
-            counts[part.name] += 1
+    n, _ = tally(files, parts)
     commits = history(root, parts)
     cutoff = (datetime.date.today() - datetime.timedelta(days=RECENT_DAYS)).isoformat()
     touching = {p.name: [c for c in commits if p.name in c["groups"]] for p in parts}
+    links, langs = ({}, []) if args.no_links else code_links(root, files, parts)
+
+    # What is uncommitted, in every checkout of the repository, split by window.
+    rows, windows = in_flight(root, parts, look=not args.no_windows, everywhere=True)
+    by_name = {p.name: p for p in parts}
+    waiting = collections.Counter((r["part"], r["sub"]) for r in rows)
+
+    def card(u):
+        """What the page shows for a part or a sub-part."""
+        return {"name": u.name, "icon": u.icon, "flow": u.flow, "what": u.what, "sensitive": u.sensitive,
+                "rules": u.rules, "paths": [x[0] for x in u.patterns], "external": u.external,
+                "files": n[u][1] if u.outside else n[u][0], "outside": 0 if u.outside else n[u][1]}
+
     out_parts = []
     for p in parts:
         mine = touching[p.name]
@@ -677,17 +1016,17 @@ def cmd_web(root, parts, t, args):
                 if both * 4 >= len(mine) and both / len(mine) >= 1.5 * usual:
                     together.append({"name": q.name, "pct": round(100 * both / len(mine))})
             together.sort(key=lambda x: -x["pct"])
-        out_parts.append({"name": p.name, "group": p.group, "icon": p.icon, "flow": p.flow, "what": p.what, "sensitive": p.sensitive, "rules": p.rules,
-                          "paths": [x[0] for x in p.patterns], "files": counts[p.name],
-                          "recent": sum(1 for c in mine if c["date"] >= cutoff),
-                          "last": mine[0]["date"] if mine else "", "commits": len(mine), "together": together[:4]})
+        subs = []
+        for c in p.children:
+            seen = [k for k in mine if c in k["subs"]]
+            subs.append(dict(card(c), recent=sum(1 for k in seen if k["date"] >= cutoff),
+                             pending=waiting[(p.name, c.name)]))
+        out_parts.append(dict(card(p), group=p.group, subs=subs, inner=lifted(links, p) if p.children else [],
+                              recent=sum(1 for c in mine if c["date"] >= cutoff),
+                              last=mine[0]["date"] if mine else "", commits=len(mine), together=together[:4]))
     out_commits = [{"hash": c["hash"], "date": c["date"], "subject": c["subject"],
-                    "parts": [{"name": n or "?", "n": len(fs), "files": fs[:6]} for n, fs in
+                    "parts": [{"name": name or "?", "n": len(fs), "files": fs[:6]} for name, fs in
                               sorted(c["groups"].items(), key=lambda kv: -len(kv[1]))]} for c in commits[:SHOWN]]
-
-    # What is uncommitted, in every checkout of the repository, split by window.
-    rows, windows = in_flight(root, parts, look=not args.no_windows, everywhere=True)
-    by_name = {p.name: p for p in parts}
 
     def short(groups):
         return [{"name": g["name"], "n": g["n"], "files": g["files"][:6]} for g in groups]
@@ -701,9 +1040,11 @@ def cmd_web(root, parts, t, args):
         "shared": [{"file": r["file"], "who": r["keys"]} for r in rows if len(r["who"]) > 1][:8],
     }
 
+    listed = os.path.relpath(args.list_path, root).replace(os.sep, "/")
     data = {"project": os.path.basename(root), "lang": lang, "generated": datetime.date.today().isoformat(),
-            "files": len(files), "history": len(commits), "recentDays": RECENT_DAYS,
-            "parts": out_parts, "commits": out_commits, "pending": pending}
+            "files": len(files), "history": len(commits), "recentDays": RECENT_DAYS, "list": listed,
+            "parts": out_parts, "commits": out_commits, "pending": pending,
+            "links": lifted(links, "top"), "measured": langs, "routes": args.routes}
     here = os.path.dirname(os.path.abspath(__file__))
     page = open(os.path.join(here, "map_template.html"), encoding="utf-8").read()
     page = page.replace("__PROJECT__", data["project"]).replace(
@@ -737,18 +1078,21 @@ def main():
     w.add_argument("--out", help="where to write it (default: <git-dir>/bearings/map.html)")
     w.add_argument("--open", action="store_true", help="open it in the browser")
     w.add_argument("--fragment", action="store_true", help="omit the html/head/body wrapper")
+    w.add_argument("--no-links", action="store_true", help="do not read the code to measure which part uses which")
+    k = sub.add_parser("links", help="which part uses which, measured from import statements")
+    k.add_argument("--json", action="store_true")
     for cmd in (c, w):
         cmd.add_argument("--no-windows", action="store_true",
                          help="do not read Claude Code and Codex session records to tell windows apart")
     args = ap.parse_args()
 
     root = repo_root()
-    parts, _ = load_parts(root, args.file)
+    parts, args.list_path, args.routes = load_parts(root, args.file)
     if not parts:
         raise SystemExit(TEXT["zh"]["no_parts"].format(files=" / ".join(PARTS_FILES)) + "\n"
                          + TEXT["en"]["no_parts"].format(files=" / ".join(PARTS_FILES)))
     t = TEXT[language(parts)]
-    {"parts": cmd_parts, "check": cmd_check, "web": cmd_web}[args.cmd](root, parts, t, args)
+    {"parts": cmd_parts, "check": cmd_check, "web": cmd_web, "links": cmd_links}[args.cmd](root, parts, t, args)
 
 
 if __name__ == "__main__":

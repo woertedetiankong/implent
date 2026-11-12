@@ -85,6 +85,59 @@ p{margin:0}
 .room.lit .cnt{display:block}
 .room.mate .cnt{display:block;background:var(--z);color:var(--on)}
 .room.dim>*{opacity:.5}
+.room.outside{background-color:var(--sheet);box-shadow:inset 0 0 0 2px var(--sheet),inset 0 0 0 3.5px var(--z)}
+.mini{display:flex;flex-wrap:wrap;gap:2px;max-width:92px}
+.mini i{width:7px;height:7px;border-radius:1.5px;background:var(--z);opacity:.6}
+.mini i.x{background:transparent;box-shadow:inset 0 0 0 1px var(--z)}
+.room.lit .mini i,.room.sel .mini i{background:var(--on)}
+.room.lit .mini i.x,.room.sel .mini i.x{background:transparent;box-shadow:inset 0 0 0 1px var(--on)}
+/* three ways to look at the same building */
+.viewbar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.vcap{font-size:13.5px;color:var(--muted);flex:1 1 280px}
+.alt{--z:var(--ink);--zs:var(--paper);border:3px solid var(--ink);border-radius:12px;padding:16px 12px;overflow-x:auto;
+  background-color:var(--sheet);background-image:radial-gradient(var(--dot) 1px,transparent 1.3px);background-size:22px 22px}
+.alt[hidden],.plan[hidden],.viewbar[hidden]{display:none}
+svg.rel{display:block;margin:0 auto}
+.rn{cursor:pointer}
+.rn rect.rb{fill:var(--zs);stroke:var(--z);stroke-width:1.6}
+.rn rect.rp{fill:var(--z)}
+.rn .ri{fill:none;stroke:var(--on);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.rn text{font-family:var(--f-text);font-size:13px;font-weight:700;fill:var(--ink)}
+.rn.sel rect.rb{fill:var(--z)} .rn.sel rect.rp{fill:var(--on)} .rn.sel .ri{stroke:var(--z)} .rn.sel text{fill:var(--on)}
+.rn.ext rect.rb{fill:var(--sheet);stroke-dasharray:5 4}
+.rn.dim{opacity:.3}
+.rn:focus-visible rect.rb{stroke:var(--ink);stroke-width:3}
+.re{fill:none;stroke:var(--ink);opacity:.34}
+.re.on{opacity:.9}
+.re.up{stroke:var(--warn);stroke-dasharray:6 4;opacity:.95}
+.rah{fill:var(--ink)} .rahu{fill:var(--warn)}
+.rlone{font-family:var(--f-text);font-size:12px;fill:var(--muted)}
+.rsep{stroke:var(--hair);stroke-dasharray:4 5}
+.fn.link{cursor:pointer}
+.fn.plain rect.fb{stroke:var(--ink)} .fn.plain rect.fp{fill:var(--ink)}
+.fe.loose{stroke-dasharray:6 5}
+.rchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.rchips button{border:1.5px solid var(--ink);background:var(--sheet);border-radius:999px;padding:3px 14px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--muted)}
+.rchips button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.undernote{font-size:12.5px;color:var(--muted);margin-top:10px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.undernote b{font-weight:600;color:var(--ink)}
+/* the rooms inside a room */
+.blkhead{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between}
+.inplan{display:flex;flex-wrap:wrap;gap:2px;background:var(--ink);border:2px solid var(--ink);border-radius:10px;overflow:hidden}
+.sroom{flex:1 1 168px;min-width:0;border:0;background:var(--zs);padding:10px 11px;text-align:left;cursor:pointer;display:grid;
+  grid-template-columns:26px minmax(0,1fr);gap:4px 9px;align-items:center}
+.sroom .pic{width:26px;height:26px;font-size:16px;border-radius:6px}
+.sroom .nm{font-weight:700;font-size:13.5px;line-height:1.3;overflow-wrap:anywhere}
+.sroom .sm{grid-column:2;display:flex;gap:8px;align-items:center;font-family:var(--f-num);font-size:14px;font-weight:600;color:var(--z);font-variant-numeric:tabular-nums}
+.sroom:hover{background:var(--sheet)}
+.sroom.ext{background:var(--sheet);box-shadow:inset 0 0 0 2px var(--sheet),inset 0 0 0 3.5px var(--z)}
+.sroom.lit,.sroom.lit:hover{background:var(--z);color:var(--on)}
+.sroom.lit .pic{background:var(--on);color:var(--z)} .sroom.lit .sm{color:var(--on)}
+.sroom.lit .dots i:not(.f){background:var(--on);opacity:.32}
+.tagx{font-family:var(--f-text);font-size:11.5px;font-weight:700;border:1.5px solid currentColor;border-radius:5px;padding:0 6px;line-height:17px;white-space:nowrap}
+.crumb{background:none;border:0;padding:0;font-size:14px;font-weight:600;color:inherit;opacity:.85;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.out-line{display:flex;gap:9px;align-items:center;font-weight:600;font-size:14.5px}
+.out-line .ic{font-size:18px}
 /* a window: one Claude Code or Codex session, marked like a line on a transit map */
 .wb{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;flex:none;
   background:var(--ink);color:var(--paper);font-family:var(--f-num);font-size:14.5px;font-weight:700;line-height:1}
@@ -135,7 +188,7 @@ svg.flow{display:block;margin:0 auto}
 .pals{display:flex;flex-wrap:wrap;gap:7px}
 .pal{display:inline-flex;align-items:center;gap:8px;border:0;background:var(--zs);border-radius:8px;padding:4px 11px 4px 4px;font-size:14px;font-weight:600;cursor:pointer}
 .pal .pic{width:24px;height:24px;font-size:15px;border-radius:6px}
-.pal .pct{font-family:var(--f-num);font-size:15px;color:var(--z)}
+.pal .pct{font-family:var(--f-num);font-size:15px;color:var(--z);font-variant-numeric:tabular-nums}
 .sub{font-size:13.5px;color:var(--muted)}
 details summary{cursor:pointer;font-size:13.5px;font-weight:700;color:var(--muted)}
 details .in{padding-top:8px;display:flex;flex-direction:column;gap:5px;font-size:13px}
@@ -210,7 +263,9 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     <p class="sum" id="sum"></p>
     <div class="key" id="key"></div>
   </header>
+  <div class="viewbar" id="viewbar" hidden><div class="seg" id="views"></div><span class="vcap" id="vcap"></span></div>
   <div class="plan" id="plan"></div>
+  <div class="alt" id="alt" hidden></div>
   <section class="stage" id="stage" aria-live="polite"></section>
   <section class="work">
     <div class="whead"><h2 id="workh"></h2><div class="seg" id="seg"></div></div>
@@ -264,7 +319,14 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     forCoders:'给看代码的人',
     work:'每次工作踩到了哪几块',wide:'跨块的',all:'全部',noWork:'最近没有这样的工作。',
     seeFiles:'看具体文件',more:'等 {n} 个',unmapped:'未归类',back:'回到全貌',
-    note:'本页由 bearings 根据 docs/parts.md 和最近 {n} 次提交自动生成。流程图画的是清单里写下的描述；“常和它一起动”是统计出来的，不代表代码上一定有依赖。'
+    vPlan:'平面图',vRel:'关系图',vRoute:'主线',
+    capPlan:'项目分成哪几块。',capRel:'谁用到谁，从代码里量出来的。箭头指向被用到的一块。点一块，只看它的连线。',relTop:'多半在用别人',relBottom:'多半被别人用',capRoute:'一件事从头到尾怎么走。这是写下来的描述。',
+    uses:'它用到',usedBy:'用到它的',noUses:'没量到它用别的块。',noUsedBy:'没量到别的块用它。',nFiles:'{n} 个文件里用到',
+    inside:'里面有什么',outsideTag:'外来',outsideMore:'，另有 {n} 个外来文件',outsideLine:'不是这个项目自己写的：{w}',
+    mutual:'互相用到',lone:'没量到连接的',upKey:'橙色虚线：两边互相用到，或者下面的反过来用上面的',
+    loose:'虚线：代码里没量到这条连接（可能走网络，或是量不了的语言）',routeN:'主线 {n}',subMeta:'{n} 个文件，近 {d} 天改动 {r} 次',
+    noteRel:'“关系图”和“它用到”读的是 {l} 的引用语句，别的语言和走网络的连接量不到。',
+    note:'本页由 bearings 根据 {p} 和最近 {n} 次提交自动生成。流程图画的是清单里写下的描述；“常和它一起动”是统计出来的，不代表代码上一定有依赖。'
   },en:{
     stamp:'Generated {d}',sumA:'{n} parts in {g} wings.',sumOn:'The {k} lit parts have uncommitted changes.',sumOff:'Nothing is uncommitted right now.',
     kOn:'touched this time',kCare:'handle with care',kDots:'how busy in the last {d} days',kWin:'which window is on it',
@@ -281,7 +343,14 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     forCoders:'For people who read code',
     work:'Where each piece of work stepped',wide:'Across parts',all:'All',noWork:'No such work recently.',
     seeFiles:'See the files',more:'and {n} more',unmapped:'Unmapped',back:'Back to the overview',
-    note:'Generated by bearings from docs/parts.md and the last {n} commits. Flow diagrams draw what the parts list describes; "usually changes with" is a count, not proof of a code dependency.'
+    vPlan:'Floor plan',vRel:'Relations',vRoute:'Routes',
+    capPlan:'The parts of the project.',capRel:'Who uses whom, measured from the code. Arrows point at the part being used. Pick a part to see only its links.',relTop:'mostly uses others',relBottom:'mostly used by others',capRoute:'How one thing travels from start to end. This is a written description.',
+    uses:'It uses',usedBy:'Used by',noUses:'No use of other parts was measured.',noUsedBy:'No other part was measured using it.',nFiles:'used in {n} files',
+    inside:'What is inside',outsideTag:'outside',outsideMore:', plus {n} files from outside',outsideLine:'Not written by this project: {w}',
+    mutual:'Use each other',lone:'No links measured',upKey:'orange dashes: the two use each other, or a lower part leans on a higher one',
+    loose:'Dashes: this link was not measured in the code (it may go over a network, or through a language that cannot be read)',routeN:'Route {n}',subMeta:'{n} files, {r} changes in {d} days',
+    noteRel:'"Relations" and "It uses" read the import statements of {l}; other languages and links over a network are not seen.',
+    note:'Generated by bearings from {p} and the last {n} commits. Flow diagrams draw what the parts list describes; "usually changes with" is a count, not proof of a code dependency.'
   }}[D.lang];
   function f(s,o){return s.replace(/\{(\w+)\}/g,function(_,k){return o[k];});}
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -292,6 +361,19 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   var groups=[],gi={};
   D.parts.forEach(function(p){var g=p.group||'';if(!(g in gi)){gi[g]=groups.length;groups.push({name:g,parts:[]});}p.z='z'+(gi[g]%6);groups[gi[g]].parts.push(p);});
   var byName={};D.parts.forEach(function(p){byName[p.name]=p;});
+  var subOf={};D.parts.forEach(function(p){p.subs.forEach(function(c){c.z=p.z;c.parent=p.name;if(!byName[c.name]&&!subOf[c.name])subOf[c.name]=c;});});
+  function unitNamed(name){return byName[name]||subOf[name]||null;}
+  function topOf(name){var u=unitNamed(name);return u?(u.parent||u.name):null;}
+  function linked(a,b){return D.links.some(function(x){return (x.a===a&&x.b===b)||(x.a===b&&x.b===a);});}
+  // A box in a flow that carries the name of a part is a door to that part. On a route, an arrow between
+  // two parts that the code does not connect is drawn dashed.
+  function linkOpt(self){
+    function door(n){var u=n.ext?null:unitNamed(n.name);return u&&u.name!==self?u:null;}
+    return {cls:function(n){var u=door(n);return u?' link '+u.z:(self?'':' plain');},
+      icon:function(n){var u=door(n);return n.icon||(u?u.icon:'');},
+      attr:function(n){return door(n)?' data-node="'+esc(n.name)+'" tabindex="0" role="button"':'';},
+      dash:function(e){if(self||!D.measured.length)return false;var a=topOf(e.a),b=topOf(e.b);return !!(a&&b&&a!==b&&!linked(a,b));}};
+  }
   var hasPending=D.pending.parts.length>0;
   var WIN=D.pending.windows||[],multi=WIN.length>1,known=WIN.filter(function(w){return !w.unknown;});
   function winName(w){return w.unknown?T.unknownWin:(w.task||w.title||w.tool);}
@@ -304,7 +386,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   $('stamp').textContent=f(T.stamp,{d:D.generated});
   $('sum').textContent=f(T.sumA,{n:D.parts.length,g:groups.length})+(hasPending?f(T.sumOn,{k:D.pending.parts.length})+(multi&&known.length?f(T.sumWin,{w:known.length}):''):T.sumOff);
   $('key').innerHTML=(multi?'<span><span class="wb kwb">A</span>'+T.kWin+'</span>':'')+'<span><i class="kroom"></i>'+T.kOn+'</span><span><i class="kcare"></i>'+T.kCare+'</span><span style="color:var(--z0)">'+dots(8)+'<span style="color:var(--muted)">'+f(T.kDots,{d:D.recentDays})+'</span></span>';
-  $('note').textContent=f(T.note,{n:D.history})+(known.length?' '+T.noteWin:'');
+  $('note').textContent=f(T.note,{n:D.history,p:D.list})+(D.measured.length?' '+f(T.noteRel,{l:D.measured.join(T.sep)}):'')+(known.length?' '+T.noteWin:'');
 
   // ---- flow diagram ----
   function tw(s,size){var w=0;for(var i=0;i<s.length;i++)w+=s.charCodeAt(i)>255?size:size*0.56;return w;}
@@ -319,7 +401,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       }else cur+=ch;}
     if(cur)out.push(cur);return out;
   }
-  function flowSvg(flow,avail){
+  function flowSvg(flow,avail,opt){
     // Wide: layers run left to right and wrap onto further bands, like lines of text. Narrow: layers run top to bottom.
     var GX=104,GY=18,PAD=24,BG=58,SKIP=30,nodes=flow.nodes,idx={};
     avail=Math.max(280,avail||900);
@@ -385,23 +467,102 @@ details .tags{flex-direction:row;flex-wrap:wrap}
         var into=!fwd?' L'+b.cx+','+gy+' L'+b.cx+','+(b.y+B.h+2):(b.first?' L'+b.cx+','+gy+' L'+b.cx+','+(b.y-2):' L'+(b.x-14)+','+gy+' L'+(b.x-14)+','+b.cy+' L'+(b.x-2)+','+b.cy);
         d=out+into;lx=(a.cx+b.cx)/2;ly=gy;
       }
-      s+='<path class="fe" d="'+d+'" marker-end="url(#fah)"'+(e.both?' marker-start="url(#fah)"':'')+'/>';
+      s+='<path class="fe'+(opt&&opt.dash(e)?' loose':'')+'" d="'+d+'" marker-end="url(#fah)"'+(e.both?' marker-start="url(#fah)"':'')+'/>';
       movers+='<circle class="fdot" r="3.6"><animateMotion dur="2.6s" begin="'+(k*0.45).toFixed(2)+'s" repeatCount="indefinite" path="'+d+'"/></circle>';
       if(e.label){var lw=tw(e.label,12)+14;labels+='<rect class="felbg" x="'+(lx-lw/2)+'" y="'+(ly-10.5)+'" width="'+lw+'" height="21" rx="6"/><text class="fel" x="'+lx+'" y="'+(ly+4)+'" text-anchor="middle">'+esc(e.label)+'</text>';}
     });
     s+=movers;
     nodes.forEach(function(n,i){var p=pos[i];
-      s+='<g class="fn'+(n.ext?' ext':'')+'"><rect class="fb" x="'+p.x+'" y="'+p.y+'" width="'+n.w+'" height="'+n.h+'" rx="10"/>'+
-        '<rect class="fp" x="'+(p.x+11)+'" y="'+(p.y+11)+'" width="34" height="34" rx="8"/><g transform="translate('+(p.x+17.5)+','+(p.y+17.5)+') scale(.875)"><path class="fi" d="'+(ICONS[n.icon]||ICONS.box)+'"/></g>';
+      s+='<g class="fn'+(n.ext?' ext':'')+(opt?opt.cls(n):'')+'"'+(opt?opt.attr(n):'')+'><rect class="fb" x="'+p.x+'" y="'+p.y+'" width="'+n.w+'" height="'+n.h+'" rx="10"/>'+
+        '<rect class="fp" x="'+(p.x+11)+'" y="'+(p.y+11)+'" width="34" height="34" rx="8"/><g transform="translate('+(p.x+17.5)+','+(p.y+17.5)+') scale(.875)"><path class="fi" d="'+(ICONS[opt?opt.icon(n):n.icon]||ICONS.box)+'"/></g>';
       var ly=p.y+(n.lab.length===1?33:25);
       n.lab.forEach(function(t,k){s+='<text class="fl" x="'+(p.x+54)+'" y="'+(ly+k*18)+'">'+esc(t)+'</text>';});
       n.nt.forEach(function(t,k){s+='<text class="fnote" x="'+(p.x+12)+'" y="'+(p.y+n.top+16+k*15)+'">'+esc(t)+'</text>';});
       s+='</g>';});
     return s+labels+'</svg>';
   }
-  var curFlow=null;
-  function drawFlow(){var box=$('canvas');if(box&&curFlow)box.innerHTML=flowSvg(curFlow,box.clientWidth-26);}
-  var rz;window.addEventListener('resize',function(){clearTimeout(rz);rz=setTimeout(drawFlow,120);});
+  var curFlow=null,curOpt=null;
+  function wire(c){Array.prototype.forEach.call(c.querySelectorAll('[data-node]'),function(g){
+    function go(){var u=unitNamed(g.getAttribute('data-node'));if(!u)return;if(u.parent)selectSub(u.parent,u.name);else selectPart(u.name);}
+    g.addEventListener('click',go);g.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}});});}
+  function drawFlow(){var box=$('canvas');if(box&&curFlow){box.innerHTML=flowSvg(curFlow,box.clientWidth-26,curOpt);wire(box);}}
+  var rz;window.addEventListener('resize',function(){clearTimeout(rz);rz=setTimeout(function(){drawFlow();drawInner();drawAlt();},120);});
+
+  // ---- who uses whom ----
+  // Parts in bands. A part that mostly uses others sits high; a part that is mostly used sits low. The measure
+  // is use going out over all use touching the part, so one stray import cannot move a part. Most arrows then
+  // point down. The ones worth a look are drawn in the warning colour: two parts that use each other, and a
+  // part low down that leans on one higher up.
+  function mutuals(units,links){var w={},out=[];links.forEach(function(e){w[e.a+'\n'+e.b]=e.n;});
+    links.forEach(function(e){var back=w[e.b+'\n'+e.a]||0;if(e.a<e.b&&Math.min(e.n,back)>=2&&Math.min(e.n,back)*4>=Math.max(e.n,back))out.push([e.a,e.b,Math.min(e.n,back)]);});
+    return out.sort(function(x,y){return y[2]-x[2];});}
+  function relSvg(units,links,sel,avail){
+    var NW=156,NH=46,GX=12,GY=58,PAD=14,LEFT=0,idx={},w={},use={},used={},pairs=[],maxN=1;
+    avail=Math.max(300,avail||900);
+    units.forEach(function(u,i){idx[u.name]=i;});
+    links.forEach(function(e){var a=idx[e.a],b=idx[e.b];if(a==null||b==null)return;w[a+'>'+b]=e.n;use[a]=(use[a]||0)+e.n;used[b]=(used[b]||0)+e.n;maxN=Math.max(maxN,e.n);});
+    var band=units.map(function(_,i){var o=use[i]||0,n=used[i]||0;return o+n?Math.min(3,Math.floor(4*o/(o+n))):-1;}); // 3 mostly uses, 0 mostly used
+    Object.keys(w).forEach(function(k){var q=k.split('>'),a=+q[0],b=+q[1],back=w[b+'>'+a]||0;
+      if(w[k]>back||(w[k]===back&&a<b)){var e={a:a,b:b,n:w[k],back:back};
+        e.two=back>=2&&back*4>=e.n;
+        e.real=e.n>=2&&e.n*12>=use[a];               // more than a stray import
+        e.hot=e.two||(e.real&&band[a]<band[b]);      // a part low down leaning on one higher up
+        pairs.push(e);}});
+    pairs.sort(function(x,y){return y.n-x.n;});
+    var per=Math.floor((avail-PAD*2+GX)/(NW+GX));
+    if(per<2){per=2;NW=Math.floor((avail-PAD*2-GX)/2);}
+    var pos=[],y=PAD+18,rows=0;
+    function place(row){for(var k=0;k<row.length;k+=per){var line=row.slice(k,k+per),x=(avail-(line.length*NW+(line.length-1)*GX))/2;
+      line.forEach(function(i){pos[i]={x:x,y:y,cx:x+NW/2};x+=NW+GX;});y+=NH+26;}}
+    for(var L=3;L>=0;L--){var row=[];units.forEach(function(_,i){if(band[i]===L)row.push(i);});if(!row.length)continue;place(row);y+=GY-26;rows++;}
+    var lastY=y-GY,lone=[],sepY=0;units.forEach(function(_,i){if(band[i]<0)lone.push(i);});
+    if(lone.length){y+=22;sepY=y-GY/2+10;y+=22;place(lone);y+=GY-26;}
+    var VH=y-GY+PAD+(lone.length?6:26),si=sel!=null&&idx[sel]!=null?idx[sel]:-1,near={},shown=[];
+    if(si>=0)pairs.forEach(function(e){if(e.a===si||e.b===si){shown.push(e);near[e.a]=near[e.b]=true;}});
+    else if(per>3){var given={},hot=0;pairs.forEach(function(e){if(e.hot){if(hot++<6)shown.push(e);return;}if(!e.real)return;given[e.a]=(given[e.a]||0)+1;if(given[e.a]<=2)shown.push(e);});}
+    function head(id,cls){return '<marker id="'+id+'" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto-start-reverse"><path class="'+cls+'" d="M0,0 L10,5 L0,10 z"/></marker>';}
+    var s='<svg class="rel" width="'+avail+'" height="'+VH+'" viewBox="0 0 '+avail+' '+VH+'" role="img" aria-label="'+esc(links.slice(0,40).map(function(e){return e.a+' → '+e.b;}).join('；'))+'"><defs>'+head('rah','rah')+head('rahu','rahu')+'</defs>';
+    if(rows>1)s+='<text class="rlone" x="'+PAD+'" y="'+(PAD+6)+'">'+esc(T.relTop)+'</text><text class="rlone" x="'+PAD+'" y="'+(lastY+36)+'">'+esc(T.relBottom)+'</text>';
+    if(sepY)s+='<line class="rsep" x1="'+PAD+'" x2="'+(avail-PAD)+'" y1="'+sepY+'" y2="'+sepY+'"/><text class="rlone" x="'+PAD+'" y="'+(sepY+16)+'">'+esc(T.lone)+'</text>';
+    shown.forEach(function(e){var a=pos[e.a],b=pos[e.b],d,m=e.hot?'rahu':'rah';
+      if(Math.abs(a.y-b.y)<1){ // side by side: an arc under the row
+        var dip=a.y+NH+14+Math.min(16,Math.abs(a.cx-b.cx)/16);
+        d='M'+a.cx+','+(a.y+NH+(e.two?3:0))+' C'+a.cx+','+dip+' '+b.cx+','+dip+' '+b.cx+','+(b.y+NH+3);
+      }else{var down=a.y<b.y,y1=down?a.y+NH+(e.two?3:0):a.y-(e.two?3:0),y2=down?b.y-3:b.y+NH+3,my=(y1+y2)/2,bow=0;
+        if(Math.abs(y2-y1)>NH+GY&&Math.abs(a.cx-b.cx)<NW*0.7)bow=(a.cx<avail/2?-1:1)*(NW/2+26); // past a row in the same column: swing round it
+        d='M'+a.cx+','+y1+' C'+(a.cx+bow)+','+my+' '+(b.cx+bow)+','+my+' '+b.cx+','+y2;}
+      s+='<path class="re'+(si>=0?' on':'')+(e.hot?' up':'')+'" stroke-width="'+(1.1+2.4*Math.sqrt(e.n/maxN)).toFixed(1)+'" d="'+d+'" marker-end="url(#'+m+')"'+(e.two?' marker-start="url(#'+m+')"':'')+'/>';});
+    units.forEach(function(u,i){var q=pos[i],lab=wrap(u.name,13,NW-54,2);
+      s+='<g class="rn '+u.z+(i===si?' sel':'')+(si>=0&&i!==si&&!near[i]?' dim':'')+(u.external?' ext':'')+'" data-node="'+esc(u.name)+'" tabindex="0" role="button"><title>'+esc(u.name)+'</title>'+
+        '<rect class="rb" x="'+q.x+'" y="'+q.y+'" width="'+NW+'" height="'+NH+'" rx="9"/><rect class="rp" x="'+(q.x+8)+'" y="'+(q.y+8)+'" width="30" height="30" rx="7"/>'+
+        '<g transform="translate('+(q.x+13)+','+(q.y+13)+') scale(.83)"><path class="ri" d="'+(ICONS[u.icon]||ICONS.box)+'"/></g>';
+      lab.forEach(function(t,k){s+='<text x="'+(q.x+46)+'" y="'+(q.y+(lab.length===1?28:20)+k*16)+'">'+esc(t)+'</text>';});
+      s+='</g>';});
+    return s+'</svg>';
+  }
+  function relNotes(units,links){var m=mutuals(units,links);if(!m.length)return '';
+    return '<div class="undernote"><b>'+T.mutual+'</b>'+m.slice(0,5).map(function(x){return '<span>'+esc(x[0])+' ⇄ '+esc(x[1])+'</span>';}).join('')+(m.length>5?'<span>'+f(T.more,{n:m.length-5})+'</span>':'')+'<span>'+T.upKey+'</span></div>';}
+
+  // ---- three ways to look ----
+  var view='plan',selName=null,curRoute=0,curPart=null,innerView='plan';
+  var views=[['plan',T.vPlan,T.capPlan]];
+  if(D.links.length)views.push(['rel',T.vRel,T.capRel]);
+  if(D.routes.length)views.push(['route',T.vRoute,T.capRoute]);
+  function setView(v){view=v;views.forEach(function(x){$('view-'+x[0]).setAttribute('aria-pressed',String(x[0]===v));if(x[0]===v)$('vcap').textContent=x[2];});
+    $('plan').hidden=v!=='plan';$('alt').hidden=v==='plan';drawAlt();}
+  function drawAlt(){var box=$('alt');if(view==='plan'){box.innerHTML='';return;}
+    var avail=box.clientWidth-26,h;
+    if(view==='rel')h=relSvg(D.parts,D.links,selName,avail)+relNotes(D.parts,D.links);
+    else{var r=D.routes[curRoute];h=flowSvg(r,avail,linkOpt(null));
+      if(/class="fe loose"/.test(h))h+='<div class="undernote">'+T.loose+'</div>';
+      if(D.routes.length>1)h='<div class="rchips" style="margin:0 0 14px">'+D.routes.map(function(x,i){return '<button type="button" data-route="'+i+'" aria-pressed="'+(i===curRoute)+'">'+esc(x.title||f(T.routeN,{n:i+1}))+'</button>';}).join('')+'</div>'+h;
+      else if(r.title)h='<h3 style="margin:0 0 12px">'+esc(r.title)+'</h3>'+h;}
+    box.innerHTML=h;wire(box);
+    Array.prototype.forEach.call(box.querySelectorAll('[data-route]'),function(b){b.addEventListener('click',function(){curRoute=+b.getAttribute('data-route');drawAlt();});});}
+  function drawInner(){var box=$('inner');if(box&&curPart){box.innerHTML=relSvg(curPart.subs,curPart.inner,null,box.clientWidth-26)+relNotes(curPart.subs,curPart.inner);wire(box);}}
+  if(views.length>1){$('viewbar').hidden=false;$('vcap').textContent=T.capPlan;
+    views.forEach(function(v){var b=document.createElement('button');b.type='button';b.id='view-'+v[0];b.textContent=v[1];b.setAttribute('aria-pressed',String(v[0]===view));
+      b.addEventListener('click',function(){setView(v[0]);});$('views').appendChild(b);});}
 
   // ---- the building ----
   var rooms={},planCols=[];
@@ -410,10 +571,11 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     var w=document.createElement('section');w.className='wing '+g.parts[0].z;
     w.innerHTML=(g.name?'<h2>'+esc(g.name)+'</h2>':'')+'<div class="rooms" style="--cols:'+cols+'"></div>';
     g.parts.forEach(function(p,i){
-      var b=document.createElement('button');b.type='button';b.id='room-'+D.parts.indexOf(p);b.className='room'+(p.sensitive?' care':'');
+      var b=document.createElement('button');b.type='button';b.id='room-'+D.parts.indexOf(p);b.className='room'+(p.sensitive?' care':'')+(p.external?' outside':'');
       if(i===n-1&&n%cols)b.style.gridColumn='span '+(cols-n%cols+1);
       b.setAttribute('aria-label',p.name);
-      b.innerHTML='<span class="tr"><span class="who"></span><span class="cnt"></span></span>'+(p.sensitive?'<span class="lock">'+ic('lock')+'</span>':'')+pic(p.icon)+'<span class="nm">'+esc(p.name)+'</span>'+dots(p.recent);
+      b.innerHTML='<span class="tr"><span class="who"></span><span class="cnt"></span></span>'+(p.sensitive?'<span class="lock">'+ic('lock')+'</span>':'')+pic(p.icon)+'<span class="nm">'+esc(p.name)+'</span>'+
+        (p.subs.length?'<span class="mini">'+p.subs.slice(0,14).map(function(c){return '<i'+(c.external?' class="x"':'')+'></i>';}).join('')+'</span>':'')+dots(p.recent);
       b.addEventListener('click',function(){selectPart(p.name);});
       w.querySelector('.rooms').appendChild(b);rooms[p.name]=b;
     });
@@ -435,6 +597,9 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function setHash(h){try{history.replaceState(null,'',h?'#'+h:location.pathname+location.search);}catch(e){}}
   function setStage(html,cls){var c=$('stage');c.className='stage '+(cls||'z0');c.innerHTML=html;
     Array.prototype.forEach.call(c.querySelectorAll('[data-go]'),function(b){b.addEventListener('click',function(){var g=b.getAttribute('data-go');if(g==='home')home();else selectPart(g);});});
+    Array.prototype.forEach.call(c.querySelectorAll('[data-sub]'),function(b){b.addEventListener('click',function(){selectSub(curPart.name,curPart.subs[+b.getAttribute('data-sub')].name);});});
+    Array.prototype.forEach.call(c.querySelectorAll('[data-inner]'),function(b){b.addEventListener('click',function(){innerView=b.getAttribute('data-inner');selectPart(curPart.name);});});
+    wire(c);
     Array.prototype.forEach.call(c.querySelectorAll('[data-win]'),function(b){b.addEventListener('click',function(){var k=+b.getAttribute('data-win');home(curWin===k?null:k);});});
     if(!quiet)c.scrollIntoView({block:'nearest',behavior:'smooth'});}
   function unselRows(){Array.prototype.forEach.call(document.querySelectorAll('.trow.sel'),function(r){r.classList.remove('sel');});}
@@ -463,7 +628,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     return h+'</div>';
   }
   function home(k){
-    unselRows();setHash('');curFlow=null;curWin=(k==null||!multi)?null:k;
+    unselRows();setHash('');curFlow=null;curPart=null;curWin=(k==null||!multi)?null:k;
+    if(selName!==null){selName=null;if(view==='rel')drawAlt();}
     if(!hasPending){light({},null);setStage('<div class="band"><h2>'+T.none+'</h2></div>');return;}
     var src=curWin==null?D.pending.parts.map(function(x){return {name:x.part,n:x.n,files:x.files};}):WIN[curWin].parts;
     var list=src.map(function(x){return {name:x.name,n:x.n,files:x.files};}),map={};
@@ -475,34 +641,74 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     setStage('<div class="band"><h2>'+(curWin==null?T.pending:wb(WIN[curWin])+' '+esc(winName(WIN[curWin])))+'</h2><span class="meta">'+meta+'</span></div><div class="body">'+
       (multi?lanes():'')+stackBar(list)+legend(list)+'</div>');
   }
-  function selectPart(name){
-    unselRows();var p=byName[name],map={};setHash('p'+D.parts.indexOf(p));
-    p.together.forEach(function(c){map[c.name]=c.pct+'%';});
-    light(map,name);
-    var h='<div class="band wingc">'+pic(p.icon)+'<div><h2>'+esc(p.name)+'</h2><span class="meta">'+f(T.partMeta,{n:p.files,d:D.recentDays,r:p.recent})+'</span></div><p class="what">'+rich(p.what)+'</p>'+backBtn()+'</div><div class="body">';
-    if(p.sensitive)h+='<div class="care-line">'+ic('lock')+'<span>'+esc(p.sensitive)+'</span></div>';
-    var at=winsOn(p.name,known);
-    if(at.length)h+='<div class="nowby">'+at.map(function(w){return wb(w)+'<span>'+esc(winName(w))+'</span>';}).join('')+'<span class="sub">'+T.nowBy+'</span></div>';
-    h+='<div class="blk"><h3>'+T.how+'</h3>';
-    curFlow=p.flow&&p.flow.nodes.length?p.flow:null;
+  function flowBlock(u){
+    var h='<div class="blk"><h3>'+T.how+'</h3>';
+    curFlow=u.flow&&u.flow.nodes.length?u.flow:null;curOpt=linkOpt(u.name);
     if(curFlow){h+='<div class="canvas" id="canvas"></div>';
       if(curFlow.nodes.some(function(n){return n.ext;}))h+='<div class="fkey"><i></i>'+T.extKey+'</div>';}
     else h+='<div class="empty">'+T.noFlow+'</div>';
-    h+='</div><div class="cols3"><div class="blk"><h3>'+T.rules+'</h3>';
-    if(p.rules.length){
+    return h+'</div>';
+  }
+  function chips(list,attr){return '<div class="pals">'+list.slice(0,8).map(function(x){
+    return '<button type="button" class="pal '+x.u.z+'" '+attr(x.u)+' title="'+esc(f(T.nFiles,{n:x.n}))+'">'+pic(x.u.icon)+esc(x.u.name)+'<span class="pct">'+x.n+'</span></button>';}).join('')+
+    (list.length>8?'<span class="sub">'+f(T.more,{n:list.length-8})+'</span>':'')+'</div>';}
+  function usesBlocks(name,links,find,attr){ // measured: what this one imports, and what imports it
+    function side(mine,other,title,none){var list=links.filter(function(x){return x[mine]===name&&find(x[other]);}).map(function(x){return {u:find(x[other]),n:x.n};});
+      return '<div class="blk"><h3>'+title+'</h3>'+(list.length?chips(list,attr):'<p class="sub">'+none+'</p>')+'</div>';}
+    return side('a','b',T.uses,T.noUses)+side('b','a',T.usedBy,T.noUsedBy);
+  }
+  function rulesBlock(u){
+    var h='<div class="blk"><h3>'+T.rules+'</h3>';
+    if(u.rules.length){
       var sign=function(r){var m=r.match(/^(.*?)[（(]([^（）()]*)[）)]\s*$/);return '<div class="sign">'+ic('sign')+'<span>'+rich(m?m[1]:r)+(m?'<span class="src">'+esc(m[2])+'</span>':'')+'</span></div>';};
-      h+='<div class="signs">'+p.rules.slice(0,2).map(sign).join('')+'</div>';
-      if(p.rules.length>2)h+='<details><summary>'+f(T.moreRules,{n:p.rules.length-2})+'</summary><div class="in signs">'+p.rules.slice(2).map(sign).join('')+'</div></details>';
+      h+='<div class="signs">'+u.rules.slice(0,2).map(sign).join('')+'</div>';
+      if(u.rules.length>2)h+='<details><summary>'+f(T.moreRules,{n:u.rules.length-2})+'</summary><div class="in signs">'+u.rules.slice(2).map(sign).join('')+'</div></details>';
     }else h+='<p class="sub">'+T.noRules+'</p>';
-    h+='</div><div class="blk"><h3>'+T.pals+'</h3>';
+    return h+'</div>';
+  }
+  function pathsBlock(u){return '<div class="blk"><details><summary>'+T.forCoders+'</summary><div class="in tags">'+u.paths.map(function(x){return '<code>'+esc(x)+'</code>';}).join('')+'</div></details></div>';}
+  function marks(u){return (u.external?'<div class="out-line">'+ic('box')+'<span>'+esc(f(T.outsideLine,{w:u.external}))+'</span></div>':'')+
+    (u.sensitive?'<div class="care-line">'+ic('lock')+'<span>'+esc(u.sensitive)+'</span></div>':'');}
+  function selectPart(name){
+    unselRows();var p=byName[name],map={};setHash('p'+D.parts.indexOf(p));curPart=p;selName=name;
+    p.together.forEach(function(c){map[c.name]=c.pct+'%';});
+    light(map,name);
+    var h='<div class="band wingc">'+pic(p.icon)+'<div><h2>'+esc(p.name)+'</h2><span class="meta">'+f(T.partMeta,{n:p.files,d:D.recentDays,r:p.recent})+(p.outside?f(T.outsideMore,{n:p.outside}):'')+'</span></div><p class="what">'+rich(p.what)+'</p>'+backBtn()+'</div><div class="body">';
+    h+=marks(p);
+    var at=winsOn(p.name,known);
+    if(at.length)h+='<div class="nowby">'+at.map(function(w){return wb(w)+'<span>'+esc(winName(w))+'</span>';}).join('')+'<span class="sub">'+T.nowBy+'</span></div>';
+    h+=flowBlock(p);
+    if(p.subs.length){ // the rooms inside this room
+      var rel=innerView==='rel'&&p.inner.length;
+      h+='<div class="blk"><div class="blkhead"><h3>'+T.inside+'</h3>'+(p.inner.length?'<div class="seg">'+[['plan',T.vPlan],['rel',T.vRel]].map(function(o){
+        return '<button type="button" data-inner="'+o[0]+'" aria-pressed="'+((o[0]==='rel')===!!rel)+'">'+o[1]+'</button>';}).join('')+'</div>':'')+'</div>';
+      if(rel)h+='<div class="canvas" id="inner"></div>';
+      else h+='<div class="inplan">'+p.subs.map(function(c,i){return '<button type="button" class="sroom'+(c.external?' ext':'')+(c.pending?' lit':'')+'" data-sub="'+i+'">'+pic(c.icon)+
+        '<span class="nm">'+esc(c.name)+'</span><span class="sm">'+c.files+(c.external?'<span class="tagx">'+T.outsideTag+'</span>':dots(c.recent))+'</span></button>';}).join('')+'</div>';
+      h+='</div>';
+    }
+    h+='<div class="cols3">';
+    if(D.measured.length)h+=usesBlocks(p.name,D.links,function(n){return byName[n];},function(u){return 'data-go="'+esc(u.name)+'"';});
+    h+=rulesBlock(p)+'<div class="blk"><h3>'+T.pals+'</h3>';
     if(p.together.length)h+='<div class="pals">'+p.together.map(function(c){var q=byName[c.name];
       return '<button type="button" class="pal '+q.z+'" data-go="'+esc(c.name)+'">'+pic(q.icon)+esc(c.name)+'<span class="pct">'+c.pct+'%</span></button>';}).join('')+'</div>';
     else h+='<p class="sub">'+T.noPals+'</p>';
-    h+='</div><div class="blk"><details><summary>'+T.forCoders+'</summary><div class="in tags">'+p.paths.map(function(x){return '<code>'+esc(x)+'</code>';}).join('')+'</div></details></div></div></div>';
-    setStage(h,p.z);drawFlow();
+    h+='</div>'+pathsBlock(p)+'</div></div>';
+    setStage(h,p.z);drawFlow();drawInner();if(view==='rel')drawAlt();
+  }
+  function selectSub(pname,sname){
+    var p=byName[pname],c=p&&p.subs.filter(function(x){return x.name===sname;})[0];if(!c){if(p)selectPart(pname);return;}
+    unselRows();setHash('p'+D.parts.indexOf(p)+'.'+p.subs.indexOf(c));curPart=p;selName=pname;
+    var map={};p.together.forEach(function(x){map[x.name]=x.pct+'%';});light(map,pname);
+    var h='<div class="band wingc">'+pic(c.icon)+'<div><button type="button" class="crumb" data-go="'+esc(pname)+'">'+esc(pname)+'</button><h2>'+esc(c.name)+'</h2><span class="meta">'+f(T.subMeta,{n:c.files,d:D.recentDays,r:c.recent})+'</span></div><p class="what">'+rich(c.what)+'</p>'+backBtn()+'</div><div class="body">';
+    h+=marks(c)+flowBlock(c)+'<div class="cols3">';
+    if(p.inner.length)h+=usesBlocks(c.name,p.inner,function(n){return p.subs.filter(function(x){return x.name===n;})[0];},function(u){return 'data-sub="'+p.subs.indexOf(u)+'"';});
+    h+=rulesBlock(c)+pathsBlock(c)+'</div></div>';
+    setStage(h,p.z);drawFlow();if(view==='rel')drawAlt();
   }
   function selectWork(c,row){
-    unselRows();setHash('');curFlow=null;row.classList.add('sel');var map={};
+    unselRows();setHash('');curFlow=null;curPart=null;row.classList.add('sel');var map={};
+    if(selName!==null){selName=null;if(view==='rel')drawAlt();}
     var list=c.parts.map(function(x){return {name:x.name,n:x.n,files:x.files};});
     list.forEach(function(x){if(byName[x.name])map[x.name]=x.n;});
     light(map,null);
@@ -535,8 +741,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     $('seg').appendChild(b);
   });
   drawWork();
-  var m=/^#p(\d+)$/.exec(location.hash||'');
-  if(m&&D.parts[+m[1]])selectPart(D.parts[+m[1]].name);else home();
+  var m=/^#p(\d+)(?:\.(\d+))?$/.exec(location.hash||''),hp=m&&D.parts[+m[1]];
+  if(hp&&m[2]&&hp.subs[+m[2]])selectSub(hp.name,hp.subs[+m[2]].name);else if(hp)selectPart(hp.name);else home();
   quiet=false;
 })();
 </script>

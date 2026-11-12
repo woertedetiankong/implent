@@ -67,7 +67,7 @@ Read [references/knowledge-sync.md](references/knowledge-sync.md) before end-of-
    - Update the long-term plan status for the slice with absolute dates and links to the dossier or handoff. For an in-repo plan, refresh its status dashboard per references/document-model.md.
    - Update README, AGENTS/CLAUDE guidance, and docs that now describe stale behavior: merge duplicates, rewrite outdated sections, delete superseded claims. Replace a stale instruction; never leave it in place with a correction appended underneath. Preserve important history in the implementation log or a decision record, not in current-facing docs.
    - Run the cleanup loop in references/knowledge-sync.md: inventory likely stale docs, classify each as rewrite/merge/delete/keep, edit, then rerun targeted searches for the old commands, names, routes, or claims.
-   - When the repo has a parts list for the `bearings` map (`docs/parts.md`) and this work changed how a part works or added a new area, update that part's paths and flow diagram there. It is the picture people read, so it goes stale the same way a README does.
+   - When the repo has a parts list for the `bearings` map (`docs/parts.md`, or `PARTS.md` / `.bearings/parts.md` where the project keeps it) and this work changed how a part works or added a new area, update that part's paths and flow diagram there. It is the picture people read, so it goes stale the same way a README does.
 
 ## Parallel Sessions
 
