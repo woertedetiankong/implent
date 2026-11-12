@@ -354,6 +354,14 @@ def claude_sessions(roots, since):
                     for b in blocks if isinstance(blocks, list) else []:
                         if isinstance(b, dict) and b.get("tool_use_id") in s["open"]:
                             s["runs"].append((s["open"].pop(b["tool_use_id"]), stamp(d.get("timestamp"))))
+                elif not sub and not s.get("ask") and '"type":"user"' in line and '"tool_result"' not in line:
+                    try:  # the opening request names a session that was never given a title
+                        d = json.loads(line)
+                        said = d["message"]["content"] if d.get("type") == "user" and not d.get("isMeta") else ""
+                    except (ValueError, KeyError, TypeError):
+                        continue
+                    for b in said if isinstance(said, list) else [{"text": said}]:
+                        s["ask"] = s.get("ask") or first_ask(b.get("text") or "" if isinstance(b, dict) else "")
                 elif not sub and ('"ai-title"' in line or '"custom-title"' in line):
                     try:
                         d = json.loads(line)
@@ -365,6 +373,8 @@ def claude_sessions(roots, since):
                         s["title"] = str(d["aiTitle"])
         s["runs"] += [(start, start + RUN_OPEN) for start in s["open"].values()]
         s["open"] = {}
+    for s in found.values():
+        s["title"] = s["title"] or s.get("ask", "")
     return list(found.values())
 
 
