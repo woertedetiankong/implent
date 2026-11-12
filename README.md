@@ -216,3 +216,7 @@ python3 /path/to/implent/implementation-journal/skills/implementation-journal/sc
 - 在两个大型开源项目上，全新的会话只凭一句话就建出了清单（约 7 到 8 分钟）。但 AI 画的流程图只抽查过几张，没有逐张核对。
 - `/bearings:map` 命令还没有在真实会话里运行过。
 - 手机宽度和深色模式没有充分检查。
+
+## 许可
+
+两个插件都按 [MIT](LICENSE) 发布。

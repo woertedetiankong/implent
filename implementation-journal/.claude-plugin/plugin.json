@@ -4,5 +4,6 @@
   "author": { "name": "woertedetiankong" },
   "homepage": "https://github.com/woertedetiankong/implent",
   "repository": "https://github.com/woertedetiankong/implent",
+  "license": "MIT",
   "keywords": ["handoff", "journal", "milestone", "memory", "codex"]
 }

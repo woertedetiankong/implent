@@ -4,5 +4,6 @@
   "author": { "name": "woertedetiankong" },
   "homepage": "https://github.com/woertedetiankong/implent",
   "repository": "https://github.com/woertedetiankong/implent",
+  "license": "MIT",
   "keywords": ["understanding", "project-map", "visualization", "flow-diagram", "codex"]
 }
