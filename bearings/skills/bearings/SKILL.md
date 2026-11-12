@@ -33,7 +33,8 @@ A part that holds several distinct things (a dozen models, the pages of an app, 
 
 - Give a part rooms when it has more than about 150 files, or when one flow diagram can only show a "typical" case. Three to twelve rooms. Small parts stay flat.
 - A room's paths lie inside its part's paths and are more specific (`models/` on the part, `models/higgs/` on the room). Files no room claims stay with the part itself.
-- The part keeps the flow diagram of what its rooms have in common; a room's own diagram shows what is particular to it.
+- A room where something runs gets its own flow diagram, usually three to six boxes: what comes in, the steps particular to this room, what goes out. The part's diagram shows what its rooms have in common. A room that is only a collection (assets, pages of documentation, folders of tests, outside code) needs none.
+- A room nobody has drawn is shown with its measured links only, which tells a reader what it touches but not how it works. So draw the rooms of the central parts in the first draft, and tell the user how many rooms are still undrawn; `bearings.py parts` lists them.
 
 ### Code from outside
 
@@ -86,6 +87,7 @@ The script is `scripts/bearings.py` in this skill folder (Claude Code: `${CLAUDE
 - **The user wants to see the project** ("show me the project", "open the map", "how does X work"): run `bearings.py web --open`. It writes one HTML page under the repo's git directory and opens it. Say in one sentence what they will see.
 - **There is no parts list yet** and the user wants one: read the repo, decide where the list can live, draft it with a flow diagram for each part that has a story to tell, rooms inside the large parts, outside code marked, and one to three routes. Run `bearings.py parts` until no file is unmapped and `bearings.py links` to check the routes, then ask the user to correct the names.
 - **You finished work that changed the picture**: a new area of the project, files that `bearings.py parts` reports as unmapped, or a part that now works differently from its flow diagram. Update `docs/parts.md` in the same change and mention it in one line. If the picture is still true, do nothing.
+- **The user asks for the missing flow diagrams**: `bearings.py parts` lists every part and room without one. Read the code of each before drawing it; skip the ones that are only collections and say so.
 - **The user asks how the parts connect or what depends on what**: `bearings.py links` for the numbers, or open the map on its relation view.
 - **The user asks what a piece of work touched**: `bearings.py check` lists the parts the uncommitted work touched; `--commit <rev>` does the same for one past commit, `--since <rev>` for everything after one. Report it using the part names as written.
 

@@ -57,6 +57,7 @@ TEXT = {
         "unmapped": "未归类的文件 {n} 个：",
         "unmapped_none": "所有文件都归了类。",
         "empty_part": "没有文件的部分：{names}",
+        "no_flow": "还没有流程图的 {n} 个：{names}",
         "nothing": "{since}没有任何改动。",
         "since_ref": "自 {ref} 起，",
         "since_head": "相对上次提交，",
@@ -82,6 +83,7 @@ TEXT = {
         "unmapped": "{n} unmapped files:",
         "unmapped_none": "Every file belongs to a part.",
         "empty_part": "Parts with no files: {names}",
+        "no_flow": "{n} without a flow diagram: {names}",
         "nothing": "{since}nothing changed.",
         "since_ref": "Since {ref}, ",
         "since_head": "Against the last commit, ",
@@ -645,12 +647,15 @@ def tally(files, parts):
 
 
 def cmd_parts(root, parts, t, args):
+    routes = args.routes
     files = zlist(git(root, "ls-files", "-z"))
     n, unmapped = tally(files, parts)
     if args.json:
         def row(p):
             out = {"name": p.name, "what": p.what, "sensitive": p.sensitive,
                    "files": n[p][0], "paths": [x[0] for x in p.patterns]}
+            if p.children or p.parent or routes:  # lists in the newer form also say what is still undrawn
+                out["flow"] = bool(p.flow and p.flow["nodes"])
             if n[p][1]:
                 out["outside"] = n[p][1]
             if p.external:
@@ -675,6 +680,10 @@ def cmd_parts(root, parts, t, args):
     empty = [u.name for p in parts for u in [p] + p.children if not sum(n[u])]
     if empty:
         print(t["empty_part"].format(names="、".join(empty)))
+    bare = [(u.parent.name + " / " if u.parent else "") + u.name for p in parts for u in [p] + p.children
+            if not u.outside and not (u.flow and u.flow["nodes"])]
+    if bare:
+        print(t["no_flow"].format(n=len(bare), names="、".join(bare[:30]) + (" …" if len(bare) > 30 else "")))
     if unmapped:
         print(t["unmapped"].format(n=len(unmapped)))
         for f in unmapped[: None if args.all else 40]:

@@ -315,7 +315,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     partMeta:'{n} 个文件，近 {d} 天改动 {r} 次',
     rules:'规矩',noRules:'还没有为这一块记下规矩。',moreRules:'还有 {n} 条',
     pals:'常和它一起动',noPals:'它通常单独改动。',
-    how:'它是怎么工作的',extKey:'项目以外的服务',noFlow:'这一块还没有流程图。让 AI 按 bearings 的说明给它补一张。',
+    how:'它是怎么工作的',aroundH:'它和周围的连接',aroundNote:'这张图是从代码里量出来的：谁用到它，它用到谁。它内部怎么工作，还没有画。',nf:'{n} 个文件',extKey:'项目以外的服务',noFlow:'这一块还没有流程图，也没有量到它和别的块的连接。',
     forCoders:'给看代码的人',
     work:'每次工作踩到了哪几块',wide:'跨块的',all:'全部',noWork:'最近没有这样的工作。',
     seeFiles:'看具体文件',more:'等 {n} 个',unmapped:'未归类',back:'回到全貌',
@@ -339,7 +339,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     partMeta:'{n} files, {r} changes in {d} days',
     rules:'Rules',noRules:'No rules recorded for this part yet.',moreRules:'{n} more',
     pals:'Usually changes with',noPals:'It usually changes alone.',
-    how:'How it works',extKey:'a service outside the project',noFlow:'No flow diagram for this part yet. Ask the AI to add one, following the bearings skill.',
+    how:'How it works',aroundH:'What it connects to',aroundNote:'Measured from the code: who uses it and what it uses. How it works inside has not been drawn yet.',nf:'{n} files',extKey:'a service outside the project',noFlow:'No flow diagram for this part yet, and no links to other parts were measured.',
     forCoders:'For people who read code',
     work:'Where each piece of work stepped',wide:'Across parts',all:'All',noWork:'No such work recently.',
     seeFiles:'See the files',more:'and {n} more',unmapped:'Unmapped',back:'Back to the overview',
@@ -641,13 +641,26 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     setStage('<div class="band"><h2>'+(curWin==null?T.pending:wb(WIN[curWin])+' '+esc(winName(WIN[curWin])))+'</h2><span class="meta">'+meta+'</span></div><div class="body">'+
       (multi?lanes():'')+stackBar(list)+legend(list)+'</div>');
   }
-  function flowBlock(u){
-    var h='<div class="blk"><h3>'+T.how+'</h3>';
+  // A part nobody has drawn yet still has a picture: who uses it and whom it uses, taken from the measured links.
+  function around(u,links,find){
+    var ins={},outs={},names=[];
+    links.forEach(function(x){if(x.a===u.name&&find(x.b))outs[x.b]=x.n;if(x.b===u.name&&find(x.a))ins[x.a]=x.n;});
+    Object.keys(ins).concat(Object.keys(outs)).forEach(function(k){if(names.indexOf(k)<0)names.push(k);});
+    if(!names.length)return null;
+    function size(k){return Math.max(ins[k]||0,outs[k]||0);}
+    names.sort(function(x,y){return size(y)-size(x);});
+    var left=[],right=[],edges=[];
+    names.forEach(function(k){var user=(ins[k]||0)>=(outs[k]||0),side=user?left:right;if(side.length>=4)return;side.push({name:k,note:'',icon:'',ext:false});
+      edges.push({a:user?k:u.name,b:user?u.name:k,label:f(T.nf,{n:size(k)}),both:!!(ins[k]&&outs[k])});});
+    return {nodes:left.concat([{name:u.name,note:'',icon:u.icon,ext:false}],right),edges:edges};
+  }
+  function flowBlock(u,links,find){
     curFlow=u.flow&&u.flow.nodes.length?u.flow:null;curOpt=linkOpt(u.name);
-    if(curFlow){h+='<div class="canvas" id="canvas"></div>';
-      if(curFlow.nodes.some(function(n){return n.ext;}))h+='<div class="fkey"><i></i>'+T.extKey+'</div>';}
-    else h+='<div class="empty">'+T.noFlow+'</div>';
-    return h+'</div>';
+    if(curFlow)return '<div class="blk"><h3>'+T.how+'</h3><div class="canvas" id="canvas"></div>'+
+      (curFlow.nodes.some(function(n){return n.ext;})?'<div class="fkey"><i></i>'+T.extKey+'</div>':'')+'</div>';
+    curFlow=links&&links.length?around(u,links,find):null;
+    if(curFlow)return '<div class="blk"><h3>'+T.aroundH+'</h3><div class="canvas" id="canvas"></div><div class="fkey">'+T.aroundNote+'</div></div>';
+    return '<div class="blk"><h3>'+T.how+'</h3><div class="empty">'+T.noFlow+'</div></div>';
   }
   function chips(list,attr){return '<div class="pals">'+list.slice(0,8).map(function(x){
     return '<button type="button" class="pal '+x.u.z+'" '+attr(x.u)+' title="'+esc(f(T.nFiles,{n:x.n}))+'">'+pic(x.u.icon)+esc(x.u.name)+'<span class="pct">'+x.n+'</span></button>';}).join('')+
@@ -677,7 +690,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     h+=marks(p);
     var at=winsOn(p.name,known);
     if(at.length)h+='<div class="nowby">'+at.map(function(w){return wb(w)+'<span>'+esc(winName(w))+'</span>';}).join('')+'<span class="sub">'+T.nowBy+'</span></div>';
-    h+=flowBlock(p);
+    h+=flowBlock(p,D.links,function(n){return byName[n];});
     if(p.subs.length){ // the rooms inside this room
       var rel=innerView==='rel'&&p.inner.length;
       h+='<div class="blk"><div class="blkhead"><h3>'+T.inside+'</h3>'+(p.inner.length?'<div class="seg">'+[['plan',T.vPlan],['rel',T.vRel]].map(function(o){
@@ -701,7 +714,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     unselRows();setHash('p'+D.parts.indexOf(p)+'.'+p.subs.indexOf(c));curPart=p;selName=pname;
     var map={};p.together.forEach(function(x){map[x.name]=x.pct+'%';});light(map,pname);
     var h='<div class="band wingc">'+pic(c.icon)+'<div><button type="button" class="crumb" data-go="'+esc(pname)+'">'+esc(pname)+'</button><h2>'+esc(c.name)+'</h2><span class="meta">'+f(T.subMeta,{n:c.files,d:D.recentDays,r:c.recent})+'</span></div><p class="what">'+rich(c.what)+'</p>'+backBtn()+'</div><div class="body">';
-    h+=marks(c)+flowBlock(c)+'<div class="cols3">';
+    h+=marks(c)+flowBlock(c,p.inner,function(n){return p.subs.filter(function(x){return x.name===n;})[0];})+'<div class="cols3">';
     if(p.inner.length)h+=usesBlocks(c.name,p.inner,function(n){return p.subs.filter(function(x){return x.name===n;})[0];},function(u){return 'data-sub="'+p.subs.indexOf(u)+'"';});
     h+=rulesBlock(c)+pathsBlock(c)+'</div></div>';
     setStage(h,p.z);drawFlow();if(view==='rel')drawAlt();
