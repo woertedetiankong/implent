@@ -158,7 +158,7 @@ Conditional sections — include only those with real content, in this order bet
 
 ## New-Session Entry
 
-Written to `docs/tasks/NEXT-SESSION.md` or the repo's existing session/todo file. It doubles as the restart opener: it must work when pasted as the first message of a new session.
+Written to `next-session.md` inside the dossier. It doubles as the restart opener: it must work when pasted as the first message of a new session.
 
 ```markdown
 # Next Session

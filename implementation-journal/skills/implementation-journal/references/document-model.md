@@ -10,7 +10,7 @@ Use this reference when deciding where implementation knowledge should live. Cre
 | Task dossier | Current and next implementer | Work contract and milestone memory | Task-scoped |
 | Implementation log | Future implementer debugging decisions | Decisions, constraints, failed paths, validation discoveries | Conditional append-only |
 | Handoff | Next human or AI | Current state, what changed, how to continue, how to verify restart reality | Rewrite to current truth |
-| New-session entry | Next AI session | Pasteable restart opener: latest handoff pointer, errata, next steps, red lines, first verify | Lightweight current pointer |
+| New-session entry | Next AI session on this task | Pasteable restart opener: its dossier's handoff pointer, errata, next steps, red lines, first verify | One per dossier; lightweight current pointer |
 | README/docs | New users/operators/integrators | How to run, use, integrate, and operate | Rewrite to current truth |
 | AGENTS/CLAUDE | Agents working in the repo | Project conventions and non-obvious guardrails | Concise current guidance |
 
@@ -22,7 +22,7 @@ Use existing repo conventions first. If none exist:
 docs/tasks/<YYYY-MM-DD>-<slug>/task-brief.md
 docs/tasks/<YYYY-MM-DD>-<slug>/implementation-log.md
 docs/tasks/<YYYY-MM-DD>-<slug>/handoff.md
-docs/tasks/NEXT-SESSION.md
+docs/tasks/<YYYY-MM-DD>-<slug>/next-session.md
 ```
 
 Use lowercase hyphenated slugs. Prefer the milestone outcome over an implementation detail, such as `auth-device-flow` rather than `add-routes`.
@@ -57,7 +57,7 @@ Use stable relative links when one module references another module's dossier, h
 - Referenced by: [billing import](../2026-06-12-billing-import/handoff.md) - user identity mapping
 ```
 
-The new-session entry is the first landing point for a new chat, at the repo's established session/todo file or `docs/tasks/NEXT-SESSION.md` by default. Its role and rules live in references/handoff-discipline.md.
+The new-session entry is the first landing point for a new chat on that task. It lives in the dossier as `next-session.md`, so tasks that are open at the same time each keep their own. Its role and rules live in references/handoff-discipline.md.
 
 ## Docs The Journal Does Not Own
 

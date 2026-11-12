@@ -24,7 +24,7 @@ Creation conditions live in this file only; the references hold formats and fiel
   - `task-brief.md`: the contract for this slice.
   - `implementation-log.md`: append-only decision log, started at the first log trigger (workflow step 3).
   - `handoff.md`: rewritten near completion so the next human or AI can continue without reading the whole log.
-- New-session entry at `docs/tasks/NEXT-SESSION.md`, or the repo's existing session/todo file: a short pasteable restart opener plus errata pointing at the latest handoff — never a second status document.
+- New-session entry at `next-session.md` inside the dossier, one per task: a short pasteable restart opener plus errata pointing at that dossier's handoff — never a second status document. There is no repo-wide entry: several sessions can have tasks open at once, and one shared file would be overwritten by whichever session wrote last.
 
 That is the whole set. Do not add an index of dossiers, a wiki, or a summary page on your own judgment: every extra file is one more place that goes stale. The dated dossier folders are the index. A repo that already keeps such files falls under "existing project conventions win".
 
@@ -43,6 +43,7 @@ Read [references/knowledge-sync.md](references/knowledge-sync.md) before end-of-
    - Locate the long-term plan or the most specific source of intent.
    - Discover existing conventions before creating files: task folders, handoffs, session entries, todo files, decision records, roadmap docs, README, AGENTS/CLAUDE, and docs directories.
    - Identify the current slice, success criteria, scope, constraints, and known affected docs. For multi-module work, identify upstream/downstream modules and existing dossiers that may reference the changed contract.
+   - Settle which dossier this session works in: the one the user names, the one whose restart entry opened the session, or a new one. When several tasks are open and it is not clear which this session is for, ask before reading or writing any dossier.
    - If the milestone is too large to finish safely in one implementation pass, carve out the smallest coherent sub-slice that preserves the milestone intent, record it in `task-brief.md`, and ask for confirmation only when the slice boundary changes user-visible scope or risk.
 
 2. Create or update the task dossier.
@@ -60,13 +61,23 @@ Read [references/knowledge-sync.md](references/knowledge-sync.md) before end-of-
 
 4. Refresh the handoff before any planned pause, final response, commit, or phase completion.
    - Rewrite `handoff.md` to reflect the final code state and current next steps, following references/handoff-discipline.md. Mark it provisional if implementation or validation is intentionally incomplete.
-   - Refresh the new-session entry so it points at the latest handoff. If part of the handoff is already stale, record the correction as errata in the entry instead of silently rewriting history.
+   - Refresh this dossier's new-session entry so it matches the handoff. If part of the handoff is already stale, record the correction as errata in the entry instead of silently rewriting history.
 
 5. Reconcile durable knowledge.
    - Update the long-term plan status for the slice with absolute dates and links to the dossier or handoff. For an in-repo plan, refresh its status dashboard per references/document-model.md.
    - Update README, AGENTS/CLAUDE guidance, and docs that now describe stale behavior: merge duplicates, rewrite outdated sections, delete superseded claims. Replace a stale instruction; never leave it in place with a correction appended underneath. Preserve important history in the implementation log or a decision record, not in current-facing docs.
    - Run the cleanup loop in references/knowledge-sync.md: inventory likely stale docs, classify each as rewrite/merge/delete/keep, edit, then rerun targeted searches for the old commands, names, routes, or claims.
    - When the repo has a parts list for the `bearings` map (`docs/parts.md`) and this work changed how a part works or added a new area, update that part's paths and flow diagram there. It is the picture people read, so it goes stale the same way a README does.
+
+## Parallel Sessions
+
+More than one session may be working in the same repo at the same time, in the same folder or in separate worktrees. The records stay correct only if each session keeps to its own task:
+
+- One session, one dossier. Write only your own dossier's files. Do not edit, refresh, or "tidy" another dossier, even if it looks stale: another session may own it.
+- If you learn something that affects another open task, record it under Cross-Module References in your own handoff and tell the user. Do not write it into the other dossier.
+- Files that every task shares (the plan's status dashboard, README, docs, a `bearings` parts list) are edited in place and narrowly: read the file again right before editing, change only the rows or sections that belong to your work, and never rewrite the whole file from memory. Another session may have changed it since you last read it.
+- Before opening a new dossier, look at the open ones. If one already covers the same part of the project, say so to the user before starting, so two sessions do not make conflicting decisions about the same thing.
+- A task is open while its dossier has a `next-session.md` and its handoff is not Complete. Closing a task means marking the handoff Complete; that is what takes it off the list a new session sees.
 
 ## Quality Gate
 
@@ -78,7 +89,7 @@ Then check by judgment, since the script checks presence and shape, not truth:
 
 - `handoff.md` reflects the actual final code state (or is clearly marked provisional), and its restart verify expected-outputs are truthful.
 - `implementation-log.md` holds decisions, not narration.
-- The new-session entry points to the latest handoff, not merely to one that exists.
+- This dossier's new-session entry points to this dossier's handoff and matches its current state.
 - Current-facing docs contain no stale claims about the changed behavior, and the long-term plan status (including an in-repo dashboard) is updated when a parent plan exists.
 
 ## Final Response

@@ -10,8 +10,9 @@ by a command instead of model diligence:
 - task-brief.md: Goal, Success Criteria, Parent plan, Created date.
 - implementation-log.md: dated entry headings; consistency with the handoff
   (a missing log must be declared "Not required" in the handoff).
-- NEXT-SESSION.md: handoff pointer that resolves, Errata / Now do /
-  Red lines / First verify fields.
+- next-session.md (one per dossier): handoff pointer that resolves to the
+  handoff beside it, Errata / Now do / Red lines / First verify fields.
+  WARN when a repo-level entry sits beside per-task entries.
 - Markdown files: relative-date phrases ("today", "last week", ...), broken
   relative links, leftover template placeholders. Code fences are skipped.
 
@@ -219,9 +220,20 @@ def check_next_session(path, report):
         # Pointers may be written relative to the entry, the repo root, or
         # any directory between, so try every ancestor; cwd-independent.
         bases = [path.resolve().parent, *path.resolve().parents]
-        if not (target.is_absolute() and target.exists()) \
-                and not any((base / target).exists() for base in bases):
+        hits = [target] if target.is_absolute() and target.exists() else \
+            [base / target for base in bases if (base / target).exists()]
+        own = path.parent / "handoff.md"
+        if not hits:
             report.error(path, 1, f"handoff pointer does not resolve: {pointer.group(1)}")
+        elif own.exists() and hits[0].resolve() != own.resolve():
+            # One entry per dossier: it restarts its own task, not another one.
+            report.warn(path, 1, f"entry points at another dossier's handoff ({pointer.group(1)}) — "
+                                 "point it at the handoff.md beside it")
+    if not (path.parent / "handoff.md").exists():
+        own_entries = [p for p in path.parent.glob("*/*") if p.name.lower() == "next-session.md"]
+        if own_entries:
+            report.warn(path, 1, "repo-level entry beside per-task entries — move it into the dossier "
+                                 "it points at as next-session.md; tasks open at the same time must not share one file")
     for field in ("Errata:", "Now do:", "Red lines:", "First verify:"):
         if field not in text:
             report.warn(path, 1, f'missing "{field}" field')

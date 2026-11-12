@@ -5,7 +5,7 @@ Use this reference when creating or refreshing a cross-session handoff. The goal
 ## Two-Layer Model
 
 1. `handoff.md`: the authority for the current milestone state.
-2. New-session entry: a short pasteable restart opener at `docs/tasks/NEXT-SESSION.md` or the repo's established session entry file. It points to the latest handoff, records errata when a handoff section became stale, and compresses the immediate next steps, red lines, and first verify command into a first message for the next session.
+2. New-session entry: a short pasteable restart opener, `next-session.md` in the same dossier. It points to that dossier's handoff, records errata when a handoff section became stale, and compresses the immediate next steps, red lines, and first verify command into a first message for the next session on this task.
 
 Keep the layers distinct. The entry is a launch instruction and errata layer, not a second handoff; state details live in the handoff.
 
@@ -54,6 +54,7 @@ The format lives in references/templates.md. Rules for the content:
 
 - It must work when pasted as the first message of a new session.
 - Write red lines as commands the agent can obey. "Be careful" is not enforceable; "do not push until the user explicitly says push" is enforceable.
+- One entry per dossier, never one for the whole repo: tasks that are open at the same time must not share a file. A repo-level `docs/tasks/NEXT-SESSION.md` left from the older single-entry layout is moved into the dossier it points at (as `next-session.md`) the next time that dossier's entry is refreshed.
 - When a new handoff supersedes the old one, rewrite the entry. Keep older entries only if the repo already preserves historical entries; otherwise link history from the handoff chain.
 
 ## Evidence
