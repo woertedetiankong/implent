@@ -178,6 +178,11 @@ svg.flow{display:block;margin:0 auto}
 .fel{font-family:var(--f-text);font-size:12px;font-weight:600;fill:var(--ink)}
 .fdot{fill:var(--z)}
 .fkey{font-size:12.5px;color:var(--muted)}
+.aged{font-size:12.5px;color:var(--muted);display:flex;gap:7px;align-items:center}
+.aged.much{color:var(--warn);font-weight:600}
+.aged .ic{font-size:15px}
+.ask{font-size:13.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
+.say{font-family:var(--f-text);font-weight:600;color:var(--ink);background:var(--paper);border:1.5px solid var(--hair);border-radius:8px;padding:2px 10px;user-select:all;-webkit-user-select:all;cursor:text}
 .fkey i{display:inline-block;width:24px;height:14px;border-radius:4px;border:1.5px dashed var(--ink);vertical-align:-2px;margin-right:7px}
 .empty{border:1.5px dashed var(--hair);border-radius:10px;padding:22px;color:var(--muted);font-size:14.5px}
 .cols3{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px 30px;align-items:start}
@@ -315,7 +320,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     partMeta:'{n} 个文件，近 {d} 天改动 {r} 次',
     rules:'规矩',noRules:'还没有为这一块记下规矩。',moreRules:'还有 {n} 条',
     pals:'常和它一起动',noPals:'它通常单独改动。',
-    how:'它是怎么工作的',aroundH:'它和周围的连接',aroundNote:'这张图是从代码里量出来的：谁用到它，它用到谁。它内部怎么工作，还没有画。',nf:'{n} 个文件',extKey:'项目以外的服务',noFlow:'这一块还没有流程图，也没有量到它和别的块的连接。',
+    how:'它是怎么工作的',aroundH:'它和周围的连接',aroundNote:'这张图是从代码里量出来的：谁用到它，它用到谁。它内部怎么工作，还没有画。',ask:'想看它内部怎么工作，对 AI 说：',say:'给“{n}”画流程图',aged:'这张图画于 {d}，之后这一块的代码改了 {n} 次。',agedMuch:'这张图画于 {d}，之后这一块的代码改了 {n} 次，可能已经过时。',nf:'{n} 个文件',extKey:'项目以外的服务',noFlow:'这一块还没有流程图。',
     forCoders:'给看代码的人',
     work:'每次工作踩到了哪几块',wide:'跨块的',all:'全部',noWork:'最近没有这样的工作。',
     seeFiles:'看具体文件',more:'等 {n} 个',unmapped:'未归类',back:'回到全貌',
@@ -339,7 +344,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     partMeta:'{n} files, {r} changes in {d} days',
     rules:'Rules',noRules:'No rules recorded for this part yet.',moreRules:'{n} more',
     pals:'Usually changes with',noPals:'It usually changes alone.',
-    how:'How it works',aroundH:'What it connects to',aroundNote:'Measured from the code: who uses it and what it uses. How it works inside has not been drawn yet.',nf:'{n} files',extKey:'a service outside the project',noFlow:'No flow diagram for this part yet, and no links to other parts were measured.',
+    how:'How it works',aroundH:'What it connects to',aroundNote:'Measured from the code: who uses it and what it uses. How it works inside has not been drawn yet.',ask:'To see how it works inside, say to the AI:',say:'Draw the flow diagram for "{n}"',aged:'Drawn {d}; the code of this part has changed {n} times since.',agedMuch:'Drawn {d}; the code of this part has changed {n} times since, so it may be out of date.',nf:'{n} files',extKey:'a service outside the project',noFlow:'No flow diagram for this part yet.',
     forCoders:'For people who read code',
     work:'Where each piece of work stepped',wide:'Across parts',all:'All',noWork:'No such work recently.',
     seeFiles:'See the files',more:'and {n} more',unmapped:'Unmapped',back:'Back to the overview',
@@ -676,10 +681,13 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function flowBlock(u,links,find){
     curFlow=u.flow&&u.flow.nodes.length?u.flow:null;curOpt=linkOpt(u.name);
     if(curFlow)return '<div class="blk"><h3>'+T.how+'</h3><div class="canvas" id="canvas"></div>'+
-      (curFlow.nodes.some(function(n){return n.ext;})?'<div class="fkey"><i></i>'+T.extKey+'</div>':'')+'</div>';
+      (curFlow.nodes.some(function(n){return n.ext;})?'<div class="fkey"><i></i>'+T.extKey+'</div>':'')+
+      // a diagram is a description: say when it was drawn and how much the code has moved since
+      (u.since?'<div class="aged'+(u.since>=8?' much':'')+'">'+(u.since>=8?ic('sign'):'')+'<span>'+f(u.since>=8?T.agedMuch:T.aged,{d:u.drawn,n:u.since})+'</span></div>':'')+'</div>';
+    var ask='<div class="ask">'+T.ask+'<span class="say">'+esc(f(T.say,{n:u.name}))+'</span></div>'; // nobody has drawn it: how to ask
     curFlow=links&&links.length?around(u,links,find):null;
-    if(curFlow)return '<div class="blk"><h3>'+T.aroundH+'</h3><div class="canvas" id="canvas"></div><div class="fkey">'+T.aroundNote+'</div></div>';
-    return '<div class="blk"><h3>'+T.how+'</h3><div class="empty">'+T.noFlow+'</div></div>';
+    if(curFlow)return '<div class="blk"><h3>'+T.aroundH+'</h3><div class="canvas" id="canvas"></div><div class="fkey">'+T.aroundNote+'</div>'+(u.external?'':ask)+'</div>';
+    return '<div class="blk"><h3>'+T.how+'</h3><div class="empty">'+T.noFlow+'</div>'+(u.external?'':ask)+'</div>';
   }
   function chips(list,attr){return '<div class="pals">'+list.slice(0,8).map(function(x){
     return '<button type="button" class="pal '+x.u.z+'" '+attr(x.u)+' title="'+esc(f(T.nFiles,{n:x.n}))+'">'+pic(x.u.icon)+esc(x.u.name)+'<span class="pct">'+x.n+'</span></button>';}).join('')+

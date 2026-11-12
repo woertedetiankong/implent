@@ -9,6 +9,7 @@ it never tells anyone what to change or leave alone.
   bearings.py check [--since REF | --commit REV] [--json]
                                            which parts the uncommitted work (or one past commit) touched
   bearings.py links [--json]               which part uses which, measured from import statements
+  bearings.py doctor [--json]              check the list against the code; it reports and stops nothing
   bearings.py web [--out FILE] [--open]    write the project map as one HTML page
 
 Uncommitted work is split by window: which Claude Code or Codex session edited each file,
@@ -21,6 +22,7 @@ unless --out says otherwise. Python 3 standard library only.
 import argparse
 import collections
 import datetime
+import difflib
 import glob
 import json
 import mmap
@@ -69,6 +71,19 @@ TEXT = {
         "unknown_window": "没记到是哪个窗口",
         "last_at": "最后改动 {t}",
         "sep": "，",
+        "doctor_head": "清单体检：{path}",
+        "doctor_ok": "清单和代码对得上，没有发现问题。",
+        "doctor_paths": "路径对不上任何文件的 {n} 处（代码可能挪过位置）：",
+        "doctor_unmapped": "没有归类的文件 {n} 个（运行 parts 看是哪些）",
+        "doctor_names": "方框的名字可能写错了 {n} 处（差一点就是另一块的名字，现在点不过去）：",
+        "doctor_name": "{where} 的流程图里的“{box}”，像是“{unit}”",
+        "doctor_level": "大块的流程图没有用自己的小房间当方框 {n} 个（可能和某个小房间画重了）：",
+        "doctor_loose": "主线上代码里量不到的连接 {n} 条（走网络的属于正常，其余值得看一眼）：",
+        "doctor_stale": "画完流程图之后代码又改了不少的 {n} 个：",
+        "doctor_stale_row": "{name}（画于 {date}，之后改了 {n} 次）",
+        "doctor_bare": "还没有流程图的 {n} 个（运行 parts 看是哪些）",
+        "doctor_limit": "体检查得出清单过时和写错，查不出一张流程图画得对不对。",
+        "route": "主线",
         "outside_more": "（另有 {n} 个外来）",
         "outside": "外来：{why}",
         "uses": "{a} 用到 {b}（{n} 个文件）",
@@ -95,6 +110,19 @@ TEXT = {
         "unknown_window": "no window on record",
         "last_at": "last edit {t}",
         "sep": ", ",
+        "doctor_head": "Check-up of {path}",
+        "doctor_ok": "The list agrees with the code; nothing found.",
+        "doctor_paths": "{n} paths that match no file (the code may have moved):",
+        "doctor_unmapped": "{n} unmapped files (run parts to see them)",
+        "doctor_names": "{n} box names that may be misspelt (close to another unit's name, so no door opens):",
+        "doctor_name": "\"{box}\" in the flow of {where} looks like \"{unit}\"",
+        "doctor_level": "{n} parts whose flow does not use their own rooms as boxes (it may repeat a room's diagram):",
+        "doctor_loose": "{n} route arrows the code does not back (fine over a network, worth a look otherwise):",
+        "doctor_stale": "{n} units whose code changed a good deal after the flow was drawn:",
+        "doctor_stale_row": "{name} (drawn {date}, {n} changes since)",
+        "doctor_bare": "{n} without a flow diagram (run parts to see them)",
+        "doctor_limit": "A check-up finds a list that is out of date or miswritten. It cannot tell whether a flow diagram is true.",
+        "route": "route",
         "outside_more": " (plus {n} from outside)",
         "outside": "from outside: {why}",
         "uses": "{a} uses {b} ({n} files)",
@@ -139,6 +167,7 @@ class Part:
         self.name, self.what, self.sensitive, self.patterns, self.rules = name, "", "", [], []
         self.group, self.icon, self.flow = "", "", None
         self.parent, self.children, self.external = parent, [], ""
+        self.lines = [0, 0]  # where it is written in the list: first line, one past the last
 
     @property
     def top(self):
@@ -227,7 +256,9 @@ def load_parts(root, explicit=None):
     lines = open(path, encoding="utf-8").read().split("\n")
     shift = 1 if title_form(lines) else 0
     parts, routes, cur, top, group, flow = [], [], None, None, "", None
-    for line in lines:
+    for at, line in enumerate(lines):
+        if cur is not None:
+            cur.lines[1] = at + 1
         if flow is not None:
             if line.strip().startswith("```"):
                 flow = None
@@ -249,11 +280,11 @@ def load_parts(root, explicit=None):
                 group, cur, top = name, None, None
             elif level == 2:
                 cur = top = Part(name)
-                cur.group = group
+                cur.group, cur.lines = group, [at, at + 1]
                 parts.append(cur)
             elif level == 3 and top is not None:
                 cur = Part(name, top)
-                cur.group = group
+                cur.group, cur.lines = group, [at, at + 1]
                 top.children.append(cur)
             elif level < 1:
                 cur = top = None
@@ -974,11 +1005,11 @@ def cmd_check(root, parts, t, args):
 def history(root, parts):
     """The last HISTORY commits, each with the parts it changed. Outside code is not the project's work."""
     raw = git(root, "log", "-n", str(HISTORY), "--no-merges", "--date=short", "--name-only",
-              "--format=%x01%h%x02%ad%x02%s").decode("utf-8", "replace")
+              "--format=%x01%h%x02%ad%x02%ct%x02%s").decode("utf-8", "replace")
     commits = []
     for block in raw.split("\x01")[1:]:
         head, _, rest = block.partition("\n")
-        rev, date, subject = (head.split("\x02") + ["", ""])[:3]
+        rev, date, when, subject = (head.split("\x02", 3) + ["", "", ""])[:4]
         groups, subs = {}, set()
         for f in filter(None, (line.strip() for line in rest.splitlines())):
             unit = leaf(f, parts)
@@ -988,8 +1019,129 @@ def history(root, parts):
             if unit is not None and unit.parent:
                 subs.add(unit)
         if groups:
-            commits.append({"hash": rev, "date": date, "subject": subject, "groups": groups, "subs": subs})
+            commits.append({"hash": rev, "date": date, "when": int(when or 0), "subject": subject,
+                            "groups": groups, "subs": subs})
     return commits
+
+
+def drawn_times(root, list_path, parts):
+    """When each unit's lines in the list were last changed: {unit: unix time}. A unit written
+    or edited but not yet committed counts as drawn when the file was last saved."""
+    saved = os.path.getmtime(list_path)
+    out = subprocess.run(["git", "-C", root, "blame", "--line-porcelain", "--", list_path], capture_output=True)
+    times = []
+    if out.returncode == 0:
+        when, pending = 0.0, False
+        for line in out.stdout.decode("utf-8", "replace").splitlines():
+            if line.startswith("committer-time "):
+                when = float(line[15:])
+            elif re.match(r"^[0-9a-f]{40} ", line):
+                pending = line.startswith("0" * 40)
+            elif line.startswith("\t"):
+                times.append(saved if pending else when)
+    drawn = {}
+    for p in parts:
+        for u in [p] + p.children:
+            start = u.lines[0]
+            end = u.children[0].lines[0] if u.children else u.lines[1]  # a part's own lines stop at its first room
+            span = times[start:end]
+            drawn[u] = max(span) if span else saved
+    return drawn
+
+
+def aging(root, list_path, parts, commits):
+    """For every unit with a flow diagram: {unit: (date drawn, commits to its code since)}."""
+    drawn = drawn_times(root, list_path, parts)
+    listed = os.path.relpath(list_path, root).replace(os.sep, "/")
+    out = {}
+    for p in parts:
+        for u in [p] + p.children:
+            if not (u.flow and u.flow["nodes"]):
+                continue
+            since = 0
+            for c in commits:
+                if c["when"] <= drawn[u]:
+                    continue
+                if u.parent:
+                    since += u in c["subs"]
+                else:
+                    since += any(f != listed for f in c["groups"].get(p.name, []))
+            out[u] = (datetime.date.fromtimestamp(drawn[u]).isoformat(), since)
+    return out
+
+
+STALE = 8   # commits to a unit's code after its flow was drawn, before the check-up mentions it
+
+
+def cmd_doctor(root, parts, t, args):
+    """What a machine can tell about the list: out of date, or miswritten. It reports and stops nothing."""
+    files = zlist(git(root, "ls-files", "-z"))
+    listed = os.path.relpath(args.list_path, root).replace(os.sep, "/")
+    _, unmapped = tally(files, parts)
+    units = [u for p in parts for u in [p] + p.children]
+    label = lambda u: (u.parent.name + " / " if u.parent else "") + u.name
+    def on_disk(pat):  # a file git does not track (a local secrets file, say) is not a stale path
+        return bool(glob.glob(os.path.join(root, pat.rstrip("/")), recursive=True))
+    dead = [(label(u), pat) for u in units for pat, match, _ in u.patterns
+            if not any(match(f) for f in files) and not on_disk(pat)]
+    names = {u.name for u in units}
+    near = []
+    flows = [(label(u), u.flow) for u in units if u.flow] + [(t["route"] + " " + (r["title"] or "?"), r) for r in args.routes]
+    for where, flow in flows:
+        for node in flow["nodes"]:
+            if node["name"] in names or node["ext"] or len(node["name"]) < 3:
+                continue
+            close = difflib.get_close_matches(node["name"], names, n=1, cutoff=0.8)
+            if close:
+                near.append({"where": where, "box": node["name"], "unit": close[0]})
+    level = [p.name for p in parts if p.children and p.flow and p.flow["nodes"]
+             and not ({n["name"] for n in p.flow["nodes"]} & {c.name for c in p.children})]
+    links, langs = code_links(root, files, parts)
+    joined = {(x["a"], x["b"]) for x in lifted(links, "top")}
+    top = {u.name: u.top.name for u in units}
+    loose = []
+    for r in args.routes if langs else []:
+        for e in r["edges"]:
+            a, b = top.get(e["a"]), top.get(e["b"])
+            if a and b and a != b and (a, b) not in joined and (b, a) not in joined:
+                loose.append({"route": r["title"], "a": e["a"], "b": e["b"]})
+    old = sorted(((label(u), d, n) for u, (d, n) in aging(root, args.list_path, parts, history(root, parts)).items()
+                  if n >= STALE), key=lambda x: -x[2])
+    bare = [label(u) for u in units if not u.outside and not (u.flow and u.flow["nodes"])]
+    if args.json:
+        print(json.dumps({"list": listed, "dead_paths": [{"unit": u, "path": p} for u, p in dead],
+                          "unmapped": len(unmapped), "near_names": near, "wrong_level": level, "unbacked": loose,
+                          "stale": [{"unit": u, "drawn": d, "changes_since": n} for u, d, n in old],
+                          "undrawn": bare}, ensure_ascii=False, indent=2))
+        return
+    zh = t is TEXT["zh"]
+    join = "；" if zh else "; "
+    print(t["doctor_head"].format(path=listed))
+    found = False
+
+    def section(title, rows):
+        nonlocal found
+        if rows:
+            found = True
+            print("  " + title.format(n=len(rows)))
+            for row in rows[:12]:
+                print("      " + row)
+            if len(rows) > 12:
+                print("      …")
+    section(t["doctor_paths"], ["%s  `%s`" % x for x in dead])
+    if unmapped:
+        found = True
+        print("  " + t["doctor_unmapped"].format(n=len(unmapped)))
+    section(t["doctor_names"], [t["doctor_name"].format(**x) for x in near])
+    section(t["doctor_level"], level)
+    section(t["doctor_loose"], ["%s → %s（%s）" % (x["a"], x["b"], x["route"]) if zh else
+                                "%s -> %s (%s)" % (x["a"], x["b"], x["route"]) for x in loose])
+    section(t["doctor_stale"], [t["doctor_stale_row"].format(name=u, date=d, n=n) for u, d, n in old])
+    if not found:
+        print("  " + t["doctor_ok"])
+    if bare:
+        print("  " + t["doctor_bare"].format(n=len(bare)))
+    print(t["doctor_limit"])
 
 
 def cmd_web(root, parts, t, args):
@@ -1006,9 +1158,11 @@ def cmd_web(root, parts, t, args):
     by_name = {p.name: p for p in parts}
     waiting = collections.Counter((r["part"], r["sub"]) for r in rows)
 
+    age = aging(root, args.list_path, parts, commits)
+
     def card(u):
         """What the page shows for a part or a sub-part."""
-        return {"name": u.name, "icon": u.icon, "flow": u.flow, "what": u.what, "sensitive": u.sensitive,
+        return {"drawn": age[u][0] if u in age else "", "since": age[u][1] if u in age else 0, "name": u.name, "icon": u.icon, "flow": u.flow, "what": u.what, "sensitive": u.sensitive,
                 "rules": u.rules, "paths": [x[0] for x in u.patterns], "external": u.external,
                 "files": n[u][1] if u.outside else n[u][0], "outside": 0 if u.outside else n[u][1]}
 
@@ -1090,6 +1244,8 @@ def main():
     w.add_argument("--no-links", action="store_true", help="do not read the code to measure which part uses which")
     k = sub.add_parser("links", help="which part uses which, measured from import statements")
     k.add_argument("--json", action="store_true")
+    d = sub.add_parser("doctor", help="check the list against the code: stale paths, misspelt boxes, aged diagrams")
+    d.add_argument("--json", action="store_true")
     for cmd in (c, w):
         cmd.add_argument("--no-windows", action="store_true",
                          help="do not read Claude Code and Codex session records to tell windows apart")
@@ -1101,7 +1257,7 @@ def main():
         raise SystemExit(TEXT["zh"]["no_parts"].format(files=" / ".join(PARTS_FILES)) + "\n"
                          + TEXT["en"]["no_parts"].format(files=" / ".join(PARTS_FILES)))
     t = TEXT[language(parts)]
-    {"parts": cmd_parts, "check": cmd_check, "web": cmd_web, "links": cmd_links}[args.cmd](root, parts, t, args)
+    {"parts": cmd_parts, "check": cmd_check, "web": cmd_web, "links": cmd_links, "doctor": cmd_doctor}[args.cmd](root, parts, t, args)
 
 
 if __name__ == "__main__":
