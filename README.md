@@ -24,17 +24,34 @@ AI 写得比人读得快。代码是它写的，人就不再像自己动手时�
 
 需要 Python 3 和 git，不需要其他依赖。
 
-Claude Code：
+### Claude Code
+
+在 Claude Code 里输入：
+
+```text
+/plugin marketplace add woertedetiankong/implent
+/plugin install bearings@implent
+```
+
+Claude Code 2.1.275 及以上也可以一步完成：
+
+```text
+/plugin install bearings --marketplace woertedetiankong/implent
+```
+
+以后更新：
+
+```text
+/plugin marketplace update implent
+```
+
+### Codex
+
+把技能文件夹复制过去（还没有实际验证过）：
 
 ```sh
 git clone https://github.com/woertedetiankong/implent.git
-ln -s "$(pwd)/implent/bearings" ~/.claude/skills/bearings
-```
-
-Codex（还没有实际验证过）：
-
-```sh
-cp -R implent/bearings ~/.codex/skills/
+cp -R implent/bearings/skills/bearings ~/.codex/skills/
 ```
 
 ## 使用
@@ -45,13 +62,16 @@ cp -R implent/bearings ~/.codex/skills/
 - “看看项目”或“打开项目地图”：生成并打开导览图。
 - “刚才动了哪几块”：列出未提交的改动落在哪些部分。
 
-也可以自己运行脚本：
+在 Claude Code 里也可以直接输入 `/bearings:map` 打开导览图。
+
+不装插件也能直接运行脚本。克隆仓库后，在你的项目目录里：
 
 ```sh
-python3 ~/.claude/skills/bearings/scripts/bearings.py web --open   # 生成并打开导览图
-python3 ~/.claude/skills/bearings/scripts/bearings.py parts        # 列出各部分，检查有没有漏掉的文件
-python3 ~/.claude/skills/bearings/scripts/bearings.py check        # 未提交的改动落在哪几块
-python3 ~/.claude/skills/bearings/scripts/bearings.py check --commit <提交>   # 某一次提交落在哪几块
+B=/path/to/implent/bearings/skills/bearings/scripts/bearings.py
+python3 $B web --open            # 生成并打开导览图
+python3 $B parts                 # 列出各部分，检查有没有漏掉的文件
+python3 $B check                 # 未提交的改动落在哪几块
+python3 $B check --commit <提交>  # 某一次提交落在哪几块
 ```
 
 导览图写在仓库的 `.git/bearings/map.html`，不会进入版本历史。
@@ -85,10 +105,11 @@ python3 ~/.claude/skills/bearings/scripts/bearings.py check --commit <提交>   
 - 反引号里是这一块拥有的路径。
 - `flow` 代码块描述它怎么工作：`甲 -> 乙: 传什么` 是一个箭头，`名字 | 说明 | 图标 | 外部` 是一个方框。
 
-完整的写法见 [`bearings/SKILL.md`](bearings/SKILL.md)。
+完整的写法见 [`bearings/skills/bearings/SKILL.md`](bearings/skills/bearings/SKILL.md)。
 
 ## 已知的不足
 
 - 流程图要靠 AI 在改动后顺手更新。它会不会一直这样做，还没有在长期使用中验证过。
 - 脚印旁边显示的是提交说明原文，不会编程的人可能看不懂。
+- `/bearings:map` 命令还没有在真实会话里运行过。
 - 手机宽度和深色模式没有充分检查。

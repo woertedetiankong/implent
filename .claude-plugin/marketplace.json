@@ -1,0 +1,12 @@
+{
+  "name": "implent",
+  "owner": { "name": "woertedetiankong" },
+  "description": "Tools that help people understand projects built with AI.",
+  "plugins": [
+    {
+      "name": "bearings",
+      "source": "./bearings",
+      "description": "A visual map of a project that AI is building: its parts, a flow diagram of how each part works, and where recent work landed."
+    }
+  ]
+}
