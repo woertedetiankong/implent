@@ -6,7 +6,11 @@ by a command instead of model diligence:
 
 - handoff.md: frontmatter (status/updated), required sections, a runnable
   Restart Verify block with expected outputs, no "verify manually",
-  read budget (WARN past HANDOFF_MAX_LINES).
+  read budget (WARN past HANDOFF_MAX_LINES). The For People section, which
+  the bearings map shows to a person: Name and Now lines, no backticks, a
+  sentence on every Added/Changed/Removed mark, WARN when a repo with a parts
+  list has an open task without the section or a newly finished one without
+  a Done line.
 - task-brief.md: Goal, Success Criteria, Parent plan, Created date.
 - implementation-log.md: dated entry headings; consistency with the handoff
   (a missing log must be declared "Not required" in the handoff).
@@ -26,6 +30,7 @@ conventions can pass explicit paths; unknown layouts degrade to warnings.
 """
 
 import argparse
+import datetime
 import re
 import sys
 from pathlib import Path
@@ -43,12 +48,23 @@ PLACEHOLDERS = (
     "<Next action", "<one-sentence result", "<enforceable instruction",
     "<Decision and rationale", "<Risk>", "<Follow-up>", "<Assumption or",
     "<path or subsystem>", "<special environment state",
+    "<what the person would call", "<where it stands", "<one thing the work is waiting",
+    "<what happens once",
 )
 HANDOFF_REQUIRED = ("Summary", "Current State", "Next Steps", "Restart Verify")
 # references/handoff-discipline.md read budget.
 HANDOFF_MAX_LINES = 100
 # Always written even when one line, because their absence is ambiguous.
 HANDOFF_DECLARE = ("Git And Persistent State", "Implementation Log")
+# references/handoff-discipline.md "For People": the one section a person reads, on the bearings map.
+# bearings.py parses the same heading and keys; change them in both places or not at all.
+PEOPLE_HEADINGS = ("For People", "给人看的", "给人看")
+PEOPLE_REQUIRED = (("Name", "Name|名字"), ("Now", "Now|现在"))
+PEOPLE_DONE = "Done|做成了"
+# A mark on a flow diagram: `Changed: Part / Box: sentence`. Without the sentence the page shows a bare name.
+PEOPLE_MARK_RE = re.compile(r"^\s*(?:[-*]\s+)?(Added|Changed|Removed|新增|改了|去掉)\s*[:：]\s*(.*)$", re.IGNORECASE)
+PEOPLE_RECENT_DAYS = 7  # a task finished this lately is asked for its Done line; older ones are left alone
+PARTS_LISTS = ("docs/parts.md", "PARTS.md", ".bearings/parts.md")
 # A conditional section whose every line matches this is placeholder-only
 # and should be omitted per references/handoff-discipline.md.
 NONEISH_RE = re.compile(
@@ -135,6 +151,20 @@ def check_common(path, lines, report):
                 report.error(path, i, f"broken relative link: {target}")
 
 
+def has_parts_list(path):
+    """True when a bearings parts list sits in a folder above this file (the repo root, in practice)."""
+    return any((base / rel).is_file() for base in list(path.resolve().parents)[:8] for rel in PARTS_LISTS)
+
+
+def recently(date_text):
+    """True when an ISO date is within PEOPLE_RECENT_DAYS: the task was finished just now, not long ago."""
+    try:
+        then = datetime.date.fromisoformat(date_text.strip()[:10])
+    except ValueError:
+        return False
+    return 0 <= (datetime.date.today() - then).days <= PEOPLE_RECENT_DAYS
+
+
 def check_handoff(path, report):
     lines = read_lines(path)
     if len(lines) > HANDOFF_MAX_LINES:
@@ -176,6 +206,32 @@ def check_handoff(path, report):
             report.error(path, line_no, "Restart Verify commands must state expected output")
         elif "mismatch" not in body:
             report.warn(path, line_no, "Restart Verify should say what a mismatch means")
+
+    people = next((found[name] for name in PEOPLE_HEADINGS if name in found), None)
+    if people:
+        line_no, body = people
+        for key, names in PEOPLE_REQUIRED:
+            if not re.search(rf"^\s*(?:[-*]\s+)?(?:{names})\s*[:：]\s*\S", body, re.MULTILINE | re.IGNORECASE):
+                report.warn(path, line_no, f'For People has no "{key}:" line — the project map cannot show the task properly')
+        if "`" in body:
+            report.warn(path, line_no,
+                        "For People is read by a person on the project map — no file names, code names or commands in backticks")
+        for offset, text in enumerate(body.splitlines()):
+            mark = PEOPLE_MARK_RE.match(text)
+            if mark and not re.search(r"\S\s*[:：]\s*\S", mark.group(2)):
+                report.warn(path, line_no + offset, f'"{mark.group(1)}" mark has no sentence — write it as '
+                                                    '"Part / Box: what is different"')
+    has_done = bool(people and re.search(rf"^\s*(?:[-*]\s+)?(?:{PEOPLE_DONE})\s*[:：]\s*\S", people[1],
+                                         re.MULTILINE | re.IGNORECASE))
+    if status.startswith("Complete") and not has_done and has_parts_list(path) and recently(fm.get("updated", "")):
+        report.warn(path, people[0] if people else 1,
+                    'finished task with no "Done:" line under "## For People" — the project map drops it at once, '
+                    "and the user never sees what it came to")
+    elif people:
+        pass
+    elif not status.startswith("Complete") and has_parts_list(path):
+        report.warn(path, 1, 'no "## For People" section — this repo has a bearings parts list, '
+                             "and its map cannot say where this task stands or what is waiting on the user")
 
     for i, line in enumerate(lines, start=1):
         if "verify manually" in line.lower():

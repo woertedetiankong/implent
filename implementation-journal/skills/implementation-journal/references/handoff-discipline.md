@@ -35,6 +35,33 @@ Present only when they carry real content — omit the section instead of writin
 - Docs sync: what durable knowledge was updated, skipped, or still needs reconciliation. When omitted, the final response must still state the reconciliation outcome.
 - Known risks and follow-ups.
 
+## For People
+
+A dossier is written for the next AI session, with one exception. When the repo has a `bearings` parts list, the handoff opens with a `## For People` section, and the project map shows it to the person steering the work: what the task is called, where it stands, and what is waiting on them. People who build with AI rarely open a handoff, so this section is often the only way they learn that the work has stopped for their answer. The format is in references/templates.md. Rules for the content:
+
+- Write it in the language the user works in, for a reader who may not be able to program. No file names, code names, commit hashes or commands, and no backticks. Where it names a part of the project, use the name the parts list gives it.
+- `Name:` is what the person would call this task, in a few words. Keep it the same from one refresh to the next: they use it to ask for the task ("continue the voice assistant").
+- `Now:` says where the task stands in one or two sentences, in terms of what someone using the project would notice ("it is live but switched off"), not in terms of the code.
+- `Needs you:` has one line for each thing the work is waiting on the person for: a decision, a check only they can make, an approval. Say what they should do. When nothing is waiting, write no such line; never "None". When one has been answered, remove it.
+- `Next:` is one sentence on what happens once those are answered.
+- The keys may be written in Chinese instead (`名字：` `现在：` `等你：` `下一步：`); the map reads either.
+
+When the session finished a step a person could notice (something they can now do, see or try), the section also says what that step came to. The map turns these lines into a page of words and pictures, and for a finished task it is all that remains on the map. Leave them out for a session that only investigated or planned.
+
+- `Done:` says what a person can now do or see, in one or two sentences. Not what was written or refactored.
+- `Try:` says how they can see it for themselves, in steps they can follow without a terminal where that is possible. Leave it out when there is honestly nothing for them to try.
+- `Not yet:` has one line for each thing a person might assume is done and is not (not committed, switched off, never tried with a real user). At most three, the ones that would surprise them most; the open follow-ups belong in Next Steps below, not here. No line when there is none.
+- `Added:`, `Changed:` and `Removed:` mark boxes on the flow diagrams of the parts list: `Part / Box: one sentence on what is different`, or `Part / Room / Box: ...` for a room's diagram. The map draws that diagram with the marked boxes standing out. Rules for marks:
+  - First update the parts list if the step changed how a part works (knowledge-sync.md says when). Then read the part's flow diagram as it now stands and write marks against the boxes it has, by their exact names. A mark whose name misses is shown as words only.
+  - Mark what works differently for the person or the data passing through, not every box whose code was edited. Three to six marks is typical; a fix or a setting change usually has none.
+  - `Removed:` names a box that was taken off the diagram, or a thing that was tried and dropped; say why in the sentence.
+  - A line that names only a part (`Changed: Deployment: two new settings`) is fine when no box fits.
+- These lines describe the last finished step. Replace them when a later step finishes; do not let them pile up. When the task is marked Complete, rewrite them to describe the task as a whole.
+- Chinese keys: `做成了：` `怎么试：` `还没做：` `新增：` `改了：` `去掉：`.
+- After writing marks, check them: load the `bearings` skill if it is available (its SKILL.md gives the path of `bearings.py`) and run `bearings.py tasks`, which reports each mark whose part or box it cannot find. Without that skill, compare each name with the parts list by eye and say you did.
+
+Rewrite the section whenever the handoff is rewritten. It restates the handoff for a different reader and is never a second source of truth: if the two disagree, the sections below it are right and this one is stale.
+
 ## Restart Verify
 
 Make verification concrete enough to run immediately:

@@ -55,6 +55,14 @@ def frontmatter(text):
     return {}
 
 
+def people_name(handoff):
+    """The name a person knows the task by: `Name:` in the handoff's For People section. The bearings map
+    shows that name and tells them to ask for the task by it, so the session has to be able to match it."""
+    section = re.search(r"^##[ \t]+(?:For People|给人看的?)[ \t]*$(.*?)(?=^##[ \t]|\Z)", handoff, re.I | re.M | re.S)
+    name = section and re.search(r"^\s*(?:[-*]\s+)?(?:Name|名字)\s*[:：]\s*(.+?)\s*$", section.group(1), re.I | re.M)
+    return name.group(1) if name else ""
+
+
 def entry_in(dossier):
     try:
         names = os.listdir(dossier)
@@ -75,7 +83,8 @@ def open_tasks(tasks_dir):
         entry = entry_in(dossier)
         if not entry:
             continue
-        meta = frontmatter(read(os.path.join(dossier, "handoff.md")))
+        handoff = read(os.path.join(dossier, "handoff.md"))
+        meta = frontmatter(handoff)
         if meta.get("status", "").lower().startswith("complete"):
             continue
         updated = re.search(r"\d{4}-\d{2}-\d{2}", meta.get("updated", "") or name)
@@ -85,6 +94,7 @@ def open_tasks(tasks_dir):
             "entry": entry,
             "updated": updated.group(0) if updated else "",
             "state": state.group(1).strip() if state else "",
+            "people": people_name(handoff),
         })
     found.sort(key=lambda t: t["updated"], reverse=True)
     return found
@@ -115,14 +125,16 @@ def main():
         out += [f"implementation-journal restart entry ({rel(legacy)}):", "", read(legacy).rstrip()]
     elif len(tasks) == 1 and not has_legacy:
         task = tasks[0]
-        out += [f"implementation-journal: one task is open in this repo ({task['name']}).",
+        known = ', which the user knows as "%s"' % task["people"] if task["people"] else ""
+        out += [f"implementation-journal: one task is open in this repo ({task['name']}{known}).",
                 f"Its restart entry ({rel(task['entry'])}):", "", read(task["entry"]).rstrip()]
     else:
         total = len(tasks) + (1 if has_legacy else 0)
         out.append(f"implementation-journal: {total} tasks are open in this repo. "
                    "This session may continue one of them or start something new.")
         for task in tasks[:MAX_LISTED]:
-            line = f"- {task['name']} (updated {task['updated'] or 'unknown'}): entry `{rel(task['entry'])}`"
+            known = ', "%s" to the user' % task["people"] if task["people"] else ""
+            line = f"- {task['name']}{known} (updated {task['updated'] or 'unknown'}): entry `{rel(task['entry'])}`"
             if task["state"]:
                 line += " — " + task["state"][:160]
             out.append(line)

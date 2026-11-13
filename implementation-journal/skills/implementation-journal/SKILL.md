@@ -7,7 +7,7 @@ description: "Maintain cross-session implementation memory for milestone-sized c
 
 Use this skill to make long-running AI-assisted development compound instead of evaporating into chat history. The job is not to keep a command transcript. The job is to connect a plan, the current milestone, the implementation reasoning, the restart handoff, and the project docs.
 
-These records are written for the next AI session. They are not the way a person gets to understand the project; for that, the companion skill `bearings` draws the project as a map with a flow diagram per part.
+These records are written for the next AI session. They are not the way a person gets to understand the project; for that, the companion skill `bearings` draws the project as a map with a flow diagram per part. One piece of a dossier is written for a person all the same: the handoff's `## For People` section, a few plain lines that the map shows as the task's standing and as what is waiting on them (workflow step 4).
 
 ## Core Rule
 
@@ -43,7 +43,7 @@ Read [references/knowledge-sync.md](references/knowledge-sync.md) before end-of-
    - Locate the long-term plan or the most specific source of intent.
    - Discover existing conventions before creating files: task folders, handoffs, session entries, todo files, decision records, roadmap docs, README, AGENTS/CLAUDE, and docs directories.
    - Identify the current slice, success criteria, scope, constraints, and known affected docs. For multi-module work, identify upstream/downstream modules and existing dossiers that may reference the changed contract.
-   - Settle which dossier this session works in: the one the user names, the one whose restart entry opened the session, or a new one. When several tasks are open and it is not clear which this session is for, ask before reading or writing any dossier.
+   - Settle which dossier this session works in: the one the user names, the one whose restart entry opened the session, or a new one. The user may name a task the way the project map shows it ("继续做“语音助手”", "continue the voice assistant"): that is the `Name` in a handoff's For People section, not a folder name. When several tasks are open and it is not clear which this session is for, ask before reading or writing any dossier.
    - If the milestone is too large to finish safely in one implementation pass, carve out the smallest coherent sub-slice that preserves the milestone intent, record it in `task-brief.md`, and ask for confirmation only when the slice boundary changes user-visible scope or risk.
 
 2. Create or update the task dossier.
@@ -62,6 +62,7 @@ Read [references/knowledge-sync.md](references/knowledge-sync.md) before end-of-
 4. Refresh the handoff before any planned pause, final response, commit, or phase completion.
    - Rewrite `handoff.md` to reflect the final code state and current next steps, following references/handoff-discipline.md. Mark it provisional if implementation or validation is intentionally incomplete.
    - Refresh this dossier's new-session entry so it matches the handoff. If part of the handoff is already stale, record the correction as errata in the entry instead of silently rewriting history.
+   - When the repo has a `bearings` parts list (`docs/parts.md`, `PARTS.md` or `.bearings/parts.md`), write or rewrite the handoff's `## For People` section, following references/handoff-discipline.md. The project map shows those lines to the person steering the work, and it is often the only way they learn that the work is waiting on them. When the session finished a step a person could notice, the section also says what the step came to (`Done`, `Try`, `Not yet`, and marks on the parts list's flow diagrams); for a task being marked Complete these lines are what the map keeps showing, so write them before closing it. Write the section too whenever the user asks for a task's lines for people or for a write-up of what it came to; the map prints those requests under a task that lacks them.
 
 5. Reconcile durable knowledge.
    - Update the long-term plan status for the slice with absolute dates and links to the dossier or handoff. For an in-repo plan, refresh its status dashboard per references/document-model.md.
@@ -90,6 +91,7 @@ Then check by judgment, since the script checks presence and shape, not truth:
 - `handoff.md` reflects the actual final code state (or is clearly marked provisional), and its restart verify expected-outputs are truthful.
 - `implementation-log.md` holds decisions, not narration.
 - This dossier's new-session entry points to this dossier's handoff and matches its current state.
+- A For People section, when there is one, says the same as the handoff below it, in words a person who cannot program would follow, every `Needs you` line is still unanswered, and every mark names a box that is on the part's flow diagram as it now stands.
 - Current-facing docs contain no stale claims about the changed behavior, and the long-term plan status (including an in-repo dashboard) is updated when a parent plan exists.
 
 ## Final Response

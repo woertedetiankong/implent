@@ -112,6 +112,23 @@ supersedes: <previous handoff path, or omit if none>
 - <`implementation-log.md` path and summary, or "Not required - no meaningful decision trail occurred">
 ````
 
+For People — only when the repo has a `bearings` parts list; it goes first, straight after `# Handoff`, written in the user's language (rules in references/handoff-discipline.md). The project map reads these keys. The first four say where the task stands; `Needs you` takes one line per item and is left out when nothing is waiting. The rest say what the last finished step came to and are written only when a step a person could notice was finished; `Not yet` and the three marks take one line per item:
+
+````markdown
+## For People
+
+Name: <what the person would call this task>
+Now: <where it stands, in one or two plain sentences>
+Needs you: <one thing the work is waiting on the person for>
+Next: <what happens once those are answered>
+Done: <what a person can now do or see>
+Try: <how they can see it for themselves>
+Not yet: <one thing they might assume is done and is not>
+Added: <Part> / <Box on its flow diagram>: <what is new, one sentence>
+Changed: <Part> / <Box>: <what is different, one sentence>
+Removed: <Part> / <Box>: <what was dropped and why>
+````
+
 Conditional sections — include only those with real content, in this order between `Git And Persistent State` and `Validation`; never write one whose only content would be "None" or "None known":
 
 ````markdown

@@ -11,6 +11,8 @@ it never tells anyone what to change or leave alone.
   bearings.py links [--json]               which part uses which, measured from import statements
   bearings.py doctor [--json]              check the list against the code; it reports and stops nothing
   bearings.py web [--out FILE] [--open]    write the project map as one HTML page
+  bearings.py tasks [--json]               the tasks in progress, from the implementation-journal skill's
+                                           dossiers: the lines written there for people, and the parts touched
 
 Uncommitted work is split by window: which Claude Code or Codex session edited each file,
 read from the session records those tools keep on this machine (--no-windows skips that).
@@ -50,6 +52,22 @@ EDIT_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
 SHELL_TOOLS = ("Bash", "PowerShell")
 RUN_OPEN = 600      # seconds a shell command with no recorded result is taken to have run
 PATCH_RE = re.compile(r'\*\*\* (?:Add File|Update File|Delete File|Move to): ([^\n\\"]+)')
+# Tasks. The implementation-journal skill keeps one dossier per task under docs/tasks/, written for the
+# next AI session. Its handoff carries a `## For People` section, the few lines meant for a person:
+TASKS_DIR = "docs/tasks"
+PEOPLE_HEAD_RE = re.compile(r"^##\s+(?:For People|给人看的?)\s*$", re.I)
+PEOPLE_RE = re.compile(r"^\s*(?:[-*]\s+)?(名字|Name|现在|Now|等你|Needs you|下一步|Next|做成了|Done|怎么试|Try"
+                       r"|还没做|Not yet|新增|Added|改了|Changed|去掉|Removed)\s*[:：]\s*(.+?)\s*$", re.I)
+PEOPLE_KEYS = {"名字": "name", "name": "name", "现在": "now", "now": "now",
+               "等你": "needs", "needs you": "needs", "下一步": "next", "next": "next",
+               "做成了": "made", "done": "made", "怎么试": "try", "try": "try", "还没做": "left", "not yet": "left",
+               "新增": "new", "added": "new", "改了": "chg", "changed": "chg", "去掉": "gone", "removed": "gone"}
+# The lines above the first row say where a task stands. The rest say what a finished step came to: what was
+# made, how to try it, what is left, and which boxes of which flow diagram are new, changed or gone
+# (`Changed: Part / Box: one sentence`; a room goes between, `Part / Room / Box`; a line with no box is
+# about the part as a whole).
+MARK_RE = re.compile(r"^(.+?)\s*[:：]\s*(.+)$")
+NOTHING_RE = re.compile(r"^(?:none|nothing|n/a|无|没有|暂无)\W*$", re.I)
 
 TEXT = {
     "zh": {
@@ -90,6 +108,25 @@ TEXT = {
         "links_head": "从代码里量出来的连接，{n} 条（{langs}）：",
         "links_none": "没有量到连接。能量的语言：Python、JavaScript/TypeScript、Go。",
         "mutual": "互相用到：{pairs}",
+        "tasks_head": "正在做的事 {n} 件：",
+        "tasks_none": "任务记录里没有正在做的事。",
+        "tasks_old": "另有 {n} 件很久没动、也没有给人看的说明，没有列出。",
+        "task_bare": "AI 还没有给它写给人看的说明",
+        "task_updated": "{d} 更新",
+        "task_now": "现在：{x}",
+        "task_needs": "等你：{x}",
+        "task_next": "下一步：{x}",
+        "tasks_done_head": "最近做完的事 {n} 件：",
+        "task_made": "做成了：{x}",
+        "task_try": "怎么试：{x}",
+        "task_left": "还没做：{x}",
+        "task_marks": "流程图上的变化：{x}",
+        "mark_new": "新增", "mark_chg": "改了", "mark_gone": "去掉",
+        "doctor_marks": "任务说明里对不上流程图的 {n} 处（名字要和清单里的一样，否则图上标不出来）：",
+        "doctor_mark_unit": "“{task}”：清单里没有叫“{name}”的部分或房间",
+        "doctor_mark_box": "“{task}”：“{unit}”的流程图里没有叫“{box}”的框",
+        "task_rooms": "动过：{x}",
+        "task_folder": "记录在：{x}",
     },
     "en": {
         "no_parts": "No parts list found ({files}). Have the agent draft one first, following the skill.",
@@ -129,6 +166,25 @@ TEXT = {
         "links_head": "{n} links measured from the code ({langs}):",
         "links_none": "No links measured. Languages it can measure: Python, JavaScript/TypeScript, Go.",
         "mutual": "use each other: {pairs}",
+        "tasks_head": "{n} tasks in progress:",
+        "tasks_none": "The task records hold nothing in progress.",
+        "tasks_old": "{n} more have not moved in a long time and carry no lines for people; they are not listed.",
+        "task_bare": "the agent has not written its lines for people yet",
+        "task_updated": "updated {d}",
+        "task_now": "Now: {x}",
+        "task_needs": "Needs you: {x}",
+        "task_next": "Next: {x}",
+        "tasks_done_head": "{n} finished lately:",
+        "task_made": "Done: {x}",
+        "task_try": "Try: {x}",
+        "task_left": "Not yet: {x}",
+        "task_marks": "Changes on the flow diagrams: {x}",
+        "mark_new": "added", "mark_chg": "changed", "mark_gone": "removed",
+        "doctor_marks": "{n} marks in the tasks' lines for people that miss the flow diagrams (a name must match the list, or the page cannot mark it):",
+        "doctor_mark_unit": '"{task}": no part or room on the list is called "{name}"',
+        "doctor_mark_box": '"{task}": the flow diagram of "{unit}" has no box called "{box}"',
+        "task_rooms": "Touched: {x}",
+        "task_folder": "Recorded in: {x}",
     },
 }
 
@@ -536,19 +592,161 @@ def codex_sessions(roots, since):
     return found
 
 
-def task_name(path):
-    """The journal task a file under docs/tasks/<dossier>/ belongs to, by its brief's heading."""
-    m = re.match(r"(.*?/docs/tasks/([^/]+))/[^/]+$", path)
-    if not m:
-        return None
+def brief_name(folder):
+    """What a task dossier calls its task: the heading of its brief, or the folder's name without the date."""
     try:
-        with open(os.path.join(m.group(1), "task-brief.md"), encoding="utf-8") as fh:
+        with open(os.path.join(folder, "task-brief.md"), encoding="utf-8") as fh:
             for line in fh:
                 if line.startswith("# "):
                     return re.sub(r"^(?:Task Brief|任务书)\s*[:：]\s*", "", line[2:].strip())
     except OSError:
         pass
-    return re.sub(r"^\d{4}-\d{2}-\d{2}-", "", m.group(2))
+    return re.sub(r"^\d{4}-\d{2}-\d{2}-", "", os.path.basename(folder))
+
+
+def task_of(path):
+    """The journal task a file under docs/tasks/<dossier>/ belongs to: (dossier folder name, task name)."""
+    m = re.match(r"(.*?/docs/tasks/([^/]+))/[^/]+$", path)
+    return (m.group(2), brief_name(m.group(1))) if m else None
+
+
+def slurp(path):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            return fh.read()
+    except OSError:
+        return ""
+
+
+def load_tasks(root, where):
+    """The tasks the implementation-journal skill keeps, one dossier folder each: [{id, name, plain, now,
+    needs, next, made, try, left, marks, done, updated, cited}]. Those records are written for the next AI
+    session, so only two things are read from them: the handoff's status and date, and its `## For People`
+    section, the few lines the agent writes there in the reader's own language: where the task stands
+    (名字/Name, 现在/Now, 等你/Needs you, 下一步/Next) and what its last finished step came to (做成了/Done,
+    怎么试/Try, 还没做/Not yet, 新增/Added, 改了/Changed, 去掉/Removed). A dossier without that section is
+    still a task; it has a name from its brief and no more."""
+    base = where if os.path.isabs(where) else os.path.join(root, where)
+    try:
+        names = sorted(os.listdir(base))
+    except OSError:
+        return []
+    tasks = []
+    for name in names:
+        folder = os.path.join(base, name)
+        handoff = slurp(os.path.join(folder, "handoff.md"))
+        if not handoff:
+            continue
+        lines = handoff.split("\n")
+        meta, body = {}, 0
+        if lines[0].strip() == "---":
+            for at, line in enumerate(lines[1:], 1):
+                if line.strip() == "---":
+                    body = at + 1
+                    break
+                key, sep, value = line.partition(":")
+                if sep:
+                    meta[key.strip().lower()] = value.strip()
+        said, inside = {"name": "", "now": "", "needs": [], "next": "", "made": [], "try": "", "left": []}, False
+        marks = []
+        for line in lines[body:]:
+            if line.startswith("## "):
+                inside = bool(PEOPLE_HEAD_RE.match(line))
+            elif inside:
+                m = PEOPLE_RE.match(line)
+                if m and not NOTHING_RE.match(m.group(2)):
+                    key = PEOPLE_KEYS[m.group(1).lower()]
+                    if key in ("new", "chg", "gone"):
+                        where = MARK_RE.match(m.group(2))
+                        path = [x for x in re.split(r"\s+/\s+", where.group(1) if where else m.group(2)) if x]
+                        marks.append({"kind": key, "path": path, "text": where.group(2) if where else ""})
+                    elif key in ("needs", "made", "left"):
+                        said[key].append(m.group(2))
+                    else:
+                        said[key] = said[key] or m.group(2)
+        when = re.search(r"\d{4}-\d{2}-\d{2}", meta.get("updated", "") or name)
+        tasks.append({"id": name, "name": said["name"] or brief_name(folder), "plain": bool(said["name"] and said["now"]),
+                      "now": said["now"], "needs": said["needs"][:5], "next": said["next"],
+                      "made": said["made"][:4], "try": said["try"], "left": said["left"][:6], "marks": marks[:16],
+                      "done": meta.get("status", "").lower().startswith("complete"),
+                      "updated": when.group(0) if when else "",
+                      "cited": set(re.findall(r"\b[0-9a-f]{7,40}\b",
+                                              handoff + slurp(os.path.join(folder, "implementation-log.md"))))})
+    return tasks
+
+
+def task_rooms(task, commits, rel):
+    """Where a task's committed work landed, as {part name: files}. Measured, not written: the commits
+    its records cite by hash, and the commits that changed its dossier and no other task's. The dossier's
+    own files are bookkeeping and are left out, so the picture is of the work itself."""
+    rooms, prefix = collections.Counter(), rel + "/" if rel else None
+    for c in commits:
+        mine = any(t.startswith(c["hash"]) or c["hash"].startswith(t) for t in task["cited"])
+        if not mine and prefix:
+            mine = {f[len(prefix):].split("/")[0] for fs in c["groups"].values() for f in fs
+                    if f.startswith(prefix) and "/" in f[len(prefix):]} == {task["id"]}
+        if mine:
+            for name, fs in c["groups"].items():
+                n = sum(1 for f in fs if not (prefix and f.startswith(prefix)))
+                if n:
+                    rooms[name] += n
+    return rooms
+
+
+def place_marks(task, parts):
+    """Find each mark's part, room and box on the list. A mark names boxes of a flow diagram someone drew
+    for the list, so a name can miss: `unit` stays "" when no part or room carries the name, and `drawn`
+    says whether the box is in that unit's diagram. A removed box is not expected to be there."""
+    tops = {p.name: p for p in parts}
+    for m in task["marks"]:
+        path, unit = m.pop("path"), None
+        top = tops.get(path[0]) if path else None
+        if path and not top:  # a room named without its part
+            room = next((c for p in parts for c in p.children if c.name == path[0]), None)
+            if room:
+                top, path = room.parent, [room.parent.name] + path
+        if top:
+            room = next((c for c in top.children if len(path) > 1 and c.name == path[1]), None)
+            unit, rest = (room, path[2:]) if room else (top, path[1:])
+        else:
+            rest = path[1:]
+        m["part"], m["room"] = top.name if top else (path[0] if path else ""), unit.name if unit and unit.parent else ""
+        m["unit"], m["box"] = unit.name if unit else "", " / ".join(rest)
+        m["drawn"] = bool(unit and unit.flow and any(n["name"] == m["box"] for n in unit.flow["nodes"]))
+
+
+def tasks_shown(root, where, parts, commits):
+    """(tasks to show, how many were left out). A task is in progress until its handoff says Complete; a
+    finished one stays for RECENT_DAYS if the agent wrote lines for people, so the reader can see what it
+    came to, and then leaves. An unfinished one with no lines for people that has not moved in RECENT_DAYS
+    is left out: it would be a stale name the reader can do nothing with. Each task gets `rooms`,
+    [{name, n}] in the order of the list."""
+    base = where if os.path.isabs(where) else os.path.join(root, where)
+    rel = os.path.relpath(base, root).replace(os.sep, "/")
+    rel = None if rel.startswith("..") else rel
+    today, shown, left_out = datetime.date.today(), [], 0
+    for t in load_tasks(root, where):
+        try:
+            t["days"] = (today - datetime.date.fromisoformat(t["updated"])).days
+        except ValueError:
+            t["days"] = -1
+        recent = 0 <= t["days"] <= RECENT_DAYS
+        if t["done"] and not (recent and (t["plain"] or t["made"])):
+            continue
+        if not t["done"] and not t["plain"] and not recent:
+            left_out += 1
+            continue
+        landed = task_rooms(t, commits, rel)
+        t["rooms"] = [{"name": p.name, "n": landed[p.name]} for p in parts if landed[p.name]]
+        if landed[""]:
+            t["rooms"].append({"name": "", "n": landed[""]})
+        t["rel"] = rel
+        place_marks(t, parts)
+        shown.append(t)
+    shown.sort(key=lambda t: t["updated"], reverse=True)
+    # what waits on the reader comes first, what is finished comes last
+    shown.sort(key=lambda t: (t["done"], not t["needs"]))
+    return shown, left_out
 
 
 def sessions(roots):
@@ -568,11 +766,11 @@ def sessions(roots):
             if inside(full, roots):
                 edits[full] = max(when, edits.get(full, 0))
         if edits or s["runs"]:
-            s["edits"], s["task"] = edits, ""
+            s["edits"], s["task"], s["dossier"] = edits, "", ""
             for path, _ in sorted(edits.items(), key=lambda kv: -kv[1]):
-                name = task_name(path)
-                if name:
-                    s["task"] = name
+                hit = task_of(path)
+                if hit:
+                    s["dossier"], s["task"] = hit
                     break
             kept.append(s)
     return kept
@@ -622,8 +820,8 @@ def in_flight(root, parts, look=True, everywhere=False):
     for row in rows:
         for s, when in row["who"]:
             if s["id"] not in by_id:
-                by_id[s["id"]] = {"tool": s["tool"], "title": s["title"], "task": s["task"], "unknown": False,
-                                  "when": 0, "rows": []}
+                by_id[s["id"]] = {"tool": s["tool"], "title": s["title"], "task": s["task"], "dossier": s["dossier"],
+                                  "unknown": False, "when": 0, "rows": []}
                 windows.append(by_id[s["id"]])
             win = by_id[s["id"]]
             win["rows"].append(row)
@@ -632,9 +830,17 @@ def in_flight(root, parts, look=True, everywhere=False):
     for w in trees:
         loose = [row for row in rows if row["tree"] is w and not row["who"]]
         if loose:
-            windows.append({"tool": "", "title": "", "task": "", "unknown": True, "when": 0, "rows": loose})
+            windows.append({"tool": "", "title": "", "task": "", "dossier": "", "unknown": True, "when": 0, "rows": loose})
     letters, unknown = 0, 0
     for win in windows:
+        if not win["unknown"] and not win["dossier"]:
+            # No edit command names a dossier, but a file this window changed by a shell command may lie in
+            # one. That is enough to say which task the window is on; its name stays the session's own.
+            for row in win["rows"]:
+                hit = task_of(os.path.join(row["tree"]["path"], row["file"]))
+                if hit:
+                    win["dossier"] = hit[0]
+                    break
         if win["unknown"]:
             unknown += 1
             win["key"] = "?" if unknown == 1 else "?%d" % unknown
@@ -1139,11 +1345,12 @@ def cmd_doctor(root, parts, t, args):
     old = sorted(((label(u), d, n) for u, (d, n) in aging(root, args.list_path, parts, history(root, parts)).items()
                   if n >= STALE), key=lambda x: -x[2])
     bare = [label(u) for u in units if not u.outside and not (u.flow and u.flow["nodes"])]
+    missed = mark_misses(tasks_shown(root, args.tasks, parts, [])[0], t)
     if args.json:
         print(json.dumps({"list": listed, "dead_paths": [{"unit": u, "path": p} for u, p in dead],
                           "unmapped": len(unmapped), "near_names": near, "wrong_level": level, "unbacked": loose,
                           "stale": [{"unit": u, "drawn": d, "changes_since": n} for u, d, n in old],
-                          "undrawn": bare}, ensure_ascii=False, indent=2))
+                          "undrawn": bare, "marks_missed": missed}, ensure_ascii=False, indent=2))
         return
     zh = t is TEXT["zh"]
     join = "；" if zh else "; "
@@ -1168,11 +1375,66 @@ def cmd_doctor(root, parts, t, args):
     section(t["doctor_loose"], ["%s → %s（%s）" % (x["a"], x["b"], x["route"]) if zh else
                                 "%s -> %s (%s)" % (x["a"], x["b"], x["route"]) for x in loose])
     section(t["doctor_stale"], [t["doctor_stale_row"].format(name=u, date=d, n=n) for u, d, n in old])
+    section(t["doctor_marks"], missed)
     if not found:
         print("  " + t["doctor_ok"])
     if bare:
         print("  " + t["doctor_bare"].format(n=len(bare)))
     print(t["doctor_limit"])
+
+
+def mark_misses(tasks, t):
+    """Marks that the page cannot draw where the agent meant: a part or room the list does not have, or a
+    new or changed box that is not in that unit's diagram."""
+    rows = []
+    for x in tasks:
+        for m in x["marks"]:
+            if not m["unit"]:
+                rows.append(t["doctor_mark_unit"].format(task=x["name"], name=m["room"] or m["part"]))
+            elif m["box"] and m["kind"] != "gone" and not m["drawn"]:
+                rows.append(t["doctor_mark_box"].format(task=x["name"], unit=m["unit"], box=m["box"]))
+    return rows
+
+
+def cmd_tasks(root, parts, t, args):
+    """The tasks in progress and the ones finished lately: the lines the agent wrote for people in each
+    dossier, and the parts touched."""
+    tasks, left_out = tasks_shown(root, args.tasks, parts, history(root, parts))
+    if args.json:
+        print(json.dumps({"tasks": [{"folder": x["id"], "name": x["name"], "finished": x["done"],
+                                     "for_people": x["plain"], "now": x["now"],
+                                     "needs": x["needs"], "next": x["next"], "done": x["made"], "try": x["try"],
+                                     "not_yet": x["left"], "marks": x["marks"], "updated": x["updated"],
+                                     "parts": x["rooms"]} for x in tasks], "not_listed": left_out,
+                          "marks_missed": mark_misses(tasks, t)},
+                         ensure_ascii=False, indent=2))
+        return
+    doing, done = [x for x in tasks if not x["done"]], [x for x in tasks if x["done"]]
+    print(t["tasks_head"].format(n=len(doing)) if doing else t["tasks_none"])
+    for x in doing + done:
+        if done and x is done[0]:
+            print(t["tasks_done_head"].format(n=len(done)))
+        print("  %s  [%s]" % (x["name"], t["task_updated"].format(d=x["updated"] or "?")))
+        said = [t["task_now"].format(x=x["now"])] if x["now"] else []
+        said += [t["task_needs"].format(x=need) for need in x["needs"]]
+        said += [t["task_next"].format(x=x["next"])] if x["next"] else []
+        said += [t["task_made"].format(x=line) for line in x["made"]]
+        said += [t["task_try"].format(x=x["try"])] if x["try"] else []
+        said += [t["task_left"].format(x=line) for line in x["left"]]
+        if x["marks"]:
+            said.append(t["task_marks"].format(x="  ".join(
+                "%s %s" % (t["mark_" + m["kind"]], " / ".join(k for k in (m["unit"] or m["part"], m["box"]) if k))
+                for m in x["marks"])))
+        for line in said or [t["task_bare"]]:
+            print("      " + line)
+        if x["rooms"]:
+            print("      " + t["task_rooms"].format(x="  ".join("%s %d" % (r["name"] or t["unmapped_changed"], r["n"])
+                                                                for r in x["rooms"])))
+        print("      " + t["task_folder"].format(x=posixpath.join(x["rel"] or args.tasks, x["id"])))
+    if left_out:
+        print(t["tasks_old"].format(n=left_out))
+    for row in mark_misses(tasks, t):
+        print("  ! " + row)
 
 
 def cmd_web(root, parts, t, args):
@@ -1224,6 +1486,24 @@ def cmd_web(root, parts, t, args):
 
     def short(groups):
         return [{"name": g["name"], "n": g["n"], "files": g["files"][:6]} for g in groups]
+    # Tasks in progress, from the journal's dossiers: the lines the agent wrote for people, and where the
+    # work landed, which is measured. A window that is writing in a task's dossier is that task's window.
+    tasks, tasks_old = tasks_shown(root, args.tasks, parts, commits)
+    out_tasks = []
+    for task in tasks:
+        on = [w for w in windows if w["dossier"] == task["id"]]
+        mine = {(r["tree"]["path"], r["file"]): r for w in on for r in w["rows"]
+                if not (task["rel"] and r["file"].startswith(task["rel"] + "/"))}
+        if task["plain"]:
+            for w in on:
+                w["task"] = task["name"]  # the window goes by the name the reader knows the task by
+        out_tasks.append({"id": task["id"], "name": task["name"], "plain": task["plain"], "now": task["now"],
+                          "needs": task["needs"], "next": task["next"], "updated": task["updated"],
+                          "finished": task["done"], "made": task["made"], "try": task["try"], "left": task["left"],
+                          "marks": task["marks"],
+                          "days": task["days"], "parts": task["rooms"],
+                          "pending": short(grouped(list(mine.values()), parts)), "wins": [w["key"] for w in on]})
+
     pending = {
         # changed files that no part owns come last, under the name "": the page says they are not on the list
         "parts": [{"part": g["name"], "n": g["n"], "files": g["files"],
@@ -1240,10 +1520,11 @@ def cmd_web(root, parts, t, args):
     data = {"project": os.path.basename(root), "lang": lang, "generated": datetime.date.today().isoformat(),
             "files": len(files), "history": len(commits), "recentDays": RECENT_DAYS, "list": listed,
             "parts": out_parts, "commits": out_commits, "pending": pending,
-            "links": lifted(links, "top"), "measured": langs, "routes": args.routes}
+            "links": lifted(links, "top"), "measured": langs, "routes": args.routes,
+            "tasks": out_tasks, "tasksOld": tasks_old}
     here = os.path.dirname(os.path.abspath(__file__))
     page = open(os.path.join(here, "map_template.html"), encoding="utf-8").read()
-    # Every "<" in the data is written as <. A commit subject holding both "<!--" and "<script" would
+    # Every "<" in the data is written as \u003c. A commit subject holding both "<!--" and "<script" would
     # otherwise put the browser in a state where the page's own </script> no longer ends the script.
     page = page.replace("__PROJECT__", data["project"]).replace(
         "/*__DATA__*/null", json.dumps(data, ensure_ascii=False).replace("<", "\\u003c"))
@@ -1275,6 +1556,12 @@ the parts list (docs/parts.md, PARTS.md or .bearings/parts.md), every keyword it
     A -> B: label     an arrow;  <->  points both ways
     Name | note | icon | 外部     a box;  外部 / external marks a service outside the project
     a box named exactly like a part or room is a door to it
+
+a task's lines for people (the `## For People` section at the top of docs/tasks/<task>/handoff.md):
+  名字：/ Name:  现在：/ Now:  等你：/ Needs you: (one line each)  下一步：/ Next:     where the task stands
+  做成了：/ Done:  怎么试：/ Try:  还没做：/ Not yet:                     what its last finished step came to
+  新增：/ Added:  改了：/ Changed:  去掉：/ Removed:   Part / Box: one sentence     (Part / Room / Box for a room)
+    marks that box on the part's flow diagram; the names must be the ones on the list
 """
 
 
@@ -1282,7 +1569,11 @@ def main():
     ap = argparse.ArgumentParser(prog="bearings", description=__doc__.split("\n\n")[0], epilog=LIST_FORMAT,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--file", help="parts list, relative to the repo root (default: docs/parts.md)")
+    ap.add_argument("--tasks", default=TASKS_DIR, metavar="DIR",
+                    help="folder of task dossiers kept by the implementation-journal skill (default: docs/tasks)")
     sub = ap.add_subparsers(dest="cmd", required=True)
+    j = sub.add_parser("tasks", help="the tasks in progress and finished lately: what the agent wrote for people, and the parts touched")
+    j.add_argument("--json", action="store_true")
     p = sub.add_parser("parts", help="list parts and unmapped files")
     p.add_argument("--json", action="store_true")
     p.add_argument("--all", action="store_true", help="list every unmapped file")
@@ -1311,7 +1602,8 @@ def main():
         raise SystemExit(TEXT["zh"]["no_parts"].format(files=" / ".join(PARTS_FILES)) + "\n"
                          + TEXT["en"]["no_parts"].format(files=" / ".join(PARTS_FILES)))
     t = TEXT[language(parts)]
-    {"parts": cmd_parts, "check": cmd_check, "web": cmd_web, "links": cmd_links, "doctor": cmd_doctor}[args.cmd](root, parts, t, args)
+    {"parts": cmd_parts, "check": cmd_check, "web": cmd_web, "links": cmd_links, "doctor": cmd_doctor,
+     "tasks": cmd_tasks}[args.cmd](root, parts, t, args)
 
 
 if __name__ == "__main__":

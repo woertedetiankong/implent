@@ -1,6 +1,6 @@
 ---
 name: bearings
-description: "Help a person understand a project that AI is building, from a first look to its architecture: keep a plain-language list of the project's parts and a flow diagram of how each part works, and turn them into a visual map page (the project as a building of rooms, rooms inside rooms, which part uses which as measured from the code, routes through the whole project, where recent work landed). Use when the user asks to see or understand the project, asks for the project map, asks how a part works, how the parts connect, what depends on what, or what recent work touched, asks which window or session is changing what, asks to set up a parts list, or when finished work changed how a part works and docs/parts.md exists. This skill only describes the project; it never limits how code is written."
+description: "Help a person understand a project that AI is building, from a first look to its architecture: keep a plain-language list of the project's parts and a flow diagram of how each part works, and turn them into a visual map page (the project as a building of rooms, rooms inside rooms, which part uses which as measured from the code, routes through the whole project, where recent work landed). Use when the user asks to see or understand the project, asks for the project map, asks how a part works, how the parts connect, what depends on what, or what recent work touched, asks which window or session is changing what, asks what is being worked on or what is waiting on them, asks to set up a parts list, or when finished work changed how a part works and docs/parts.md exists. This skill only describes the project; it never limits how code is written."
 ---
 
 # Bearings
@@ -81,9 +81,45 @@ A flow block that stands outside every part (put these at the top of the file) i
 
 Nobody writes this down. The script reads the import statements (Python, JavaScript/TypeScript, Go) and counts, for each pair of parts, how many files in one import from the other. The map draws it as a relation diagram and lists "it uses" and "used by" on every part. `bearings.py links` prints the same numbers; read them before drafting flow diagrams and routes, so the descriptions agree with the code. Other languages and links over a network are not measured; say so when it matters. It counts only an import it can pin to one file: a name that several files in the repo could answer to, or a lone script in a folder the importing file neither sits under nor adds to `sys.path` itself, is left out rather than guessed, so a link you know exists can be missing while a link that is listed is real.
 
+## Tasks in progress and finished
+
+The map also shows what is being worked on. It takes that from the task dossiers the companion skill `implementation-journal` keeps under `docs/tasks/`, one folder per task. Those are written for the next AI session, so the map reads one thing from each: the `## For People` section at the top of its `handoff.md`, the only part of a dossier written for a person.
+
+````text
+## For People
+
+名字：网站语音助手
+现在：已经上线，但开关还关着。
+等你：自己打一次电话试听
+等你：定下给学员开放哪几种声音
+下一步：你定了以后再打开线上的开关。
+````
+
+- `名字：` or `Name:` is what the person calls the task. `现在：` or `Now:` says where it stands. `等你：` or `Needs you:` takes one line for each thing the work is waiting on the person for, and no line when nothing waits. `下一步：` or `Next:` says what happens after.
+- Plain words in the user's language: no file names, code names, commit hashes or backticks, and parts called what the parts list calls them. Keep the name the same from one rewrite to the next; the person asks for the task by it.
+- A task is in progress until its handoff's `status:` says Complete. The page lists each one with those lines, flags the ones waiting on the reader, and lights the parts its work landed in. Those parts are measured, not written: the commits the dossier cites by hash or was committed with, and the uncommitted work of a window that is writing in that dossier.
+- A task whose handoff has no such section is listed by the name in its brief, with the sentence to say to have the lines written. One that has not moved in a month either is left out.
+- The same section can say what the task's last finished step came to, and the page then shows it as words and pictures:
+
+````text
+做成了：学员在通话面板里可以选助手的声音。
+怎么试：在自己电脑上打一次电话，把面板里的声音都听一遍。
+还没做：还没有真人试过。
+新增：语音助手 / 选音色：学员从网站给的列表里挑一个声音。
+改了：语音助手 / 耳朵：默认不变，可以换成另一家。
+去掉：语音助手 / 旧识别：试过后去掉了。
+````
+
+- `做成了：` or `Done:` says what a person can now do or see. `怎么试：` or `Try:` says how they can see it for themselves. `还没做：` or `Not yet:` takes one line for each thing a person might assume is done and is not, three at most.
+- `新增：` `改了：` `去掉：` (or `Added:` `Changed:` `Removed:`) each name a box of a flow diagram on the parts list and say in one sentence what is different: `Part / Box: sentence`, or `Part / Room / Box: sentence` for a room's diagram. The page draws that part's diagram with those boxes marked and the rest faded. A line that names only a part (`改了：上线和环境配置：多了两个设置项`) is listed without a mark.
+- The names must be the ones on the list, or the page cannot place the mark. So when a step changes how a part works, update the part's flow diagram first, then write the marks against the boxes it now has. A removed box is no longer on the diagram; it is listed under it.
+- Write marks only for what the step changed in how the part works. A step that changed no diagram (a fix, a setting) has none, and the page shows the three lines and the lit rooms alone.
+- A finished task (handoff `status: Complete`) that has lines for people stays on the page for a month as "finished lately", then leaves. One without them leaves at once.
+- The page shows nothing else from a dossier and never links to one. The rest is written for an agent.
+
 ## What to do, and when
 
-The script is `scripts/bearings.py` in this skill folder (Claude Code: `${CLAUDE_SKILL_DIR}/scripts/bearings.py`; Codex: `~/.codex/skills/bearings/scripts/bearings.py`). Run it with python3 from inside the repo; `bearings.py --help` prints every keyword of the list format, so there is no need to read the script. It only reads: the project, and, to tell windows apart, the session records Claude Code and Codex keep on this machine.
+The script is `scripts/bearings.py` in this skill folder (Claude Code: `${CLAUDE_SKILL_DIR}/scripts/bearings.py`; Codex: `~/.codex/skills/bearings/scripts/bearings.py`). Run it with python3 from inside the repo; `bearings.py --help` prints every keyword of the list format, so there is no need to read the script. It only reads: the project, including the task dossiers under `docs/tasks/` when there are any (`--tasks DIR` if the project keeps them elsewhere), and, to tell windows apart, the session records Claude Code and Codex keep on this machine.
 
 - **The user wants to see the project** ("show me the project", "open the map", "how does X work"): run `bearings.py web --open`. It writes one HTML page under the repo's git directory and opens it. Say in one sentence what they will see.
 - **There is no parts list yet** and the user wants one. The first draft is the parts, done well; rooms are only listed.
@@ -96,7 +132,11 @@ The script is `scripts/bearings.py` in this skill folder (Claude Code: `${CLAUDE
 - **You finished work that changed the picture**: a new area of the project, files that `bearings.py parts` reports as unmapped, or a part that now works differently from its flow diagram. Update the parts list in the same change and mention it in one line. If the picture is still true, do nothing. The page tells the reader when each diagram was drawn and how often the code has changed since, so a diagram you leave stale will show as such.
 - **The user asks to put the unmapped files on the map** ("把没归类的文件补进清单"; the page prints this sentence when uncommitted work lies in files no part owns): `bearings.py parts --all` lists them. Give each file to the part it belongs to by widening that part's paths. When they form a new area of the project, add a part or a room for it, with its first line and icon. Rerun until no file is unmapped, then regenerate the map.
 - **The user asks for all the missing flow diagrams**: `bearings.py parts` lists every part and room without one. Say how many there are before starting, since each one means reading code. Skip the ones that are only collections and say so.
-- **The user asks whether the map is still right**, or you have just changed the list: run `bearings.py doctor`. It finds paths that no longer match any file, box names that just miss a part's name, a part whose diagram ignores its own rooms, route arrows the code does not back, and diagrams drawn long before the code last changed. It only reports. It cannot tell whether a diagram is true: for that, reread the code and redraw.
+- **The user asks whether the map is still right**, or you have just changed the list: run `bearings.py doctor`. It finds paths that no longer match any file, box names that just miss a part's name, a part whose diagram ignores its own rooms, route arrows the code does not back, diagrams drawn long before the code last changed, and marks in a task's lines for people that name a part or box the list does not have. It only reports. It cannot tell whether a diagram is true: for that, reread the code and redraw.
+- **The user asks what is being worked on, where a task stands, or what is waiting on them**: `bearings.py tasks` prints the tasks in progress and the ones finished lately, with their lines for people and the parts each has touched; the map shows the same. Answer from those lines, in their words.
+- **The user asks to continue a task by the name the map shows** ("继续做“网站语音助手”"): `bearings.py tasks` gives the folder its records are in. From there it is the implementation-journal skill's restart: read that dossier's `next-session.md` and `handoff.md` and carry on as they say.
+- **The user asks for a task's lines for people** ("给“课程验收”写一份给人看的说明"): write the `## For People` section at the top of that dossier's `handoff.md`, from what the handoff below it says, then regenerate the map. Read the file again right before the edit and add only that section: another session may be working in that dossier.
+- **The user asks what a task came to, or for its write-up after it is done** ("给“课程验收”写一份做完后的说明"): add the `做成了` / `怎么试` / `还没做` lines and the marks to that section, from the handoff and the code the task changed. Check each mark's box against the part's flow diagram, run `bearings.py tasks` (it reports a mark whose part or box it cannot find), then regenerate the map.
 - **The user asks how the parts connect or what depends on what**: `bearings.py links` for the numbers, or open the map on its relation view.
 - **The user asks what a piece of work touched**: `bearings.py check` lists the parts the uncommitted work touched; `--commit <rev>` does the same for one past commit, `--since <rev>` for everything after one. Report it using the part names as written.
 
