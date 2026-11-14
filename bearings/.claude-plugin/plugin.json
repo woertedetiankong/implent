@@ -1,9 +1,9 @@
 {
   "name": "bearings",
-  "description": "A visual map of a project that AI is building: the project as named parts, a flow diagram of how each part works, and where recent work landed. For understanding only; it never limits how code is written.",
+  "description": "A visual map of a project that AI is building: the project as named parts, each explained in plain words, a flow diagram of how each part works, the chain of functions behind it with what goes in and out, and where recent work landed. For understanding only; it never limits how code is written.",
   "author": { "name": "woertedetiankong" },
   "homepage": "https://github.com/woertedetiankong/implent",
   "repository": "https://github.com/woertedetiankong/implent",
   "license": "MIT",
-  "keywords": ["understanding", "project-map", "visualization", "flow-diagram", "codex"]
+  "keywords": ["understanding", "project-map", "visualization", "flow-diagram", "call-chain", "codex"]
 }
