@@ -42,6 +42,7 @@ FLOW_OPEN_RE = re.compile(r"^\s*```\s*flow\b[ \t]*(.*?)\s*$", re.I)  # a title m
 HEAD_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
 EXTERNAL_RE = re.compile(r"^\s*(?:外来|Vendored|Third-party)\s*[:：]\s*(.+)$", re.I)
 FLOW_EDGE_RE = re.compile(r"^\s*(.+?)\s*(<->|->)\s*(.+?)\s*(?:[:：]\s*(.*))?$")
+CODE_NAME_RE = re.compile(r"`([^`]+)`")
 EXTERNAL_WORDS = ("外部", "external")
 RULE_RE = re.compile(r"^\s*(?:规矩|Rule)\s*[:：]\s*(.+)$", re.I)
 HISTORY = 200   # commits read for the map
@@ -96,7 +97,24 @@ TEXT = {
         "doctor_names": "方框的名字可能写错了 {n} 处（差一点就是另一块的名字，现在点不过去）：",
         "doctor_name": "{where} 的流程图里的“{box}”，像是“{unit}”",
         "doctor_level": "大块的流程图没有用自己的小房间当方框 {n} 个（可能和某个小房间画重了）：",
-        "doctor_loose": "主线上代码里量不到的连接 {n} 条（走网络的属于正常，其余值得看一眼）：",
+        "doctor_loose": "图上画了、代码里量不到的连接 {n} 条（走网络的属于正常，其余值得看一眼）：",
+        "doctor_frame": "还没有整体框架图（清单最上面一个不带标题的 flow 块，用{level}当方框）",
+        "level_wings": "各个区", "level_parts": "各个部分", "frame": "整体框架图",
+        "doctor_wings": "还没有图的区 {n} 个（区标题下面一个不带标题的 flow 块，用区里的部分当方框）：",
+        "doctor_orphans": "不在上一层图里的方框 {n} 个（每个方框都要出现在装着它的那张图上；不在运行路上的单独写一行，注明它服务谁）：",
+        "doctor_shelf": "没有连线、也没写它服务谁的方框 {n} 个：",
+        "doctor_shelf_row": "{on} 里的“{box}”",
+        "doctor_open_in": "外面连着、里面没接上的线 {n} 条（上一层的图画了这条线，打开方框后里面找不到另一头）：",
+        "doctor_open_in_row": "{unit}：上一层连着“{other}”{label}，它自己的图里没有",
+        "doctor_said": "（{x}）",
+        "doctor_open_out": "里面画了、外面没有的线 {n} 条（方框自己的图连到了外面，外面却没有一张图画这条线）：",
+        "doctor_open_out_row": "{unit} 的图连着“{other}”",
+        "doctor_routes_off": "主线上有、框架图里没有的连接 {n} 条：",
+        "doctor_pieces": "断成几截的图 {n} 张：",
+        "doctor_pieces_row": "{on}（{n} 截）",
+        "doctor_unlabeled": "没写传的是什么的箭头 {n} 条：",
+        "doctor_code": "箭头上写的代码名字在代码里找不到了 {n} 处（可能改过名）：",
+        "doctor_code_row": "{on}：{arrow} 上的 `{name}`，“{unit}”的代码里没有",
         "doctor_stale": "画完流程图之后代码又改了不少的 {n} 个：",
         "doctor_stale_row": "{name}（画于 {date}，之后改了 {n} 次）",
         "doctor_bare": "还没有流程图的 {n} 个（运行 parts 看是哪些）",
@@ -106,7 +124,7 @@ TEXT = {
         "outside": "外来：{why}",
         "uses": "{a} 用到 {b}（{n} 个文件）",
         "links_head": "从代码里量出来的连接，{n} 条（{langs}）：",
-        "links_none": "没有量到连接。能量的语言：Python、JavaScript/TypeScript、Go。",
+        "links_none": "没有量到连接。能量的语言：Python、JavaScript/TypeScript、Go、C/C++。",
         "mutual": "互相用到：{pairs}",
         "tasks_head": "正在做的事 {n} 件：",
         "tasks_none": "任务记录里没有正在做的事。",
@@ -154,7 +172,24 @@ TEXT = {
         "doctor_names": "{n} box names that may be misspelt (close to another unit's name, so no door opens):",
         "doctor_name": "\"{box}\" in the flow of {where} looks like \"{unit}\"",
         "doctor_level": "{n} parts whose flow does not use their own rooms as boxes (it may repeat a room's diagram):",
-        "doctor_loose": "{n} route arrows the code does not back (fine over a network, worth a look otherwise):",
+        "doctor_loose": "{n} arrows between parts that the code does not back (fine over a network, worth a look otherwise):",
+        "doctor_frame": "No diagram of the whole project yet (one untitled flow block at the top of the list, with {level} as its boxes)",
+        "level_wings": "the wings", "level_parts": "the parts", "frame": "the project diagram",
+        "doctor_wings": "{n} wings without a diagram (one untitled flow block under the wing's heading, with its parts as the boxes):",
+        "doctor_orphans": "{n} boxes missing from the diagram one level up (every box appears on the diagram of what holds it; one that is not on the path at run time gets a line of its own, with a note saying whom it serves):",
+        "doctor_shelf": "{n} boxes with no arrow and no note saying whom they serve:",
+        "doctor_shelf_row": "\"{box}\" in {on}",
+        "doctor_open_in": "{n} lines drawn outside a box that do not arrive inside it (the level above draws the line; the box's own diagram does not show the other end):",
+        "doctor_open_in_row": "{unit}: the level above connects it to \"{other}\"{label}; its own diagram does not show that",
+        "doctor_said": " ({x})",
+        "doctor_open_out": "{n} lines drawn inside a box that nothing outside it draws (its own diagram reaches out; no diagram outside it shows that line):",
+        "doctor_open_out_row": "the diagram of {unit} connects to \"{other}\"",
+        "doctor_routes_off": "{n} links on a route that the framework diagrams do not have:",
+        "doctor_pieces": "{n} diagrams in more than one piece:",
+        "doctor_pieces_row": "{on} ({n} pieces)",
+        "doctor_unlabeled": "{n} arrows that do not say what travels along them:",
+        "doctor_code": "{n} code names on arrows that the code no longer holds (renamed, perhaps):",
+        "doctor_code_row": "{on}: `{name}` on {arrow} is not in the code of \"{unit}\"",
         "doctor_stale": "{n} units whose code changed a good deal after the flow was drawn:",
         "doctor_stale_row": "{name} (drawn {date}, {n} changes since)",
         "doctor_bare": "{n} without a flow diagram (run parts to see them)",
@@ -164,7 +199,7 @@ TEXT = {
         "outside": "from outside: {why}",
         "uses": "{a} uses {b} ({n} files)",
         "links_head": "{n} links measured from the code ({langs}):",
-        "links_none": "No links measured. Languages it can measure: Python, JavaScript/TypeScript, Go.",
+        "links_none": "No links measured. Languages it can measure: Python, JavaScript/TypeScript, Go, C/C++.",
         "mutual": "use each other: {pairs}",
         "tasks_head": "{n} tasks in progress:",
         "tasks_none": "The task records hold nothing in progress.",
@@ -223,6 +258,7 @@ class Part:
         self.name, self.what, self.sensitive, self.patterns, self.rules = name, "", "", [], []
         self.group, self.icon, self.flow = "", "", None
         self.parent, self.children, self.external = parent, [], ""
+        self.wing = None     # the Wing a top-level part sits in, when the list has wings
         self.lines = [0, 0]  # where it is written in the list: first line, one past the last
 
     @property
@@ -233,6 +269,14 @@ class Part:
     def outside(self):
         """Code copied in from elsewhere: it is drawn apart and left out of the project's own counts."""
         return self.external or (self.parent.external if self.parent else "")
+
+
+class Wing:
+    """The parts under one `#` heading. A wing can say what it is for and carry a diagram of how its parts
+    work together; the diagram of the whole project uses the wings as its boxes."""
+
+    def __init__(self, name):
+        self.name, self.what, self.icon, self.flow, self.parts = name, "", "", None, []
 
 
 def flow_node(flow, name):
@@ -253,7 +297,10 @@ def flow_line(flow, line):
         a, arrow, b, label = edge.groups()
         flow_node(flow, a)
         flow_node(flow, b)
-        flow["edges"].append({"a": a, "b": b, "label": (label or "").strip(), "both": arrow == "<->"})
+        label = label or ""
+        code = [x.strip() for x in CODE_NAME_RE.findall(label) if x.strip()]  # `Name`: what the code calls it
+        flow["edges"].append({"a": a, "b": b, "label": CODE_NAME_RE.sub("", label).strip(" ,，、"),
+                              "both": arrow == "<->", "code": code})
         return
     fields = [x.strip() for x in line.split("|")]
     node = flow_node(flow, fields[0])
@@ -301,17 +348,21 @@ def title_form(lines):
 
 
 def load_parts(root, explicit=None):
-    """Returns (parts, path, routes). Routes are flow blocks outside any part: paths through the whole project."""
+    """Returns (parts, path, routes, top). Flow blocks outside any part are read by where they stand and
+    whether they carry a title. With a title: a route, how one thing travels through the project. Without
+    one: the diagram of the level they stand at, which is the whole project before the first heading and a
+    wing right under its `#` heading. `top` holds those two: {"frame": flow or None, "wings": [Wing]}."""
     candidates = [explicit] if explicit else list(PARTS_FILES)
     for rel in candidates:
         path = rel if os.path.isabs(rel) else os.path.join(root, rel)
         if os.path.isfile(path):
             break
     else:
-        return None, None, []
+        return None, None, [], {"frame": None, "wings": []}
     lines = open(path, encoding="utf-8").read().split("\n")
     shift = 1 if title_form(lines) else 0
     parts, routes, cur, top, group, flow = [], [], None, None, "", None
+    frame, wings, wing = None, [], None
     for at, line in enumerate(lines):
         if cur is not None:
             cur.lines[1] = at + 1
@@ -325,27 +376,44 @@ def load_parts(root, explicit=None):
         if opened:
             if cur is not None:
                 flow = cur.flow = cur.flow or {"nodes": [], "edges": []}
-            else:
+            elif opened.group(1):
                 flow = {"title": opened.group(1), "nodes": [], "edges": []}
                 routes.append(flow)
+            elif wing is not None:
+                flow = wing.flow = wing.flow or {"nodes": [], "edges": []}
+            else:
+                flow = frame = frame or {"nodes": [], "edges": []}
             continue
         head = HEAD_RE.match(line)
         if head:
             level, name = len(head.group(1)) - shift, head.group(2)
             if level == 1:    # a wing groups the parts under it
                 group, cur, top = name, None, None
+                wing = Wing(name)
+                wings.append(wing)
             elif level == 2:
                 cur = top = Part(name)
                 cur.group, cur.lines = group, [at, at + 1]
                 parts.append(cur)
+                if wing is not None:
+                    cur.wing = wing
+                    wing.parts.append(cur)
             elif level == 3 and top is not None:
                 cur = Part(name, top)
                 cur.group, cur.lines = group, [at, at + 1]
                 top.children.append(cur)
             elif level < 1:
-                cur = top = None
+                cur = top = wing = None
             continue
-        if cur is None or not line.strip():
+        if not line.strip():
+            continue
+        if cur is None:
+            if wing is not None:  # under a wing's heading: its pictogram, and one line on what the wing is for
+                icon = ICON_RE.match(line)
+                if icon:
+                    wing.icon = icon.group(1).lower()
+                elif not wing.what and not line.lstrip().startswith(("#", ">", "-", "*", "`", "|")):
+                    wing.what = line.strip()
             continue
         sens = SENSITIVE_RE.match(line)
         rule = RULE_RE.match(line)
@@ -364,7 +432,308 @@ def load_parts(root, explicit=None):
                 cur.patterns.append((pat, compile_pattern(pat), literal_len(pat)))
         elif not cur.what and not line.startswith(("#", ">")):
             cur.what = line.strip()
-    return parts, path, routes
+    return parts, path, routes, {"frame": frame if frame and frame["nodes"] else None,
+                                 "wings": [w for w in wings if w.parts]}
+
+
+# Wiring -------------------------------------------------------------------
+# The list is a set of boxes inside boxes: the project holds wings, a wing holds parts, a part holds rooms.
+# Each level has its own diagram, drawn with the boxes of the level below. Read together they are one
+# wiring: an arrow drawn at one level has to come out somewhere at the level inside it, the way a wire
+# into a block comes out at a port inside the block. This section resolves the two ends of every arrow to
+# the units they stand for, so the page can show what goes in and out of each box and the check-up can say
+# where two levels stopped agreeing.
+
+def unit_up(u):
+    """The unit that holds this one: a room's part, a part's wing."""
+    return None if isinstance(u, Wing) else (u.parent or u.wing)
+
+
+def unit_kids(u):
+    return u.parts if isinstance(u, Wing) else u.children
+
+
+def within(x, u):
+    """Is unit u the unit x, or somewhere inside it?"""
+    while u is not None and not isinstance(u, str):
+        if u is x:
+            return True
+        u = unit_up(u)
+    return False
+
+
+def related(a, b):
+    """The same box, or one inside the other. A name that stands for no unit matches only itself."""
+    if isinstance(a, str) or isinstance(b, str):
+        return a == b
+    return within(a, b) or within(b, a)
+
+
+def unit_label(u):
+    if isinstance(u, str):
+        return u
+    return (u.parent.name + " / " if not isinstance(u, Wing) and u.parent else "") + u.name
+
+
+class Wiring:
+    """Every arrow of every diagram, with both ends resolved. An end is a unit (Wing or Part), or a plain
+    name for someone or something outside the project (a person, an outside service, whoever starts or
+    ends a route)."""
+
+    def __init__(self, parts, routes, top):
+        self.parts, self.wings, self.frame, self.routes = parts, top["wings"], top["frame"], routes
+        self.rooms = [c for p in parts for c in p.children]
+        self.ids = {}
+        for i, w in enumerate(self.wings):
+            self.ids[w] = "w%d" % i
+        for i, p in enumerate(parts):
+            self.ids[p] = "p%d" % i
+            for j, c in enumerate(p.children):
+                self.ids[c] = "p%d.%d" % (i, j)
+        # (the unit whose diagram it is, or None; where it is; the flow; its kind)
+        self.diagrams = [(None, "", self.frame, "frame")] if self.frame else []
+        self.diagrams += [(None, r["title"], r, "route") for r in routes]
+        self.diagrams += [(w, w.name, w.flow, "unit") for w in self.wings if w.flow and w.flow["nodes"]]
+        self.diagrams += [(u, unit_label(u), u.flow, "unit") for p in parts for u in [p] + p.children
+                          if u.flow and u.flow["nodes"]]
+        # Names that stand outside the project wherever they appear: a person, an outside service, and
+        # the plain boxes of the project's diagram and of the routes.
+        self.actors = set()
+        for owner, _, flow, kind in self.diagrams:
+            for n in flow["nodes"]:
+                if n["ext"] or ((n["icon"] == "user" or owner is None) and self.unit(n["name"], owner, kind) is None):
+                    self.actors.add(n["name"])
+        self.wires = []
+        for owner, where, flow, kind in self.diagrams:
+            ends = {n["name"]: self.end(n, owner, kind) for n in flow["nodes"]}
+            for n in flow["nodes"]:
+                e = ends[n["name"]]
+                n["to"] = "" if isinstance(e, str) or e is owner else self.ids[e]
+                # outside the box this diagram opens up: drawn at its edge, as something the box connects to
+                n["outer"] = kind != "route" and (isinstance(e, str) or (owner is not None and not within(owner, e)))
+            for edge in flow["edges"]:
+                a, b = ends[edge["a"]], ends[edge["b"]]
+                if a is b or (not isinstance(a, str) and not isinstance(b, str) and related(a, b)):
+                    continue  # a step inside the unit, or between a unit and something in it
+                self.wires.append({"a": a, "b": b, "edge": edge, "owner": owner, "where": where, "kind": kind})
+
+    def unit(self, name, owner, kind="unit"):
+        """The unit a box name stands for, in the diagram of `owner`. The nearest one wins: something
+        inside the owner, then beside it, then anywhere."""
+        if owner is None:
+            order = self.wings + self.parts + self.rooms if kind == "frame" else self.parts + self.rooms + self.wings
+        else:
+            up = unit_up(owner)
+            order = unit_kids(owner) + (unit_kids(up) if up is not None else []) + self.parts + self.wings + self.rooms
+        for u in order:
+            if u.name == name:
+                return u
+        return None
+
+    def end(self, node, owner, kind):
+        if node["ext"]:
+            return node["name"]
+        u = self.unit(node["name"], owner, kind)
+        if u is not None:
+            return u
+        if owner is None or node["name"] in self.actors:
+            return node["name"]
+        return owner  # a plain box in a unit's own diagram is a step of that unit
+
+    def boxes(self, unit):
+        """What the unit's own diagram shows, each box resolved."""
+        if not (unit.flow and unit.flow["nodes"]):
+            return None
+        return [self.end(n, unit, "unit") for n in unit.flow["nodes"]]
+
+    def parent_flow(self, unit):
+        """The diagram one level up, where this unit is a box: (flow, its owner or None), or (None, None)."""
+        up = unit_up(unit)
+        if up is None:
+            return self.frame, None
+        return (up.flow if up.flow and up.flow["nodes"] else None), up
+
+    def crossings(self, unit):
+        """Every arrow, drawn on a diagram outside the unit, with one end in the unit and the other not:
+        (the other end, which way, the arrow, where it is drawn, must, met). `must` marks the ones on the
+        diagram one level up, where the unit is a box: its own diagram has to show the other end of those.
+        `met` says whether it does (None when the unit has no diagram yet)."""
+        inside = self.boxes(unit)
+        up = unit_up(unit)
+        for w in self.wires:
+            ia, ib = within(unit, w["a"]), within(unit, w["b"])
+            if ia == ib or (w["owner"] is not None and within(unit, w["owner"])):
+                continue
+            other, via, e = (w["b"], w["a"], w["edge"]) if ia else (w["a"], w["b"], w["edge"])
+            must = w["kind"] != "route" and w["owner"] is up and via is unit
+            met = None if inside is None else any(related(x, other) for x in inside)
+            yield other, "both" if e["both"] else ("out" if ia else "in"), e, w["where"], must, met
+
+    def ports(self, unit):
+        """What goes into the unit and what comes out, told at the unit's own level: a neighbour deep
+        inside another part or wing is shown as the box that stands beside this unit and holds it. One
+        row for each neighbour and direction, with the words of every arrow that runs between them."""
+        above = set()
+        up = unit_up(unit)
+        while up is not None:
+            above.add(up)
+            up = unit_up(up)
+        rows, seen = [], {}
+        for other, way, e, where, must, met in self.crossings(unit):
+            while not isinstance(other, str) and unit_up(other) is not None and unit_up(other) not in above:
+                other = unit_up(other)
+            key = (other if isinstance(other, str) else id(other), way)
+            row = seen.get(key)
+            if row is None:
+                row = seen[key] = {"other": other, "dir": way, "labels": [], "code": [], "must": False,
+                                   "met": None, "where": where}
+                rows.append(row)
+            if e["label"] and e["label"] not in row["labels"]:
+                row["labels"].append(e["label"])
+            row["code"] += [c for c in e["code"] if c not in row["code"]]
+            if must:
+                row["must"], row["where"] = True, where
+                row["met"] = met if row["met"] is None else (row["met"] and met)
+        # a neighbour that things travel both ways with is one row: its one-way arrows are folded into it
+        for both in [r for r in rows if r["dir"] == "both"]:
+            for r in [r for r in rows if r is not both and r["other"] is both["other"]]:
+                both["labels"] += [x for x in r["labels"] if x not in both["labels"]]
+                both["code"] += [x for x in r["code"] if x not in both["code"]]
+                if r["must"]:
+                    both["met"] = r["met"] if not both["must"] else (both["met"] and r["met"])
+                    both["must"] = True
+                rows.remove(r)
+        return rows
+
+    def backed(self, unit, other, routes=True):
+        """Does any diagram outside `unit` draw a line from its box (or from something in it) to `other`,
+        or to what holds `other`, or to something in `other`? An arrow drawn only inside a unit, reaching
+        out to a neighbour that nothing outside the unit connects it to, is a wire with one loose end.
+        A line between the wings the two sit in is not enough: that says the wings are connected, not
+        that this box is."""
+        for w in self.wires:
+            if (w["owner"] is not None and within(unit, w["owner"])) or (w["kind"] == "route" and not routes):
+                continue
+            if (within(unit, w["a"]) and related(w["b"], other)) or (within(unit, w["b"]) and related(w["a"], other)):
+                return True
+        return False
+
+    def problems(self):
+        """Where the levels do not agree. Each finding is a short row of plain facts; nothing here is a rule
+        about the code, only about the drawings."""
+        out = {"open_in": [], "open_out": [], "orphans": [], "shelf": [], "routes_off": [], "unlabeled": [],
+               "pieces": [], "wings_bare": [], "no_frame": False}
+        units = self.wings + [u for p in self.parts for u in [p] + p.children]
+        tops = self.wings or self.parts
+        out["no_frame"] = self.frame is None and len(tops) > 1
+        out["wings_bare"] = [w.name for w in self.wings if len(w.parts) > 1 and not (w.flow and w.flow["nodes"])]
+        for u in units:
+            if not isinstance(u, Wing) and u.outside:
+                continue
+            flow, owner = self.parent_flow(u)
+            if flow is None:
+                continue
+            ends = [self.end(n, owner, "frame" if owner is None else "unit") for n in flow["nodes"]]
+            if isinstance(u, Part) and u.parent and not any(e in u.parent.children for e in ends):
+                continue  # the part's diagram uses none of its rooms: reported once, as drawn at the wrong level
+            if not any(e is u for e in ends):
+                out["orphans"].append({"unit": unit_label(u), "on": unit_label(owner) if owner else ""})
+        for u in units:
+            for other, way, e, _, must, met in self.crossings(u):
+                if must and met is False:
+                    out["open_in"].append({"unit": unit_label(u), "other": unit_label(other),
+                                           "label": e["label"], "dir": way})
+            seen = set()
+            for w in self.wires if self.parent_flow(u)[0] is not None else []:
+                if w["owner"] is not u:  # until the level above is drawn there is nothing to agree with
+                    continue
+                ia, ib = within(u, w["a"]), within(u, w["b"])
+                if ia == ib:
+                    continue
+                other = w["b"] if ia else w["a"]
+                if isinstance(other, str) or id(other) in seen:
+                    continue
+                seen.add(id(other))
+                if not self.backed(u, other):
+                    out["open_out"].append({"unit": unit_label(u), "other": unit_label(other)})
+        structural = self.frame is not None or any(w.flow and w.flow["nodes"] for w in self.wings)
+        for w in self.wires if structural else []:
+            if w["kind"] != "route" or isinstance(w["a"], str) or isinstance(w["b"], str):
+                continue
+            # a route walks over the wiring: each step needs a line on the framework diagrams, drawn from
+            # either of the two boxes (on the diagram that holds it, or on its own)
+            if not any(x["kind"] != "route" and ((within(w["a"], x["a"]) and related(x["b"], w["b"])) or
+                                                 (within(w["a"], x["b"]) and related(x["a"], w["b"])) or
+                                                 (within(w["b"], x["a"]) and related(x["b"], w["a"])) or
+                                                 (within(w["b"], x["b"]) and related(x["a"], w["a"])))
+                       for x in self.wires):
+                out["routes_off"].append({"route": w["where"], "a": unit_label(w["a"]), "b": unit_label(w["b"])})
+        for owner, where, flow, kind in self.diagrams:
+            wired = collections.defaultdict(set)
+            for e in flow["edges"]:
+                wired[e["a"]].add(e["b"])
+                wired[e["b"]].add(e["a"])
+                if not e["label"]:
+                    out["unlabeled"].append({"on": where, "a": e["a"], "b": e["b"]})
+            for n in flow["nodes"]:  # a box on the shelf: no arrow, so its note has to say whom it serves
+                if n["name"] not in wired and not n["note"]:
+                    out["shelf"].append({"on": where, "box": n["name"]})
+            left, groups = set(wired), 0
+            while left:
+                groups += 1
+                stack = [left.pop()]
+                while stack:
+                    for nxt in wired[stack.pop()]:
+                        if nxt in left:
+                            left.discard(nxt)
+                            stack.append(nxt)
+            if groups > 1:
+                out["pieces"].append({"on": where, "n": groups})
+        return out
+
+    def code_gone(self, root, files, listed=""):
+        """Names written on arrows (`Name`) that the code at either end no longer holds. An arrow says in
+        plain words what travels along it; the name is what the code calls that, so a rename shows up here.
+        The list itself (`listed`) is not searched: every name is written there."""
+        asked = []  # (where, edge, name, unit)
+        for owner, where, flow, kind in self.diagrams:
+            ends = {n["name"]: self.end(n, owner, kind) for n in flow["nodes"]}
+            for e in flow["edges"]:
+                for unit in {id(x): x for x in (ends[e["a"]], ends[e["b"]]) if not isinstance(x, str)}.values():
+                    asked += [(where, e, name, unit) for name in e["code"]]
+        want = collections.defaultdict(set)
+        for _, _, name, unit in asked:
+            want[unit].add(name)
+        if not want:
+            return []
+        for f in files:
+            if f == listed:
+                continue
+            unit, text = leaf(f, self.parts), None
+            while unit is not None:
+                if want.get(unit):
+                    text = read(root, f) if text is None else text
+                    want[unit] -= {name for name in want[unit] if name in text}
+                unit = unit_up(unit)
+        return [{"on": where, "a": e["a"], "b": e["b"], "name": name, "unit": unit_label(unit)}
+                for where, e, name, unit in asked if name in want[unit]]
+
+    def loose(self, links):
+        """Marks the arrows between two parts (or wings) of the project that the measured links do not back."""
+        joined = {(x["a"], x["b"]) for x in links} | {(x["b"], x["a"]) for x in links}
+
+        def tops(u):
+            if isinstance(u, Wing):
+                return {p.name for p in u.parts}
+            return {u.top.name}
+        for w in self.wires:
+            if w["kind"] == "unit" and not isinstance(w["owner"], Wing):
+                continue
+            if isinstance(w["a"], str) or isinstance(w["b"], str):
+                continue
+            a, b = tops(w["a"]), tops(w["b"])
+            if not (a & b) and not any((x, y) in joined for x in a for y in b):
+                w["edge"]["loose"] = True
 
 
 def leaf(path, parts, seen={}):
@@ -931,11 +1300,14 @@ def cmd_parts(root, parts, t, args):
 
 # Links measured from the code ---------------------------------------------
 # Which part uses which, read from import statements. Unlike the flow diagrams, nobody writes
-# these down: they are counted. Python, JavaScript/TypeScript and Go are read; other languages,
+# these down: they are counted. Python, JavaScript/TypeScript, Go and C/C++ are read; other languages,
 # and links that go over a network, are not seen.
 
 LANGS = {".py": "Python", ".go": "Go", ".ts": "TypeScript", ".tsx": "TypeScript", ".mts": "TypeScript",
-         ".cts": "TypeScript", ".js": "JavaScript", ".jsx": "JavaScript", ".mjs": "JavaScript", ".cjs": "JavaScript"}
+         ".cts": "TypeScript", ".js": "JavaScript", ".jsx": "JavaScript", ".mjs": "JavaScript", ".cjs": "JavaScript",
+         ".c": "C", ".h": "C", ".cpp": "C++", ".cc": "C++", ".cxx": "C++", ".hpp": "C++", ".hh": "C++"}
+C_EXT = (".c", ".h", ".cpp", ".cc", ".cxx", ".hpp", ".hh")
+C_INCLUDE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*["<]([^">\n]+)[">]', re.M)
 JS_EXT = (".ts", ".tsx", ".mts", ".js", ".jsx", ".mjs", ".cjs", ".d.ts", ".json")
 PY_FROM = re.compile(r"^[ \t]*from[ \t]+(\.*)([\w.]*)[ \t]+import[ \t]+(\([^)]*\)|[^\n#]+)", re.M)
 PY_IMPORT = re.compile(r"^[ \t]*import[ \t]+([\w., \t]+)", re.M)
@@ -1036,6 +1408,37 @@ def code_links(root, files, parts):
         elif f.endswith(".go"):
             godirs.setdefault(posixpath.dirname(f), f)
 
+    # C and C++: every tracked file by its base name, to resolve an `#include` the build finds on an include path
+    cnames = collections.defaultdict(list)
+    if any(f.endswith(C_EXT) for f in files):
+        for f in files:
+            cnames[posixpath.basename(f)].append(f)
+
+    def c_file(spec, folder):
+        """The file an `#include` means to code in `folder`: the one beside the including file, else the only
+        file in the repo whose path ends that way. When several do (one `board.h` per board), the one that
+        shares more of its folders with the including file than any other; a tie is left out, not guessed."""
+        spec = posixpath.normpath(spec.replace("\\", "/"))
+        near = posixpath.normpath(posixpath.join(folder, spec))
+        if near in tracked:
+            return near
+        if spec.startswith(".."):
+            return None
+        found = [c for c in cnames.get(posixpath.basename(spec), ()) if c == spec or c.endswith("/" + spec)]
+        if len(found) < 2:
+            return found[0] if found else None
+        here = folder.split("/") if folder else []
+
+        def shared(c):
+            n = 0
+            for x, y in zip(here, c.split("/")):
+                if x != y:
+                    break
+                n += 1
+            return n
+        ranked = sorted(found, key=shared, reverse=True)
+        return ranked[0] if shared(ranked[0]) > shared(ranked[1]) else None
+
     def js_file(stem):
         stem = posixpath.normpath(stem)
         if stem in tracked:
@@ -1080,6 +1483,12 @@ def code_links(root, files, parts):
                             yield hit
                             break
                         bits.pop()
+        elif ext in C_EXT:
+            folder = posixpath.dirname(f)
+            for spec in C_INCLUDE.findall(text):
+                hit = c_file(spec.strip(), folder)
+                if hit:
+                    yield hit
         elif ext == ".go":
             head = text.split("\nfunc ", 1)[0]
             for spec in GO_STR.findall(head):
@@ -1334,14 +1743,15 @@ def cmd_doctor(root, parts, t, args):
     level = [p.name for p in parts if p.children and p.flow and p.flow["nodes"]
              and not ({n["name"] for n in p.flow["nodes"]} & {c.name for c in p.children})]
     links, langs = code_links(root, files, parts)
-    joined = {(x["a"], x["b"]) for x in lifted(links, "top")}
-    top = {u.name: u.top.name for u in units}
-    loose = []
-    for r in args.routes if langs else []:
-        for e in r["edges"]:
-            a, b = top.get(e["a"]), top.get(e["b"])
-            if a and b and a != b and (a, b) not in joined and (b, a) not in joined:
-                loose.append({"route": r["title"], "a": e["a"], "b": e["b"]})
+    wiring = Wiring(parts, args.routes, args.top)
+    flows += [(t["frame"], args.top["frame"])] if args.top["frame"] else []
+    flows += [(w.name, w.flow) for w in args.top["wings"] if w.flow]
+    if langs:
+        wiring.loose(lifted(links, "top"))
+    loose = [{"route": w["where"] or t["frame"], "a": w["edge"]["a"], "b": w["edge"]["b"]}
+             for w in wiring.wires if w["edge"].get("loose")]
+    wires = wiring.problems()
+    gone = wiring.code_gone(root, files, listed)
     old = sorted(((label(u), d, n) for u, (d, n) in aging(root, args.list_path, parts, history(root, parts)).items()
                   if n >= STALE), key=lambda x: -x[2])
     bare = [label(u) for u in units if not u.outside and not (u.flow and u.flow["nodes"])]
@@ -1349,6 +1759,7 @@ def cmd_doctor(root, parts, t, args):
     if args.json:
         print(json.dumps({"list": listed, "dead_paths": [{"unit": u, "path": p} for u, p in dead],
                           "unmapped": len(unmapped), "near_names": near, "wrong_level": level, "unbacked": loose,
+                          "wiring": dict(wires, code_gone=gone),
                           "stale": [{"unit": u, "drawn": d, "changes_since": n} for u, d, n in old],
                           "undrawn": bare, "marks_missed": missed}, ensure_ascii=False, indent=2))
         return
@@ -1374,6 +1785,32 @@ def cmd_doctor(root, parts, t, args):
     section(t["doctor_level"], level)
     section(t["doctor_loose"], ["%s → %s（%s）" % (x["a"], x["b"], x["route"]) if zh else
                                 "%s -> %s (%s)" % (x["a"], x["b"], x["route"]) for x in loose])
+    # The wiring: do the levels agree with each other?
+    arrow = "%s → %s" if zh else "%s -> %s"
+    here = lambda where: where or t["frame"]
+    if wires["no_frame"]:
+        found = True
+        print("  " + t["doctor_frame"].format(level=t["level_wings" if args.top["wings"] else "level_parts"]))
+    section(t["doctor_wings"], wires["wings_bare"])
+    homes = collections.OrderedDict()
+    for x in wires["orphans"]:
+        homes.setdefault(here(x["on"]), []).append(x["unit"].split(" / ")[-1])
+    if homes:
+        found = True
+        print("  " + t["doctor_orphans"].format(n=len(wires["orphans"])))
+        for where, names in homes.items():
+            print("      %s%s%s" % (where, "：" if zh else ": ", ("、" if zh else ", ").join(names)))
+    section(t["doctor_shelf"], [t["doctor_shelf_row"].format(on=here(x["on"]), box=x["box"]) for x in wires["shelf"]])
+    section(t["doctor_open_in"], [t["doctor_open_in_row"].format(unit=x["unit"], other=x["other"],
+            label=(t["doctor_said"].format(x=x["label"]) if x["label"] else "")) for x in wires["open_in"]])
+    section(t["doctor_open_out"], [t["doctor_open_out_row"].format(**x) for x in wires["open_out"]])
+    section(t["doctor_routes_off"], [(arrow + ("（%s）" if zh else " (%s)")) % (x["a"], x["b"], x["route"])
+                                     for x in wires["routes_off"]])
+    section(t["doctor_pieces"], [t["doctor_pieces_row"].format(on=here(x["on"]), n=x["n"]) for x in wires["pieces"]])
+    section(t["doctor_unlabeled"], [here(x["on"]) + ("：" if zh else ": ") + arrow % (x["a"], x["b"])
+                                    for x in wires["unlabeled"]])
+    section(t["doctor_code"], [t["doctor_code_row"].format(on=here(x["on"]), arrow=arrow % (x["a"], x["b"]),
+                                                           name=x["name"], unit=x["unit"]) for x in gone])
     section(t["doctor_stale"], [t["doctor_stale_row"].format(name=u, date=d, n=n) for u, d, n in old])
     section(t["doctor_marks"], missed)
     if not found:
@@ -1452,10 +1889,20 @@ def cmd_web(root, parts, t, args):
     waiting = collections.Counter((r["part"], r["sub"]) for r in rows)
 
     age = aging(root, args.list_path, parts, commits)
+    wiring = Wiring(parts, args.routes, args.top)
+    if langs:
+        wiring.loose(lifted(links, "top"))
+
+    def ports(u):
+        """What goes in and out of a unit, for the page: the neighbour's name and where a click on it leads."""
+        return [{"name": x["other"] if isinstance(x["other"], str) else x["other"].name,
+                 "to": "" if isinstance(x["other"], str) else wiring.ids[x["other"]], "dir": x["dir"],
+                 "labels": x["labels"], "code": x["code"], "must": x["must"], "met": x["met"], "where": x["where"]}
+                for x in wiring.ports(u)]
 
     def card(u):
         """What the page shows for a part or a sub-part."""
-        return {"drawn": age[u][0] if u in age else "", "since": age[u][1] if u in age else 0, "name": u.name, "icon": u.icon, "flow": u.flow, "what": u.what, "sensitive": u.sensitive,
+        return {"ports": ports(u), "drawn": age[u][0] if u in age else "", "since": age[u][1] if u in age else 0, "name": u.name, "icon": u.icon, "flow": u.flow, "what": u.what, "sensitive": u.sensitive,
                 "rules": u.rules, "paths": [x[0] for x in u.patterns], "external": u.external,
                 "files": n[u][1] if u.outside else n[u][0], "outside": 0 if u.outside else n[u][1]}
 
@@ -1521,6 +1968,9 @@ def cmd_web(root, parts, t, args):
             "files": len(files), "history": len(commits), "recentDays": RECENT_DAYS, "list": listed,
             "parts": out_parts, "commits": out_commits, "pending": pending,
             "links": lifted(links, "top"), "measured": langs, "routes": args.routes,
+            "frame": args.top["frame"],
+            "wings": [{"name": w.name, "what": w.what, "icon": w.icon, "flow": w.flow, "ports": ports(w),
+                       "parts": [parts.index(p) for p in w.parts]} for w in args.top["wings"]],
             "tasks": out_tasks, "tasksOld": tasks_old}
     here = os.path.dirname(os.path.abspath(__file__))
     page = open(os.path.join(here, "map_template.html"), encoding="utf-8").read()
@@ -1552,10 +2002,18 @@ the parts list (docs/parts.md, PARTS.md or .bearings/parts.md), every keyword it
   敏感：why         or  Sensitive: why    drawn hatched
   外来：what        or  Vendored: what    code written elsewhere: dashed, counted apart
   规矩：rule（source，date）  or  Rule: ...
-  ```flow           inside a part or room: how it works.  ```flow Title  outside every part: a route
-    A -> B: label     an arrow;  <->  points both ways
-    Name | note | icon | 外部     a box;  外部 / external marks a service outside the project
-    a box named exactly like a part or room is a door to it
+  ```flow           how the level it stands at works, drawn with the boxes of the level below:
+                      before the first heading   the whole project    boxes: the wings (the parts, with no wings)
+                      under a `# Wing` heading   that wing            boxes: its parts
+                      inside a part              that part            boxes: its rooms (its steps, with no rooms)
+                      inside a room              that room            boxes: its steps
+  ```flow Title     outside every part: a route, how one thing travels through the project (boxes: parts)
+    A -> B: label     an arrow, and what travels along it;  <->  points both ways
+    A -> B: label `Name`   also what the code calls that (a type, a function, an endpoint); doctor checks it exists
+    Name | note | icon | 外部     a box;  外部 / external marks a service outside the project; icon user, a person
+    Name | note       with no arrow: a box that is not on the path at run time; the note says whom it serves
+    a box named exactly like a wing, part or room is a door to it
+  under a `# Wing` heading, before its first part: one plain line on what the wing is for, and 图标：/ Icon:
 
 a task's lines for people (the `## For People` section at the top of docs/tasks/<task>/handoff.md):
   名字：/ Name:  现在：/ Now:  等你：/ Needs you: (one line each)  下一步：/ Next:     where the task stands
@@ -1597,7 +2055,7 @@ def main():
     args = ap.parse_args()
 
     root = repo_root()
-    parts, args.list_path, args.routes = load_parts(root, args.file)
+    parts, args.list_path, args.routes, args.top = load_parts(root, args.file)
     if not parts:
         raise SystemExit(TEXT["zh"]["no_parts"].format(files=" / ".join(PARTS_FILES)) + "\n"
                          + TEXT["en"]["no_parts"].format(files=" / ".join(PARTS_FILES)))

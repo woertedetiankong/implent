@@ -1,6 +1,6 @@
 ---
 name: bearings
-description: "Help a person understand a project that AI is building, from a first look to its architecture: keep a plain-language list of the project's parts and a flow diagram of how each part works, and turn them into a visual map page (the project as a building of rooms, rooms inside rooms, which part uses which as measured from the code, routes through the whole project, where recent work landed). Use when the user asks to see or understand the project, asks for the project map, asks how a part works, how the parts connect, what depends on what, or what recent work touched, asks which window or session is changing what, asks what is being worked on or what is waiting on them, asks to set up a parts list, or when finished work changed how a part works and docs/parts.md exists. This skill only describes the project; it never limits how code is written."
+description: "Help a person understand a project that AI is building, from a first look to its architecture: keep a plain-language list of the project's parts and a flow diagram of how each part works, and turn them into a visual map page (the project as boxes inside boxes: one diagram of the whole, a click on a box opens the diagram inside it, with what goes into each box and what comes out; also a floor plan of rooms, which part uses which as measured from the code, routes through the whole project, where recent work landed). Use when the user asks to see or understand the project, asks for the project map, the overall framework or architecture, asks how a part works, how the parts connect, what goes in and out of a part, what depends on what, or what recent work touched, asks which window or session is changing what, asks what is being worked on or what is waiting on them, asks to set up a parts list, or when finished work changed how a part works and docs/parts.md exists. This skill only describes the project; it never limits how code is written."
 ---
 
 # Bearings
@@ -15,7 +15,7 @@ Reply in the language the user works in. The parts list is written in that langu
 
 `docs/parts.md` is the single source for the picture. The map page is generated from it, from git history and from the code's own import statements; nothing else is stored.
 
-- A `#` heading groups the parts under it into one wing of the map.
+- A `#` heading groups the parts under it into one wing of the map. Under it, before its first part, one plain line says what the wing is for, and `图标：` / `Icon:` picks its pictogram.
 - A `##` heading names a part. Its first plain line says what the part is for.
 - A `###` heading names a room inside that part (see "Rooms inside a part").
 - Backticked bullets are the paths the part owns: `dir/` owns a folder, `*` is a wildcard, the most specific path wins.
@@ -33,7 +33,7 @@ A part that holds several distinct things (a dozen models, the pages of an app, 
 
 - Give a part rooms when it has more than about 150 files, or when one flow diagram can only show a "typical" case. Three to twelve rooms. Small parts stay flat.
 - A room's paths lie inside its part's paths and are more specific (`models/` on the part, `models/higgs/` on the room). Files no room claims stay with the part itself.
-- Each level is drawn with the boxes of the level below it. A route's boxes are parts. The diagram of a part that has rooms uses those rooms as its boxes, named exactly so they become doors, plus whoever starts and ends the story: it shows how the rooms work together. A room's diagram shows the steps inside that room. If a part's diagram and one of its rooms' diagrams tell the same story, the part's is drawn at the wrong level; redraw it with rooms as boxes.
+- The diagram of a part that has rooms uses those rooms as its boxes, named exactly so they become doors, plus what the part connects to: it shows how the rooms work together. A room's diagram shows the steps inside that room. If a part's diagram and one of its rooms' diagrams tell the same story, the part's is drawn at the wrong level; redraw it with rooms as boxes. See "Boxes inside boxes" below.
 - A room's own flow diagram is drawn when someone asks for it, not in the first draft. Listing a room (name, first line, icon, paths) is cheap and already gives the reader the inner floor plan and the measured links between rooms. Drawing how it works inside means reading its code, and a diagram drawn in a hurry is worse than none. A reader opens a few rooms, not all of them; the page shows each undrawn room with its measured links and the sentence to say to have it drawn.
 - When asked for one, read the room's code first. Usually three to six boxes: what comes in, the steps particular to this room, what goes out. A room that is only a collection (assets, pages of documentation, folders of tests, outside code) needs none; say so instead of inventing a story.
 
@@ -47,18 +47,42 @@ A part can carry a flow diagram of how it works, as a fenced block whose languag
 
 ````text
 ```flow
-学员 | 对着麦克风说话 | user
+通话室 | 管这一通电话 | phone
 耳朵 | 语音识别 | mic | 外部
-学员 -> 耳朵: 声音
-大脑 <-> 课程知识检索: 查这门课
+看课页面 -> 通话室: 开始练习
+通话室 -> 耳朵: 声音
+通话室 <-> 课程知识检索: 查这门课
 ```
 ````
 
-- `A -> B: label` is an arrow, `<->` points both ways. `Name | small note | icon | 外部` describes a box; `外部` (or `external`) marks a service outside the project and draws it dashed.
-- Tell it as one story from left to right: who starts, what passes along, who ends up with what. Five to nine boxes. If the story returns to where it started, end on a new box ("the learner hears the answer") rather than an arrow back.
+- `A -> B: label` is an arrow, `<->` points both ways. `Name | small note | icon | 外部` describes a box; `外部` (or `external`) marks a service outside the project and draws it dashed; the icon `user` marks a person.
+- The label says what travels along the arrow, in plain words ("the question", "the model's reply"). Every arrow has one. For people who read code, the name the code gives that thing can follow in backticks: ``A -> B: 模型回复 `ModelResponse` `` (a type, a function, an endpoint). The page keeps it behind the fold for coders, and the check-up reports a name that the code at either end no longer holds, so write only names you have seen in the code.
+- Tell it as one story from left to right: who starts, what passes along, who ends up with what. Five to nine boxes with arrows, and about a dozen arrows at most. A diagram that needs more is telling two stories: keep the main one, and leave the other to a route or to the diagram one level down. A request and its reply between the same two boxes are one `<->` arrow.
 - Box names of at most eight characters or three words, in plain words ("the ears", not the class name); arrow labels of at most six characters or two words; notes of one short clause.
 - Draw only what the code and docs show.
-- When a box is another part or room, give it exactly that name. The box becomes a door: it takes that part's colour and pictogram, and a click opens it.
+- When a box is a wing, a part or a room, give it exactly that name. The box becomes a door: it takes that unit's colour and pictogram, and a click opens it.
+
+### Boxes inside boxes
+
+The project holds wings, a wing holds parts, a part holds rooms. Every level has a diagram, and each is drawn with the boxes of the level below it. Read together they are one wiring, the way a block diagram opens into the block diagram inside a block:
+
+| The diagram of | Where its flow block stands | Its boxes |
+|---|---|---|
+| the whole project | at the top of the file, before the first heading, with no title | the wings (the parts, when the list has no wings) |
+| a wing | under the wing's `#` heading, before its first part, with no title | its parts |
+| a part | inside the part | its rooms (its steps, when it has no rooms) |
+| a room | inside the room | its steps |
+
+On the page the reader starts at the diagram of the whole project and clicks a box to step into it. The box they opened is drawn as a tinted floor with its name on it; its own boxes sit on the floor; what it connects to stands off the floor, at the start where the story sets out from it and at the end otherwise. Above the diagram the page lists what goes into the box and what comes out, taken from every arrow drawn to it anywhere outside it. So the levels have to agree, and four habits keep them agreeing:
+
+- **Every box is on the diagram of what holds it.** Each wing on the project's diagram, each part on its wing's, each room on its part's. One that is not on the path at run time (tests, documentation, release tooling, a collection of assets) is written as a line of its own with no arrow and a note saying whom it serves: `测试素材 | 图片和假服务，供各组测试取用`. The page puts those on a shelf under the diagram. Do not invent an arrow to get a box off the shelf.
+- **A line drawn to a box arrives inside it.** If the level above draws `A -> B`, then B's own diagram shows A at its start, and A's own diagram shows B at its end, wired to the step or room that really deals with it. The neighbour can be named exactly, or as the box that holds it (the wing instead of the part), or as a box inside it.
+- **A line drawn out of a box is drawn outside it too.** If a part's diagram reaches another part, the diagram of their wing (or of the project, when they sit in different wings) has that line. Otherwise the reader meets a connection inside that the overview never showed.
+- **Outside boxes connect to the unit's own boxes, not to each other.** What happens between two neighbours belongs on the level above.
+
+Draw from the top down: the project's diagram first, then each wing, then each part. That way each diagram starts from the lines the level above has already given it. A box with more than four neighbours on one side is usually standing for too much; name the neighbours one level coarser (the wing instead of its three parts).
+
+When a check-up line says two levels disagree, find out which one is true from the code, and change the other. Removing a line that the code does not have is as good a fix as adding one.
 
 ### Routes through the project
 
@@ -75,11 +99,12 @@ A flow block that stands outside every part (put these at the top of the file) i
 ````
 
 - Write one to three routes, for the things the project exists to do. Most boxes should be parts, named exactly; add a plain box only for whoever starts or ends the route.
+- A route walks over the wiring: each of its steps between two parts is a line that the diagram of their wing, or of the project, also has.
 - On the page, an arrow between two parts that the code does not connect is drawn dashed. That is correct for links over a network or between languages. If you expected a solid line, check the route against `bearings.py links` before keeping it.
 
 ### Which part uses which
 
-Nobody writes this down. The script reads the import statements (Python, JavaScript/TypeScript, Go) and counts, for each pair of parts, how many files in one import from the other. The map draws it as a relation diagram and lists "it uses" and "used by" on every part. `bearings.py links` prints the same numbers; read them before drafting flow diagrams and routes, so the descriptions agree with the code. Other languages and links over a network are not measured; say so when it matters. It counts only an import it can pin to one file: a name that several files in the repo could answer to, or a lone script in a folder the importing file neither sits under nor adds to `sys.path` itself, is left out rather than guessed, so a link you know exists can be missing while a link that is listed is real.
+Nobody writes this down. The script reads the import statements (Python, JavaScript/TypeScript, Go) and the `#include` lines of C and C++, and counts, for each pair of parts, how many files in one import from the other. The map draws it as a relation diagram and lists "it uses" and "used by" on every part. `bearings.py links` prints the same numbers; read them before drafting flow diagrams and routes, so the descriptions agree with the code. Other languages (MATLAB and Simulink models among them) and links over a network are not measured; say so when it matters. For C and C++ a header that several folders each have their own copy of counts only when one copy sits clearly nearer the including file. It counts only an import it can pin to one file: a name that several files in the repo could answer to, or a lone script in a folder the importing file neither sits under nor adds to `sys.path` itself, is left out rather than guessed, so a link you know exists can be missing while a link that is listed is real.
 
 ## Tasks in progress and finished
 
@@ -125,19 +150,20 @@ The script is `scripts/bearings.py` in this skill folder (Claude Code: `${CLAUDE
 - **There is no parts list yet** and the user wants one. The first draft is the parts, done well; rooms are only listed.
   1. Read the repo and decide where the list can live.
   2. Write the parts with their paths, list the rooms inside the large parts, mark outside code. Run `bearings.py parts` until no file is unmapped.
-  3. Run `bearings.py links`, then draw a flow diagram for each part that has a story to tell (a part with rooms uses its rooms as the boxes) and one to three routes. Spend the time here: read the code behind each diagram rather than guessing from file names.
-  4. Run `bearings.py doctor` and fix what it reports.
-  5. Tell the user what you made, how many rooms have no diagram of their own yet and that they can ask for any of them, which choices were yours, and ask them to correct the names.
-- **The user asks how a room works, or asks for a room's diagram** ("给“运行循环”画流程图"): read that room's code, draw its diagram, regenerate the map. Do the same for a part that has none.
+  3. Run `bearings.py links`, then draw the diagrams from the top down: the whole project, each wing, then every part (a part with rooms uses its rooms as the boxes), and one to three routes. Spend the time here: read the code behind each diagram rather than guessing from file names. A part is left without a diagram only when it is a collection (assets, documentation, generated files) or code from outside; a small part still has a way it works, and the reader will click on it.
+  4. Run `bearings.py doctor` and settle what it reports. It names every place where two levels disagree.
+  5. Tell the user what you made, which parts you left without a diagram and why, how many rooms have no diagram of their own yet and that they can ask for any of them, which choices were yours, and ask them to correct the names.
+- **The user asks how a room works, or asks for a room's diagram** ("给“运行循环”画流程图"): read that room's code, draw its diagram, regenerate the map. Start from what the page already lists as going into the room and coming out of it: those lines come from the part's diagram, and the room's own diagram has to pick each of them up. Do the same for a part that has none.
+- **The user asks for a wing's diagram, or for the diagram of the whole project** ("给“核心框架”这个区画一张图", "画一张整体框架图"): draw it with the boxes of the level below, from `bearings.py links` and the diagrams those boxes already have, then run `bearings.py doctor` to see whether the levels still agree.
 - **You finished work that changed the picture**: a new area of the project, files that `bearings.py parts` reports as unmapped, or a part that now works differently from its flow diagram. Update the parts list in the same change and mention it in one line. If the picture is still true, do nothing. The page tells the reader when each diagram was drawn and how often the code has changed since, so a diagram you leave stale will show as such.
 - **The user asks to put the unmapped files on the map** ("把没归类的文件补进清单"; the page prints this sentence when uncommitted work lies in files no part owns): `bearings.py parts --all` lists them. Give each file to the part it belongs to by widening that part's paths. When they form a new area of the project, add a part or a room for it, with its first line and icon. Rerun until no file is unmapped, then regenerate the map.
 - **The user asks for all the missing flow diagrams**: `bearings.py parts` lists every part and room without one. Say how many there are before starting, since each one means reading code. Skip the ones that are only collections and say so.
-- **The user asks whether the map is still right**, or you have just changed the list: run `bearings.py doctor`. It finds paths that no longer match any file, box names that just miss a part's name, a part whose diagram ignores its own rooms, route arrows the code does not back, diagrams drawn long before the code last changed, and marks in a task's lines for people that name a part or box the list does not have. It only reports. It cannot tell whether a diagram is true: for that, reread the code and redraw.
+- **The user asks whether the map is still right**, or you have just changed the list: run `bearings.py doctor`. It finds paths that no longer match any file, box names that just miss a part's name, a part whose diagram ignores its own rooms, arrows between parts that the code does not back, diagrams drawn long before the code last changed, and marks in a task's lines for people that name a part or box the list does not have. It also checks the wiring between levels: a missing diagram of the project or of a wing, a box that is not on the diagram of what holds it, a line the level above draws that does not arrive inside the box, a line a box's own diagram draws that nothing outside it has, a route step the framework diagrams do not have, an arrow with no label, a diagram in more than one piece, and a code name on an arrow that the code no longer holds. It only reports. It cannot tell whether a diagram is true: for that, reread the code and redraw.
 - **The user asks what is being worked on, where a task stands, or what is waiting on them**: `bearings.py tasks` prints the tasks in progress and the ones finished lately, with their lines for people and the parts each has touched; the map shows the same. Answer from those lines, in their words.
 - **The user asks to continue a task by the name the map shows** ("继续做“网站语音助手”"): `bearings.py tasks` gives the folder its records are in. From there it is the implementation-journal skill's restart: read that dossier's `next-session.md` and `handoff.md` and carry on as they say.
 - **The user asks for a task's lines for people** ("给“课程验收”写一份给人看的说明"): write the `## For People` section at the top of that dossier's `handoff.md`, from what the handoff below it says, then regenerate the map. Read the file again right before the edit and add only that section: another session may be working in that dossier.
 - **The user asks what a task came to, or for its write-up after it is done** ("给“课程验收”写一份做完后的说明"): add the `做成了` / `怎么试` / `还没做` lines and the marks to that section, from the handoff and the code the task changed. Check each mark's box against the part's flow diagram, run `bearings.py tasks` (it reports a mark whose part or box it cannot find), then regenerate the map.
-- **The user asks how the parts connect or what depends on what**: `bearings.py links` for the numbers, or open the map on its relation view.
+- **The user asks how the parts connect or what depends on what**: `bearings.py links` for the numbers, or open the map on its relation view. For how the project works as a whole, the map opens on the framework view when the list has a diagram of the whole project.
 - **The user asks what a piece of work touched**: `bearings.py check` lists the parts the uncommitted work touched; `--commit <rev>` does the same for one past commit, `--since <rev>` for everything after one. Report it using the part names as written.
 
 ### Several windows at once

@@ -115,6 +115,33 @@ svg.rel{display:block;margin:0 auto}
 .rlone{font-family:var(--f-text);font-size:12px;fill:var(--muted)}
 .rsep{stroke:var(--hair);stroke-dasharray:4 5}
 .fn.link{cursor:pointer}
+/* a diagram opens up one box: what is inside sits on a tinted floor that carries the box's name, what it
+   connects to stands outside the floor, at the two ends */
+.fframe{fill:var(--zs);stroke:var(--zs);stroke-width:14;stroke-linejoin:round}
+.alt .fframe{fill:var(--track);stroke:var(--track)}
+.ftitle{font-family:var(--f-text);font-size:12.5px;font-weight:700;fill:var(--z)}
+.alt .ftitle{fill:var(--muted)}
+.fcap{font-family:var(--f-text);font-size:12px;fill:var(--muted)}
+.fn.port rect.fb{fill:var(--zs)} .fn.port .fl{font-size:13px}
+.fn.port:not(.link) rect.fb{fill:var(--paper);stroke:var(--ink)} .fn.port:not(.link):not(.ext) rect.fp{fill:var(--ink)}
+.fn.sel rect.fb{fill:var(--z)} .fn.sel rect.fp{fill:var(--on)} .fn.sel .fi{stroke:var(--z)} .fn.sel .fl,.fn.sel .fnote{fill:var(--on)}
+.fn.link:focus-visible rect.fb{stroke-width:3.5}
+.fbadge rect{fill:var(--z);stroke:var(--sheet);stroke-width:2}
+.fbadge text{font-family:var(--f-num);font-size:14px;font-weight:700;fill:var(--on)}
+/* what goes into a box and what comes out, as drawn on the diagrams outside it */
+.io{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;align-items:start}
+.iot{font-size:12.5px;font-weight:700;color:var(--muted);padding-top:5px;white-space:nowrap}
+.pchip{display:inline-flex;align-items:center;gap:8px;border:0;background:var(--zs);border-radius:8px;padding:4px 11px 4px 4px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;max-width:100%}
+.pchip .pic{width:24px;height:24px;font-size:15px;border-radius:6px}
+.pchip .pl{font-weight:500;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.pchip.plain{background:var(--paper);cursor:default;box-shadow:inset 0 0 0 1.5px var(--hair);padding-left:11px}
+.pchip.plain .pic{background:var(--ink)}
+.pchip.open{background:none;outline:1.5px dashed var(--warn);outline-offset:-1.5px}
+.iokey{font-size:12.5px;color:var(--warn);display:flex;gap:7px;align-items:center}
+.iokey i{display:inline-block;width:24px;height:14px;border-radius:4px;border:1.5px dashed var(--warn);flex:none}
+.crumbs{display:flex;flex-wrap:wrap;gap:1px 7px;align-items:center;font-size:14px;line-height:1.3}
+.crumbs i{font-style:normal;opacity:.7}
+.wires{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:4px 14px;font-size:13px;align-items:baseline}
 .fn.plain rect.fb{stroke:var(--ink)} .fn.plain rect.fp{fill:var(--ink)}
 .fe.loose{stroke-dasharray:6 5}
 .rchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
@@ -380,6 +407,12 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     forCoders:'给看代码的人',
     work:'每次工作踩到了哪几块',wide:'跨块的',all:'全部',noWork:'最近没有这样的工作。',
     seeFiles:'看具体文件',more:'等 {n} 个',unmapped:'未归类',back:'回到全貌',
+    vFrame:'框架图',capFrame:'整个项目怎么运转。点一个方框，进到它里面。这是写下来的描述。',
+    ioH:'进来什么，出去什么',ioIn:'进来',ioOut:'出去',ioBoth:'来回',ioOpen:'虚线的：上一层的图画了这条线，这里面的图还没有接上。',ioFrom:'画在“{w}”上',
+    shelf:'不在运行的路上，在旁边支撑',outKey:'色块外面的，是它连着的别的方框，点一下走过去。',
+    wingMeta:'{k} 个部分，{n} 个文件',wingAsk:'想看这个区里的部分怎么配合，对 AI 说：',wingSay:'给“{n}”这个区画一张图',
+    wingRel:'这张图是从代码里量出来的：区里的部分谁用到谁。它们怎么配合，还没有画。',wingNone:'这个区还没有图。',
+    codeH:'线上传的东西，代码里叫什么',colon:'：',
     vPlan:'平面图',vRel:'关系图',vRoute:'主线',
     capPlan:'项目分成哪几块。',capRel:'谁用到谁，从代码里量出来的。箭头指向被用到的一块。点一块，只看它的连线。',relTop:'多半在用别人',relBottom:'多半被别人用',capRoute:'一件事从头到尾怎么走。这是写下来的描述。',
     uses:'它用到',usedBy:'用到它的',noUses:'没量到它用别的块。',noUsedBy:'没量到别的块用它。',nFiles:'{n} 个文件里用到',
@@ -414,6 +447,12 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     forCoders:'For people who read code',
     work:'Where each piece of work stepped',wide:'Across parts',all:'All',noWork:'No such work recently.',
     seeFiles:'See the files',more:'and {n} more',unmapped:'Unmapped',back:'Back to the overview',
+    vFrame:'Framework',capFrame:'How the whole project works. Pick a box to step inside it. This is a written description.',
+    ioH:'What goes in, what comes out',ioIn:'In',ioOut:'Out',ioBoth:'Both ways',ioOpen:'Dashed: the level above draws this line; the diagram in here does not show it yet.',ioFrom:'drawn on "{w}"',
+    shelf:'Not on the path at run time; these support it',outKey:'Boxes off the tinted floor are what it connects to. Pick one to go there.',
+    wingMeta:'{k} parts, {n} files',wingAsk:'To see how the parts of this wing work together, say to the AI:',wingSay:'Draw the diagram for the wing "{n}"',
+    wingRel:'Measured from the code: which part of this wing uses which. How they work together has not been drawn yet.',wingNone:'No diagram for this wing yet.',
+    codeH:'What the code calls what travels along the lines',colon:': ',
     vPlan:'Floor plan',vRel:'Relations',vRoute:'Routes',
     capPlan:'The parts of the project.',capRel:'Who uses whom, measured from the code. Arrows point at the part being used. Pick a part to see only its links.',relTop:'mostly uses others',relBottom:'mostly used by others',capRoute:'How one thing travels from start to end. This is a written description.',
     uses:'It uses',usedBy:'Used by',noUses:'No use of other parts was measured.',noUsedBy:'No other part was measured using it.',nFiles:'used in {n} files',
@@ -434,16 +473,23 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   var byName={};D.parts.forEach(function(p){byName[p.name]=p;});
   var subOf={};D.parts.forEach(function(p){p.subs.forEach(function(c){c.z=p.z;c.parent=p.name;if(!byName[c.name]&&!subOf[c.name])subOf[c.name]=c;});});
   function unitNamed(name){return byName[name]||subOf[name]||null;}
-  function topOf(name){var u=unitNamed(name);return u?(u.parent||u.name):null;}
-  function linked(a,b){return D.links.some(function(x){return (x.a===a&&x.b===b)||(x.a===b&&x.b===a);});}
-  // A box in a flow that carries the name of a part is a door to that part. On a route, an arrow between
-  // two parts that the code does not connect is drawn dashed.
+  // The wings: the level between the project and its parts. A wing takes its colour from its parts.
+  var WINGS=D.wings||[],wingOf={};
+  WINGS.forEach(function(w,i){w.wing=i;w.z=w.parts.length?D.parts[w.parts[0]].z:'z0';w.icon=w.icon||'grid';
+    w.parts.forEach(function(k){wingOf[D.parts[k].name]=w;});});
+  // Units by the id the script gave them: w3 a wing, p5 a part, p5.2 a room inside it.
+  function byId(id){var m=/^w(\d+)$/.exec(id||'');if(m)return WINGS[+m[1]]||null;
+    m=/^p(\d+)(?:\.(\d+))?$/.exec(id||'');if(!m)return null;var p=D.parts[+m[1]];return p?(m[2]!=null?p.subs[+m[2]]||null:p):null;}
+  function goId(id){var u=byId(id);if(!u)return;if(u.wing!=null)selectWing(u.wing);else if(u.parent)selectSub(u.parent,u.name);else selectPart(u.name);}
+  // A box in a flow that stands for a wing, a part or a room is a door to it: the script says which one
+  // (`to`); a diagram made on this page falls back on the name. An arrow between two parts that the code
+  // does not connect is drawn dashed.
   function linkOpt(self){
-    function door(n){var u=n.ext?null:unitNamed(n.name);return u&&u.name!==self?u:null;}
-    return {cls:function(n){var u=door(n);return u?' link '+u.z:(self?'':' plain');},
+    function door(n){if(n.ext)return null;if(n.to!=null)return byId(n.to);var u=unitNamed(n.name);return u&&u.name!==self?u:null;}
+    return {door:door,cls:function(n){var u=door(n);return u?' link '+u.z:(self?'':' plain');},
       icon:function(n){var u=door(n);return n.icon||(u?u.icon:'');},
-      attr:function(n){return door(n)?' data-node="'+esc(n.name)+'" tabindex="0" role="button"':'';},
-      dash:function(e){if(self||!D.measured.length)return false;var a=topOf(e.a),b=topOf(e.b);return !!(a&&b&&a!==b&&!linked(a,b));}};
+      attr:function(n){return door(n)?(n.to?' data-to="'+esc(n.to)+'"':' data-node="'+esc(n.name)+'"')+' tabindex="0" role="button"':'';},
+      dash:function(e){return !!e.loose;}};
   }
   var hasPending=D.pending.parts.length>0;
   var WIN=D.pending.windows||[],multi=WIN.length>1,known=WIN.filter(function(w){return !w.unknown;});
@@ -484,108 +530,185 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     // Wide: layers run left to right and wrap onto further bands, like lines of text. Narrow: layers run top to bottom.
     // An arrow that leaves its band, or steps back, travels in the gap under a band. Every such arrow gets a lane of
     // its own there and its own spot on the box it leaves and the box it reaches, so no two run on top of each other.
-    var GX=104,GY=18,PAD=24,SKIP=30,LANE=20,nodes=flow.nodes,idx={};
+    // With opt.frame the diagram opens up one box. The boxes inside it sit on a tinted floor carrying its name. The
+    // boxes it connects to (`outer`) stand off the floor: at the start if the story sets out from them, at the end
+    // otherwise, and an arrow that comes back from the end travels in a lane like any other step back.
+    // A box with no arrow is not on the path: it goes on a shelf under the diagram.
+    var GX=104,GY=18,PAD=24,LANE=20,FP=16,W=172,PW=138,PG=78,idx={},wired={},fr=opt&&opt.frame||null;
     avail=Math.max(280,avail||900);
-    nodes.forEach(function(n,i){idx[n.name]=i;n.out=[];n.inn=[];});
-    flow.edges.forEach(function(e){nodes[idx[e.a]].out.push(idx[e.b]);});
-    var state=[],back={};
-    nodes.forEach(function(_,i){if(state[i])return;(function dfs(u){state[u]=1;nodes[u].out.forEach(function(v){
-      if(state[v]===1)back[u+'>'+v]=1;else if(!state[v])dfs(v);});state[u]=2;})(i);});
-    var layer=nodes.map(function(){return 0;}),changed=true,guard=0;
-    while(changed&&guard++<nodes.length+2){changed=false;flow.edges.forEach(function(e){var u=idx[e.a],v=idx[e.b];
-      if(back[u+'>'+v]||u===v)return;if(layer[v]<layer[u]+1){layer[v]=layer[u]+1;changed=true;}});}
+    flow.edges.forEach(function(e){wired[e.a]=wired[e.b]=1;});
+    var nodes=flow.nodes.filter(function(n){return wired[n.name];}),shelf=flow.nodes.filter(function(n){return !wired[n.name];});
+    nodes.forEach(function(n,i){idx[n.name]=i;n.inn=[];});
+    var side=[],hasL=false,hasR=false,back={};
+    // A neighbour stands at the start when more arrows leave it than reach it, at the end when more reach it, and
+    // where the story first meets it when they are level.
+    if(fr){var first=[],gives=[],takes=[];
+      flow.edges.forEach(function(e){var u=idx[e.a],v=idx[e.b];if(u===v)return;
+        if(nodes[u].outer){first[u]=first[u]||'L';gives[u]=(gives[u]||0)+1;if(e.both)takes[u]=(takes[u]||0)+1;}
+        if(nodes[v].outer){first[v]=first[v]||'R';takes[v]=(takes[v]||0)+1;if(e.both)gives[v]=(gives[v]||0)+1;}});
+      first.forEach(function(f,i){var g=gives[i]||0,t=takes[i]||0;side[i]=g>t?'L':t>g?'R':f;if(side[i]==='L')hasL=true;else hasR=true;});}
+    // The story runs the way it was written: an arrow that would close a circle with the arrows before it is the
+    // step back. What goes out to a box at the end and comes back from it lands after where it set out.
+    var fwd=nodes.map(function(){return [];}),cons=[];
+    function reach(a,b){var st=[a],seen={};seen[a]=1;while(st.length){var x=st.pop();if(x===b)return true;
+      fwd[x].forEach(function(y){if(!seen[y]){seen[y]=1;st.push(y);}});}return false;}
+    function before(u,v){if(u===v||reach(v,u))return false;fwd[u].push(v);cons.push([u,v]);return true;}
+    flow.edges.forEach(function(e){var u=idx[e.a],v=idx[e.b];
+      if(u===v||side[v]==='L'||side[u]==='R'){back[u+'>'+v]=1;return;}
+      if(!before(u,v))back[u+'>'+v]=1;});
+    if(hasR)flow.edges.forEach(function(e){var u=idx[e.a],p=idx[e.b];if(side[p]!=='R'||side[u])return;
+      flow.edges.forEach(function(g){if(idx[g.a]===p&&!side[idx[g.b]])before(u,idx[g.b]);});});
+    var layer=nodes.map(function(_,i){return hasL&&side[i]!=='L'?1:0;}),changed=true,guard=0;
+    while(changed&&guard++<nodes.length+2){changed=false;cons.forEach(function(c){
+      if(layer[c[1]]<layer[c[0]]+1){layer[c[1]]=layer[c[0]]+1;changed=true;}});}
+    if(hasR){var deep=hasL?0:-1;nodes.forEach(function(_,i){if(side[i]!=='R')deep=Math.max(deep,layer[i]);});
+      nodes.forEach(function(_,i){if(side[i]==='R')layer[i]=deep+1;});}
     flow.edges.forEach(function(e){var u=idx[e.a],v=idx[e.b];if(!back[u+'>'+v])nodes[v].inn.push(u);});
     var cols=[];nodes.forEach(function(n,i){(cols[layer[i]]=cols[layer[i]]||[]).push(i);});
-    var W=172,per=Math.floor((avail-PAD*2+GX)/(W+GX)),vertical=per<2,pos=[],bands=[],VW,VH;
-    function size(n,w){n.w=w;n.lab=wrap(n.name,14,w-62,2);n.nt=n.note?wrap(n.note,11.5,w-24,2):[];
+    for(var q=0;q<cols.length;q++)cols[q]=cols[q]||[];
+    // The boxes at the two ends get a narrow column each, outside the rows of columns that wrap between them.
+    var ported=hasL||hasR,lead=hasL?PW+PG:0,tail=hasR?PW+PG:0;
+    if(ported){W=158;GX=88;}
+    var per=Math.floor((avail-PAD*2-lead-tail+GX)/(W+GX)),tight=Math.floor((avail-PAD*2-lead-tail-3*W)/2);
+    if(ported&&per===2&&tight>=66){per=3;GX=tight;} // three columns between the ends, if a slightly narrower gap allows it
+    var vertical=per<(hasL&&hasR?3:2),pos=[],bands=[],rects=[],apart=null,VW=0,VH,bottom;
+    var inner=cols.length-(hasL?1:0)-(hasR?1:0),nIn=Math.min(per,inner),X0=PAD+lead;
+    function size(n,w,end,slim){n.w=w;n.lab=wrap(n.name,end?13:14,w-(end?58:62),2);n.nt=n.note&&!slim?wrap(n.note,11.5,w-24,2):[];
       n.top=12+Math.max(34,n.lab.length*18);n.h=n.top+(n.nt.length?5+n.nt.length*15:0)+11;}
     function sortBySources(col,key){col.sort(function(a,b){function bc(i){var s=nodes[i].inn.filter(function(u){return pos[u];});
       return s.length?s.reduce(function(t,u){return t+pos[u][key];},0)/s.length:1e6+i;}return bc(a)-bc(b);});}
+    function doorTo(n){return !!(opt&&opt.door&&opt.door(n));} // a box at the end that opens: its own sheet says what it is
     if(vertical){
-      var y=PAD;
-      cols.forEach(function(col,c){var k=col.length,w=Math.min(200,(avail-PAD*2-(k-1)*12)/k);
-        col.forEach(function(i){size(nodes[i],w);});
+      // one layer to a row; a layer with more boxes than fit side by side takes further rows
+      var y=PAD+(fr&&!hasL?26:0),y0=null,y1=0,cap=Math.max(1,Math.floor((avail-PAD*2+12)/(128+12))),VG=50;
+      cols.forEach(function(col,c){var end=(hasL&&c===0)||(hasR&&c===cols.length-1);
         if(c>0)sortBySources(col,'cx');
-        var rowH=Math.max.apply(null,col.map(function(i){return nodes[i].h;})),x=(avail-(k*w+(k-1)*12))/2;
-        col.forEach(function(i){pos[i]={x:x,y:y,cx:x+w/2,cy:y+nodes[i].h/2,band:c};x+=w+12;});
-        y+=rowH+46;});
-      VW=avail;VH=y-46+PAD;
+        for(var o=0;o<col.length;o+=cap){var line=col.slice(o,o+cap),k=line.length,w=Math.min(200,(avail-PAD*2-(k-1)*12)/k);
+          line.forEach(function(i){size(nodes[i],w,end,end&&doorTo(nodes[i]));});
+          var rowH=Math.max.apply(null,line.map(function(i){return nodes[i].h;})),x=(avail-(k*w+(k-1)*12))/2;
+          line.forEach(function(i){pos[i]={x:x,y:y,cx:x+w/2,cy:y+nodes[i].h/2,band:c};x+=w+12;});
+          if(fr&&!end){if(y0===null)y0=y-26;y1=y+rowH+12;}
+          y+=rowH+(o+cap<col.length?30:VG);}});
+      VW=avail;bottom=nodes.length?y-VG:PAD;
+      if(y0!==null)rects.push({x0:PAD-FP+7,x1:avail-PAD+FP-7,y0:y0,y1:y1});
     }else{
-      nodes.forEach(function(n){size(n,W);});
-      cols.forEach(function(col,c){var r=Math.floor(c/per);(bands[r]=bands[r]||{cols:[],h:0,lanes:[]}).cols.push(col);
+      var lastBand=Math.max(0,Math.ceil(inner/per)-1);
+      cols.forEach(function(col,c){var isL=hasL&&c===0,isR=hasR&&c===cols.length-1,j=c-(hasL?1:0),r=isL?0:isR?lastBand:Math.floor(j/per);
+        col.c=c;col.band=r;col.w=isL||isR?PW:W;col.x=isL?PAD:isR?X0+(nIn?nIn*(W+GX)-GX+PG:0):X0+(j%per)*(W+GX);col.n=0;
+        col.forEach(function(i){size(nodes[i],col.w,isL||isR,(isL||isR)&&doorTo(nodes[i]));});
+        (bands[r]=bands[r]||{cols:[],h:0,lanes:[],overs:[]}).cols.push(col);
         col.h=col.reduce(function(t,i){return t+nodes[i].h+GY;},-GY);bands[r].h=Math.max(bands[r].h,col.h);});
-      flow.edges.forEach(function(e){var lu=layer[idx[e.a]],lv=layer[idx[e.b]],bu=Math.floor(lu/per),bv=Math.floor(lv/per);
+      // An arrow to the next column is a curve. One that jumps ahead within its band goes over the top of the band;
+      // one that steps back, or changes band, goes in the gap under a band. Each has a lane of its own there.
+      flow.edges.forEach(function(e){var lu=layer[idx[e.a]],lv=layer[idx[e.b]],bu=cols[lu].band,bv=cols[lv].band;
         if(lu===lv)e.kind='same';
-        else if(bu===bv&&lv-lu>1){e.kind='skip';bands[bu].skip=true;}
-        else if(bu===bv&&lv>lu)e.kind='next';
+        else if(bu===bv&&lv-lu===1)e.kind='next';
+        else if(bu===bv&&lv>lu){e.kind='over';e.gap=bu;e.lane=bands[bu].overs.length;bands[bu].overs.push(e);}
         else{e.kind='lane';e.gap=Math.min(bu,bv);e.lane=bands[e.gap].lanes.length;bands[e.gap].lanes.push(e);}});
-      var top=PAD;
-      bands.forEach(function(bd,r){if(bd.skip)top+=SKIP;bd.top=top;
-        bd.cols.forEach(function(col,k){
-          if(r*per+k>0)sortBySources(col,'cy');
-          var y=top+(bd.h-col.h)/2,x=PAD+k*(W+GX);
-          col.forEach(function(i,q){pos[i]={x:x,y:y,cx:x+W/2,cy:y+nodes[i].h/2,band:r,first:q===0,last:q===col.length-1,ports:{}};y+=nodes[i].h+GY;});});
-        var more=r<bands.length-1;bd.floor=top+bd.h;
-        top+=bd.h+(bd.lanes.length?24+(bd.lanes.length-1)*LANE+(more?34:10):(more?40:0));});
-      var used=Math.min(per,cols.length);VW=PAD*2+used*W+(used-1)*GX;VH=top+PAD;
-      // which side of its box each lane arrow leaves by and arrives at, and its place among the arrows sharing that side
-      bands.forEach(function(bd){bd.lanes.forEach(function(e){var u=idx[e.a],v=idx[e.b],a=pos[u],b=pos[v];
-        e.s1=a.band===e.gap?(a.last?'b':'r'):(a.first?'t':'l');e.s2=b.band===e.gap?(b.last?'b':'r'):(b.first?'t':'l');
-        e.k1=a.ports[e.s1]=(a.ports[e.s1]||0);a.ports[e.s1]++;e.k2=b.ports[e.s2]=(b.ports[e.s2]||0);b.ports[e.s2]++;});});
+      var top=PAD+(fr?26:0);
+      bands.forEach(function(bd,r){bd.head=bd.overs.length?(bd.overs.length-1)*LANE+30:0;top+=bd.head;bd.top=top;
+        bd.cols.forEach(function(col){
+          if(col.c>0)sortBySources(col,'cy');
+          var y=top+(bd.h-col.h)/2;
+          col.forEach(function(i,q){pos[i]={x:col.x,y:y,cx:col.x+col.w/2,cy:y+nodes[i].h/2,band:r,col:col,first:q===0,last:q===col.length-1,ports:{}};y+=nodes[i].h+GY;});});
+        var more=r<bands.length-1,under=bd.lanes.length?24+(bd.lanes.length-1)*LANE+10:0;bd.floor=top+bd.h;bd.end=bd.floor+under;
+        top+=bd.h+(bd.lanes.length?under+(more?24:0):(more?40:0));});
+      bottom=nodes.length?top:PAD;
+      if(fr&&inner>0)rects.push({x0:X0-FP,x1:X0+nIn*(W+GX)-GX+FP,y0:bands[0].top-bands[0].head-26,y1:bands[bands.length-1].end+12});
+      VW=nodes.length?X0+Math.max(1,nIn)*(W+GX)-GX+tail+PAD:0;
+      if(!inner)VW=PAD*2+(hasL&&hasR?PW*2+PG:PW);
+      // Which side of its box each lane arrow leaves by and arrives at, and its place among the arrows sharing that
+      // side. One that goes on to a later box in its own band arrives from the left; a box at the far end sends its
+      // arrows back out of its left side, towards the diagram. Arrows that run down beside one column each get
+      // their own track there, so two boxes stacked in a column never share a line.
+      bands.forEach(function(bd){bd.overs.concat(bd.lanes).forEach(function(e){var u=idx[e.a],v=idx[e.b],a=pos[u],b=pos[v];
+        if(e.kind==='over'){e.s1=a.first?'t':'r';e.s2=b.first?'t':'l';}
+        else{e.s1=a.band===e.gap?(a.last?'b':(side[u]==='R'?'l':'r')):(a.first?'t':'l');
+          e.s2=b.band===e.gap?(b.last?'b':'r'):(b.first?'t':'l');}
+        e.k1=a.ports[e.s1]=(a.ports[e.s1]||0);a.ports[e.s1]++;e.k2=b.ports[e.s2]=(b.ports[e.s2]||0);b.ports[e.s2]++;
+        e.g1=a.col[e.s1]=(a.col[e.s1]||0);a.col[e.s1]++;e.g2=b.col[e.s2]=(b.col[e.s2]||0);b.col[e.s2]++;});});
     }
-    function port(i,side,k){var p=pos[i],n=nodes[i],off=k-(p.ports[side]-1)/2;
+    if(rects.length)bottom=Math.max(bottom,rects[rects.length-1].y1);
+    // the shelf: boxes that no arrow reaches, in rows under the diagram
+    var spos=[],capY=0;
+    if(shelf.length){
+      var sx0=vertical?PAD:X0,room=vertical?avail-PAD*2:Math.max(W,(rects.length?rects[0].x1-rects[0].x0-FP*2:avail-PAD*2-lead-tail));
+      var sw=vertical?Math.min(200,(room-12)/2):W,sg=vertical?12:14,sper=Math.max(1,Math.floor((room+sg)/(sw+sg)));
+      shelf.forEach(function(n){size(n,sw);});
+      capY=bottom+(nodes.length?(rects.length&&!(vertical&&hasR)?16:30):6+(fr?14:0));
+      var sy=capY+12,rowH=0;
+      shelf.forEach(function(n,k){if(k&&k%sper===0){sy+=rowH+10;rowH=0;}spos[k]={x:sx0+(k%sper)*(sw+sg),y:sy};rowH=Math.max(rowH,n.h);});
+      var sx1=sx0+Math.min(sper,shelf.length)*(sw+sg)-sg;
+      if(fr){var sr={x0:sx0-FP+(vertical?7:0),x1:Math.max(sx1,sx0+tw(T.shelf,12))+FP-(vertical?7:0),y0:capY-20,y1:sy+rowH+12};
+        if(rects.length&&!(vertical&&hasR)){rects[rects.length-1].y1=sr.y1;rects[rects.length-1].x1=Math.max(rects[rects.length-1].x1,sr.x1);}else apart=sr;}
+      VW=Math.max(VW,sx1+PAD,sx0+tw(T.shelf,12)+PAD);bottom=sy+rowH+(fr?12:0);
+    }
+    VH=bottom+PAD;
+    function port(i,side,k,g){var p=pos[i],n=nodes[i],off=k-(p.ports[side]-1)/2;
       if(side==='b')return {x:p.cx+off*20,y:p.y+n.h,ex:0,ey:2};
       if(side==='t')return {x:p.cx+off*20,y:p.y,ex:0,ey:-2};
-      if(side==='r')return {x:p.x+n.w,y:p.cy+off*14,gx:p.x+n.w+14+k*8,ex:2,ey:0};
-      return {x:p.x,y:p.cy+off*14,gx:p.x-14-k*8,ex:-2,ey:0};}
+      if(side==='r')return {x:p.x+n.w,y:p.cy+off*14,gx:p.x+n.w+14+g*8,ex:2,ey:0};
+      return {x:p.x,y:p.cy+off*14,gx:p.x-14-g*8,ex:-2,ey:0};}
+    // the floor of the opened box
+    function outline(rs){var r=rs[0];return '<path class="fframe" d="M'+r.x0+','+r.y0+' H'+r.x1+' V'+r.y1+' H'+r.x0+' Z"/>';}
     var s='',labs=[],movers='';
+    if(rects.length)s+=outline(rects)+(fr.title?'<text class="ftitle" x="'+(rects[0].x0+3)+'" y="'+(rects[0].y0+12)+'">'+esc(fr.title)+'</text>':'');
+    if(apart)s+=outline([apart]);
+    if(shelf.length)s+='<text class="fcap" x="'+(vertical?PAD:X0)+'" y="'+capY+'">'+esc(T.shelf)+'</text>';
     flow.edges.forEach(function(e,k){
       var u=idx[e.a],v=idx[e.b],a=pos[u],b=pos[v],A=nodes[u],B=nodes[v],d,lx,ly;
       if(vertical||e.kind==='same'){
         var down=a.y<=b.y,y1=down?a.y+A.h:a.y,y2=down?b.y-2:b.y+B.h+2,my=(y1+y2)/2;
         d='M'+a.cx+','+y1+' C'+a.cx+','+my+' '+b.cx+','+my+' '+b.cx+','+y2;lx=(a.cx+b.cx)/2;ly=my;
-      }else if(e.kind==='skip'){ // jumps over a column: go over the top of the band
-        var ty=bands[a.band].top-SKIP+10;
-        d='M'+a.cx+','+a.y+' L'+a.cx+','+ty+' L'+b.cx+','+ty+' L'+b.cx+','+(b.y-2);lx=(a.cx+b.cx)/2;ly=ty;
+        if(vertical&&Math.abs(y2-y1)>70){lx=b.cx;ly=down?y2-23:y2+25;} // past other rows: the words sit in the gap next to where it arrives
       }else if(e.kind==='next'){
         var x1=a.x+A.w,x2=b.x-2,mx=(x1+x2)/2;
         d='M'+x1+','+a.cy+' C'+mx+','+a.cy+' '+mx+','+b.cy+' '+x2+','+b.cy;lx=mx;ly=(a.cy+b.cy)/2-14;
-      }else{ // onto another band, or a step back: along its own lane in the gap under a band
-        var bd=bands[e.gap],gy=bd.floor+24+e.lane*LANE,S=port(u,e.s1,e.k1),E=port(v,e.s2,e.k2),xs=S.gx==null?S.x:S.gx,xe=E.gx==null?E.x:E.gx;
+      }else{ // a jump ahead, a step back, or onto another band: along its own lane over or under a band
+        var bd=bands[e.gap],over=e.kind==='over',gy=over?bd.top-18-e.lane*LANE:bd.floor+24+e.lane*LANE,S=port(u,e.s1,e.k1,e.g1),E=port(v,e.s2,e.k2,e.g2),xs=S.gx==null?S.x:S.gx,xe=E.gx==null?E.x:E.gx;
         d='M'+S.x+','+S.y+(S.gx==null?'':' L'+S.gx+','+S.y)+' L'+xs+','+gy+' L'+xe+','+gy+(E.gx==null?'':' L'+E.gx+','+E.y)+' L'+(E.x+E.ex)+','+(E.y+E.ey);
-        lx=xs+(xe-xs)*(e.lane+1)/(bd.lanes.length+1);ly=gy; // labels step along the gap so they never stack
+        lx=xs+(xe-xs)*(e.lane+1)/((over?bd.overs:bd.lanes).length+1);ly=gy; // labels step along the gap so they never stack
+        e.run=[Math.min(xs,xe),Math.max(xs,xe)];
       }
       s+='<path class="fe'+(opt&&opt.dash(e)?' loose':'')+'" d="'+d+'" marker-end="url(#fah)"'+(e.both?' marker-start="url(#fah)"':'')+'/>';
       movers+='<circle class="fdot" r="3.6"><animateMotion dur="2.6s" begin="'+(k*0.45).toFixed(2)+'s" repeatCount="indefinite" path="'+d+'"/></circle>';
-      if(e.label)labs.push({t:e.label,x:lx,y:ly,w:tw(e.label,12)+14,lane:e.kind==='lane'});
+      if(e.label)labs.push({t:e.label,x:lx,y:ly,w:tw(e.label,12)+14,lane:vertical||e.kind==='lane'||e.kind==='over',run:vertical?null:e.run});
     });
     // no label may sit on another: one on a lane slides along it, any other steps down
     var labels='';
+    function clear(l,i){for(var j=0;j<i;j++){var m=labs[j];if(Math.abs(l.x-m.x)<(l.w+m.w)/2+4&&Math.abs(l.y-m.y)<22)return false;}return true;}
     labs.forEach(function(l,i){
-      for(var tries=0;tries<8;tries++){var hit=null;
-        for(var j=0;j<i;j++){var m=labs[j];if(Math.abs(l.x-m.x)<(l.w+m.w)/2+4&&Math.abs(l.y-m.y)<22){hit=m;break;}}
-        if(!hit)break;
-        if(l.lane)l.x=hit.x+(hit.w+l.w)/2+8;else l.y=hit.y+23;}
-      l.x=Math.max(l.w/2+2,Math.min(VW-l.w/2-2,l.x));VH=Math.max(VH,l.y+16);
+      var lo=l.w/2+2,hi=VW-l.w/2-2,ok;
+      if(l.run&&l.run[1]-l.run[0]>l.w+8){lo=Math.max(lo,l.run[0]+l.w/2+4);hi=Math.min(hi,l.run[1]-l.w/2-4);}
+      var x0=l.x=Math.max(lo,Math.min(hi,l.x));ok=clear(l,i);
+      if(!ok&&l.lane){for(var d=12;d<=320&&!ok;d+=12){ok=[x0+d,x0-d].some(function(x){if(x<lo||x>hi)return false;l.x=x;return clear(l,i);});}
+        if(!ok)l.x=x0;}
+      for(var tries=0;!ok&&tries<8;tries++){l.y+=23;ok=clear(l,i);}
+      VH=Math.max(VH,l.y+16);
       labels+='<rect class="felbg" x="'+(l.x-l.w/2)+'" y="'+(l.y-10.5)+'" width="'+l.w+'" height="21" rx="6"/><text class="fel" x="'+l.x+'" y="'+(l.y+4)+'" text-anchor="middle">'+esc(l.t)+'</text>';});
     s+=movers;
     var anyMark=false;
-    nodes.forEach(function(n,i){var p=pos[i],mk=opt&&opt.mark?opt.mark(n):'';if(mk)anyMark=true;
-      s+='<g class="fn'+(n.ext?' ext':'')+(mk?' mk':'')+(opt?opt.cls(n):'')+'"'+(opt?opt.attr(n):'')+'><rect class="fb" x="'+p.x+'" y="'+p.y+'" width="'+n.w+'" height="'+n.h+'" rx="10"/>'+
+    function box(n,p){var mk=opt&&opt.mark?opt.mark(n):'',bg=opt&&opt.badge?opt.badge(n):'';if(mk)anyMark=true;
+      s+='<g class="fn'+(n.ext?' ext':'')+(mk?' mk':'')+(fr&&n.outer?' port':'')+(opt?opt.cls(n):'')+'"'+(opt?opt.attr(n):'')+'><rect class="fb" x="'+p.x+'" y="'+p.y+'" width="'+n.w+'" height="'+n.h+'" rx="10"/>'+
         '<rect class="fp" x="'+(p.x+11)+'" y="'+(p.y+11)+'" width="34" height="34" rx="8"/><g transform="translate('+(p.x+17.5)+','+(p.y+17.5)+') scale(.875)"><path class="fi" d="'+(ICONS[opt?opt.icon(n):n.icon]||ICONS.box)+'"/></g>';
       var ly=p.y+(n.lab.length===1?33:25);
       n.lab.forEach(function(t,k){s+='<text class="fl" x="'+(p.x+54)+'" y="'+(ly+k*18)+'">'+esc(t)+'</text>';});
       n.nt.forEach(function(t,k){s+='<text class="fnote" x="'+(p.x+12)+'" y="'+(p.y+n.top+16+k*15)+'">'+esc(t)+'</text>';});
       if(mk){var bt=mk==='new'?T.mNew:T.mChg,bw=tw(bt,11)+18; // a word on the box, so the mark does not rest on colour alone
         s+='<g class="fmk '+mk+'"><rect x="'+(p.x+n.w-bw-8)+'" y="'+(p.y-10)+'" width="'+bw+'" height="20" rx="10"/><text x="'+(p.x+n.w-bw/2-8)+'" y="'+(p.y+4)+'" text-anchor="middle">'+esc(bt)+'</text></g>';}
-      s+='</g>';});
+      if(bg){var gw=tw(String(bg),14)+16; // how many files of uncommitted work landed in it
+        s+='<g class="fbadge"><rect x="'+(p.x+n.w-gw-8)+'" y="'+(p.y-11)+'" width="'+gw+'" height="22" rx="11"/><text x="'+(p.x+n.w-gw/2-8)+'" y="'+(p.y+5)+'" text-anchor="middle">'+esc(bg)+'</text></g>';}
+      s+='</g>';}
+    nodes.forEach(function(n,i){box(n,pos[i]);});
+    shelf.forEach(function(n,k){box(n,spos[k]);});
     return '<svg class="flow'+(anyMark?' marked':'')+'" width="'+VW+'" height="'+VH+'" viewBox="0 0 '+VW+' '+VH+'" role="img" aria-label="'+esc(flow.edges.map(function(e){return e.a+' → '+e.b+(e.label?'（'+e.label+'）':'');}).join('；'))+'">'+
       '<defs><marker id="fah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="fah" d="M0,0 L10,5 L0,10 z"/></marker></defs>'+s+labels+'</svg>';
   }
   var curFlow=null,curOpt=null;
-  function wire(c){Array.prototype.forEach.call(c.querySelectorAll('[data-node]'),function(g){
-    function go(){var u=unitNamed(g.getAttribute('data-node'));if(!u)return;if(u.parent)selectSub(u.parent,u.name);else selectPart(u.name);}
-    g.addEventListener('click',go);g.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}});});}
+  function wire(c){Array.prototype.forEach.call(c.querySelectorAll('[data-node],[data-to]'),function(g){
+    function go(){if(g.hasAttribute('data-to')){goId(g.getAttribute('data-to'));return;}
+      var u=unitNamed(g.getAttribute('data-node'));if(!u)return;if(u.parent)selectSub(u.parent,u.name);else selectPart(u.name);}
+    g.addEventListener('click',go);if(g.tagName!=='BUTTON')g.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}});});}
   function drawFlow(){var box=$('canvas');if(box&&curFlow){box.innerHTML=flowSvg(curFlow,box.clientWidth-26,curOpt);wire(box);}}
   var taskFlows=[]; // the diagrams on a task's sheet, one for each part its marks name
   function drawTaskFlows(){taskFlows.forEach(function(x){var box=$(x.id);if(box){box.innerHTML=flowSvg(x.flow,box.clientWidth-26,x.opt);wire(box);}});}
@@ -647,8 +770,9 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     return '<div class="undernote"><b>'+T.mutual+'</b>'+m.slice(0,5).map(function(x){return '<span>'+esc(x[0])+' ⇄ '+esc(x[1])+'</span>';}).join('')+(m.length>5?'<span>'+f(T.more,{n:m.length-5})+'</span>':'')+'<span>'+T.upKey+'</span></div>';}
 
   // ---- three ways to look ----
-  var view='plan',selName=null,curRoute=0,curPart=null,innerView='plan';
+  var view=D.frame?'frame':'plan',selName=null,curRoute=0,curPart=null,innerView='plan',curWing=null,curInner=null;
   var views=[['plan',T.vPlan,T.capPlan]];
+  if(D.frame)views.unshift(['frame',T.vFrame,T.capFrame]);
   if(D.links.length)views.push(['rel',T.vRel,T.capRel]);
   if(D.routes.length)views.push(['route',T.vRoute,T.capRoute]);
   function setView(v){view=v;views.forEach(function(x){$('view-'+x[0]).setAttribute('aria-pressed',String(x[0]===v));if(x[0]===v)$('vcap').textContent=x[2];});
@@ -656,14 +780,22 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function drawAlt(){var box=$('alt');if(view==='plan'){box.innerHTML='';return;}
     var avail=box.clientWidth-26,h;
     if(view==='rel')h=relSvg(D.parts,D.links,selName,avail)+relNotes(D.parts,D.links);
-    else{var r=D.routes[curRoute];h=flowSvg(r,avail,linkOpt(null));
+    else if(view==='frame'){ // the whole project as one box: where you are in it, and where uncommitted work landed
+      var fo=linkOpt(null),plain=fo.cls;fo.frame=opens(D.frame)?{title:D.project}:null;
+      fo.cls=function(n){var u=fo.door(n);return plain(n)+(u&&(u.wing!=null?u.wing===curWing:u.name===selName)?' sel':'');};
+      fo.badge=function(n){var u=fo.door(n),k=0;if(!u)return '';
+        D.pending.parts.forEach(function(x){if(x.part&&(u.wing!=null?wingOf[x.part]===u:x.part===u.name))k+=x.n;});return k||'';};
+      h=flowSvg(D.frame,avail,fo);
+      if(/class="fe loose"/.test(h))h+='<div class="undernote">'+T.loose+'</div>';
+    }else{var r=D.routes[curRoute];h=flowSvg(r,avail,linkOpt(null));
       if(/class="fe loose"/.test(h))h+='<div class="undernote">'+T.loose+'</div>';
       if(D.routes.length>1)h='<div class="rchips" style="margin:0 0 14px">'+D.routes.map(function(x,i){return '<button type="button" data-route="'+i+'" aria-pressed="'+(i===curRoute)+'">'+esc(x.title||f(T.routeN,{n:i+1}))+'</button>';}).join('')+'</div>'+h;
       else if(r.title)h='<h3 style="margin:0 0 12px">'+esc(r.title)+'</h3>'+h;}
     box.innerHTML=h;wire(box);
     Array.prototype.forEach.call(box.querySelectorAll('[data-route]'),function(b){b.addEventListener('click',function(){curRoute=+b.getAttribute('data-route');drawAlt();});});}
-  function drawInner(){var box=$('inner');if(box&&curPart){box.innerHTML=relSvg(curPart.subs,curPart.inner,null,box.clientWidth-26)+relNotes(curPart.subs,curPart.inner);wire(box);}}
-  if(views.length>1){$('viewbar').hidden=false;$('vcap').textContent=T.capPlan;
+  function drawInner(){var box=$('inner');if(box&&curInner){box.innerHTML=relSvg(curInner.units,curInner.links,null,box.clientWidth-26)+relNotes(curInner.units,curInner.links);wire(box);}}
+  function unpick(){var had=selName!==null||curWing!==null;selName=null;curWing=null;if(had&&view!=='plan')drawAlt();}
+  if(views.length>1){$('viewbar').hidden=false;$('vcap').textContent=views[0][2];
     views.forEach(function(v){var b=document.createElement('button');b.type='button';b.id='view-'+v[0];b.textContent=v[1];b.setAttribute('aria-pressed',String(v[0]===view));
       b.addEventListener('click',function(){setView(v[0]);});$('views').appendChild(b);});}
 
@@ -699,7 +831,10 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   var quiet=true;
   function setHash(h){try{history.replaceState(null,'',h?'#'+h:location.pathname+location.search);}catch(e){}}
   function setStage(html,cls){var c=$('stage');c.className='stage '+(cls||'z0');c.innerHTML=html;
-    Array.prototype.forEach.call(c.querySelectorAll('[data-go]'),function(b){b.addEventListener('click',function(){var g=b.getAttribute('data-go');if(g==='home')home();else selectPart(g);});});
+    Array.prototype.forEach.call(c.querySelectorAll('[data-go]'),function(b){b.addEventListener('click',function(){var g=b.getAttribute('data-go');
+      if(g!=='home'){selectPart(g);return;}
+      var up=b.classList.contains('crumb')&&D.frame;home(); // the first crumb is the project: back to its diagram
+      if(up){if(view!=='frame')setView('frame');$('viewbar').scrollIntoView({block:'start',behavior:'smooth'});}});});
     Array.prototype.forEach.call(c.querySelectorAll('[data-sub]'),function(b){b.addEventListener('click',function(){selectSub(curPart.name,curPart.subs[+b.getAttribute('data-sub')].name);});});
     Array.prototype.forEach.call(c.querySelectorAll('[data-inner]'),function(b){b.addEventListener('click',function(){innerView=b.getAttribute('data-inner');selectPart(curPart.name);});});
     wire(c);
@@ -737,8 +872,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     return h+'</div>';
   }
   function home(k){
-    unselRows();setHash('');curFlow=null;curPart=null;curWin=(k==null||!multi)?null:k;
-    if(selName!==null){selName=null;if(view==='rel')drawAlt();}
+    unselRows();setHash('');curFlow=null;curPart=null;curInner=null;curWin=(k==null||!multi)?null:k;
+    unpick();
     if(!hasPending){light({},null);setStage('<div class="band"><h2>'+T.none+'</h2></div>');return;}
     var src=curWin==null?D.pending.parts.map(function(x){return {name:x.part,n:x.n,files:x.files};}):WIN[curWin].parts;
     var list=src.map(function(x){return {name:x.name,n:x.n,files:x.files};}),map={};
@@ -765,17 +900,42 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       edges.push({a:user?k:u.name,b:user?u.name:k,label:f(T.nf,{n:size(k)}),both:!!(ins[k]&&outs[k])});});
     return {nodes:left.concat([{name:u.name,note:'',icon:u.icon,ext:false}],right),edges:edges};
   }
+  // What goes into a box and what comes out: every arrow that some diagram outside the box draws to or from it.
+  // One the level above draws, and the box's own diagram does not show, is a line with a loose end: drawn dashed.
+  function portsBlock(u){var ps=u.ports||[];if(!ps.length)return '';
+    function loose(x){return x.must&&x.met===false;}
+    function chip(x){var t=x.to?byId(x.to):null,lab=x.labels.slice(0,2).join(T.sep)+(x.labels.length>2?' …':'');
+      return (t?'<button type="button" class="pchip '+t.z+(loose(x)?' open':'')+'" data-to="'+esc(x.to)+'"':'<span class="pchip plain'+(loose(x)?' open':'')+'"')+
+        ' title="'+esc(f(T.ioFrom,{w:x.where||T.vFrame}))+'">'+(t?pic(t.icon):'')+'<span>'+esc(x.name)+'</span>'+(lab?'<span class="pl">'+esc(lab)+'</span>':'')+(t?'</button>':'</span>');}
+    function row(dir,title){var l=ps.filter(function(x){return x.dir===dir;});if(!l.length)return '';
+      l.sort(function(a,b){return (b.must?1:0)-(a.must?1:0);});
+      return '<span class="iot">'+title+'</span><div class="pals">'+l.slice(0,10).map(chip).join('')+(l.length>10?'<span class="sub">'+f(T.more,{n:l.length-10})+'</span>':'')+'</div>';}
+    return '<div class="blk"><h3>'+T.ioH+'</h3><div class="io">'+row('in',T.ioIn)+row('out',T.ioOut)+row('both',T.ioBoth)+'</div>'+
+      (ps.some(loose)?'<div class="iokey"><i></i>'+T.ioOpen+'</div>':'')+'</div>';}
+  function crumbs(list){return '<div class="crumbs">'+list.map(function(c){return '<button type="button" class="crumb" '+c[1]+'>'+esc(c[0])+'</button>';}).join('<i>›</i>')+'</div>';}
+  function trail(u){ // the boxes this one sits in, outermost first: the project, its wing, its part
+    var t=[[D.project,'data-go="home"']],top=u.parent?byName[u.parent]:u,w=u.wing==null?wingOf[top.name]:null;
+    if(w)t.push([w.name,'data-to="w'+w.wing+'"']);
+    if(u.parent)t.push([top.name,'data-to="p'+D.parts.indexOf(top)+'"']);
+    return crumbs(t);}
   function flowBlock(u,links,find){
-    curFlow=u.flow&&u.flow.nodes.length?u.flow:null;curOpt=linkOpt(u.name);
+    curFlow=u.flow&&u.flow.nodes.length?u.flow:null;curOpt=linkOpt(u.wing!=null?null:u.name);curOpt.frame=curFlow&&opens(curFlow)?{title:u.name}:null;
     if(curFlow)return '<div class="blk"><h3>'+T.how+'</h3><div class="canvas" id="canvas"></div>'+
+      (curOpt.frame&&curFlow.nodes.some(function(n){return n.outer&&wiredIn(curFlow,n);})?'<div class="fkey">'+T.outKey+'</div>':'')+
       (curFlow.nodes.some(function(n){return n.ext;})?'<div class="fkey"><i></i>'+T.extKey+'</div>':'')+
       // a diagram is a description: say when it was drawn and how much the code has moved since
       (u.since?'<div class="aged'+(u.since>=8?' much':'')+'">'+(u.since>=8?ic('sign'):'')+'<span>'+f(u.since>=8?T.agedMuch:T.aged,{d:u.drawn,n:u.since})+'</span></div>':'')+'</div>';
     var ask='<div class="ask">'+T.ask+'<span class="say">'+esc(f(T.say,{n:u.name}))+'</span></div>'; // nobody has drawn it: how to ask
-    curFlow=links&&links.length?around(u,links,find):null;
+    curFlow=links&&links.length?around(u,links,find):null;curOpt.frame=null;
     if(curFlow)return '<div class="blk"><h3>'+T.aroundH+'</h3><div class="canvas" id="canvas"></div><div class="fkey">'+T.aroundNote+'</div>'+(u.external?'':ask)+'</div>';
     return '<div class="blk"><h3>'+T.how+'</h3><div class="empty">'+T.noFlow+'</div>'+(u.external?'':ask)+'</div>';
   }
+  function wiredIn(flow,n){return flow.edges.some(function(e){return e.a===n.name||e.b===n.name;});}
+  // Can the diagram be drawn as one opened box, with what it connects to standing at the two ends? Not when its
+  // story runs from one outside box straight to another: those have no place at an end, so it is drawn as a plain
+  // story, left to right.
+  function opens(flow){var out={};flow.nodes.forEach(function(n){if(n.outer)out[n.name]=1;});
+    return !flow.edges.some(function(e){return out[e.a]&&out[e.b];});}
   function chips(list,attr){return '<div class="pals">'+list.slice(0,8).map(function(x){
     return '<button type="button" class="pal '+x.u.z+'" '+attr(x.u)+' title="'+esc(f(T.nFiles,{n:x.n}))+'">'+pic(x.u.icon)+esc(x.u.name)+'<span class="pct">'+x.n+'</span></button>';}).join('')+
     (list.length>8?'<span class="sub">'+f(T.more,{n:list.length-8})+'</span>':'')+'</div>';}
@@ -793,20 +953,26 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     }else h+='<p class="sub">'+T.noRules+'</p>';
     return h+'</div>';
   }
-  function pathsBlock(u){return '<div class="blk"><details><summary>'+T.forCoders+'</summary><div class="in tags">'+u.paths.map(function(x){return '<code>'+esc(x)+'</code>';}).join('')+'</div></details></div>';}
+  function codeRows(u){var rows=[],seen={};
+    function add(text,code){if(!code||!code.length||seen[text])return;seen[text]=1;rows.push('<span>'+esc(text)+'</span><span>'+code.map(function(c){return '<code>'+esc(c)+'</code>';}).join(' ')+'</span>');}
+    (u.ports||[]).forEach(function(x){add((x.dir==='in'?x.name+' → '+u.name:u.name+(x.dir==='both'?' ⇄ ':' → ')+x.name)+(x.labels.length?T.colon+x.labels[0]:''),x.code);});
+    if(u.flow)u.flow.edges.forEach(function(e){add(e.a+(e.both?' ⇄ ':' → ')+e.b+(e.label?T.colon+e.label:''),e.code);});
+    return rows.length?'<div class="in"><b>'+T.codeH+'</b><div class="wires">'+rows.join('')+'</div></div>':'';}
+  function pathsBlock(u){var code=codeRows(u),paths=u.paths&&u.paths.length?'<div class="in tags">'+u.paths.map(function(x){return '<code>'+esc(x)+'</code>';}).join('')+'</div>':'';
+    return paths||code?'<div class="blk"><details><summary>'+T.forCoders+'</summary>'+paths+code+'</details></div>':'';}
   function marks(u){return (u.external?'<div class="out-line">'+ic('box')+'<span>'+esc(f(T.outsideLine,{w:u.external}))+'</span></div>':'')+
     (u.sensitive?'<div class="care-line">'+ic('lock')+'<span>'+esc(u.sensitive)+'</span></div>':'');}
   function selectPart(name){
-    unselRows();var p=byName[name],map={};setHash('p'+D.parts.indexOf(p));curPart=p;selName=name;
+    unselRows();var p=byName[name],map={};setHash('p'+D.parts.indexOf(p));curPart=p;selName=name;curInner=null;curWing=wingOf[name]?wingOf[name].wing:null;
     p.together.forEach(function(c){map[c.name]=c.pct+'%';});
     light(map,name);
-    var h='<div class="band wingc">'+pic(p.icon)+'<div><h2>'+esc(p.name)+'</h2><span class="meta">'+f(T.partMeta,{n:p.files,d:D.recentDays,r:p.recent})+(p.outside?f(T.outsideMore,{n:p.outside}):'')+'</span></div><p class="what">'+rich(p.what)+'</p>'+backBtn()+'</div><div class="body">';
+    var h='<div class="band wingc">'+pic(p.icon)+'<div>'+trail(p)+'<h2>'+esc(p.name)+'</h2><span class="meta">'+f(T.partMeta,{n:p.files,d:D.recentDays,r:p.recent})+(p.outside?f(T.outsideMore,{n:p.outside}):'')+'</span></div><p class="what">'+rich(p.what)+'</p>'+backBtn()+'</div><div class="body">';
     h+=marks(p);
     var at=winsOn(p.name,known);
     if(at.length)h+='<div class="nowby">'+at.map(function(w){return wb(w)+'<span>'+esc(winName(w))+'</span>';}).join('')+'<span class="sub">'+T.nowBy+'</span></div>';
-    h+=flowBlock(p,D.links,function(n){return byName[n];});
+    h+=portsBlock(p)+flowBlock(p,D.links,function(n){return byName[n];});
     if(p.subs.length){ // the rooms inside this room
-      var rel=innerView==='rel'&&p.inner.length;
+      var rel=innerView==='rel'&&p.inner.length;if(rel)curInner={units:p.subs,links:p.inner};
       h+='<div class="blk"><div class="blkhead"><h3>'+T.inside+'</h3>'+(p.inner.length?'<div class="seg">'+[['plan',T.vPlan],['rel',T.vRel]].map(function(o){
         return '<button type="button" data-inner="'+o[0]+'" aria-pressed="'+((o[0]==='rel')===!!rel)+'">'+o[1]+'</button>';}).join('')+'</div>':'')+'</div>';
       if(rel)h+='<div class="canvas" id="inner"></div>';
@@ -821,21 +987,39 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       return '<button type="button" class="pal '+q.z+'" data-go="'+esc(c.name)+'">'+pic(q.icon)+esc(c.name)+'<span class="pct">'+c.pct+'%</span></button>';}).join('')+'</div>';
     else h+='<p class="sub">'+T.noPals+'</p>';
     h+='</div>'+pathsBlock(p)+'</div></div>';
-    setStage(h,p.z);drawFlow();drawInner();if(view==='rel')drawAlt();
+    setStage(h,p.z);drawFlow();drawInner();if(view==='rel'||view==='frame')drawAlt();
+  }
+  // A wing opened: how its parts work together, what goes in and out of it, and the parts themselves.
+  function selectWing(i){
+    var w=WINGS[i],ps=w.parts.map(function(k){return D.parts[k];}),names={};
+    unselRows();setHash('w'+i);curPart=null;selName=null;curWing=i;curInner=null;light({},null);
+    ps.forEach(function(p){names[p.name]=p;});
+    var links=D.links.filter(function(x){return names[x.a]&&names[x.b];}),ask='<div class="ask">'+T.wingAsk+'<span class="say">'+esc(f(T.wingSay,{n:w.name}))+'</span></div>';
+    var h='<div class="band wingc">'+pic(w.icon)+'<div>'+trail(w)+'<h2>'+esc(w.name)+'</h2><span class="meta">'+f(T.wingMeta,{k:ps.length,n:ps.reduce(function(a,p){return a+p.files;},0)})+'</span></div>'+
+      (w.what?'<p class="what">'+rich(w.what)+'</p>':'')+backBtn()+'</div><div class="body">'+portsBlock(w);
+    if(w.flow&&w.flow.nodes.length)h+=flowBlock(w);
+    else{curFlow=null;
+      if(links.length){curInner={units:ps,links:links};h+='<div class="blk"><h3>'+T.aroundH+'</h3><div class="canvas" id="inner"></div><div class="fkey">'+T.wingRel+'</div>'+ask+'</div>';}
+      else h+='<div class="blk"><h3>'+T.how+'</h3><div class="empty">'+T.wingNone+'</div>'+ask+'</div>';}
+    h+='<div class="blk"><h3>'+T.inside+'</h3><div class="inplan">'+ps.map(function(p){
+      var lit=D.pending.parts.some(function(x){return x.part===p.name;});
+      return '<button type="button" class="sroom'+(p.external?' ext':'')+(lit?' lit':'')+'" data-go="'+esc(p.name)+'">'+pic(p.icon)+'<span class="nm">'+esc(p.name)+'</span><span class="sm">'+p.files+(p.external?'<span class="tagx">'+T.outsideTag+'</span>':dots(p.recent))+'</span></button>';}).join('')+'</div></div>';
+    h+=pathsBlock(w)+'</div>';
+    setStage(h,w.z);drawFlow();drawInner();if(view!=='plan')drawAlt();
   }
   function selectSub(pname,sname){
     var p=byName[pname],c=p&&p.subs.filter(function(x){return x.name===sname;})[0];if(!c){if(p)selectPart(pname);return;}
-    unselRows();setHash('p'+D.parts.indexOf(p)+'.'+p.subs.indexOf(c));curPart=p;selName=pname;
+    unselRows();setHash('p'+D.parts.indexOf(p)+'.'+p.subs.indexOf(c));curPart=p;selName=pname;curInner=null;curWing=wingOf[pname]?wingOf[pname].wing:null;
     var map={};p.together.forEach(function(x){map[x.name]=x.pct+'%';});light(map,pname);
-    var h='<div class="band wingc">'+pic(c.icon)+'<div><button type="button" class="crumb" data-go="'+esc(pname)+'">'+esc(pname)+'</button><h2>'+esc(c.name)+'</h2><span class="meta">'+f(T.subMeta,{n:c.files,d:D.recentDays,r:c.recent})+'</span></div><p class="what">'+rich(c.what)+'</p>'+backBtn()+'</div><div class="body">';
-    h+=marks(c)+flowBlock(c,p.inner,function(n){return p.subs.filter(function(x){return x.name===n;})[0];})+'<div class="cols3">';
+    var h='<div class="band wingc">'+pic(c.icon)+'<div>'+trail(c)+'<h2>'+esc(c.name)+'</h2><span class="meta">'+f(T.subMeta,{n:c.files,d:D.recentDays,r:c.recent})+'</span></div><p class="what">'+rich(c.what)+'</p>'+backBtn()+'</div><div class="body">';
+    h+=marks(c)+portsBlock(c)+flowBlock(c,p.inner,function(n){return p.subs.filter(function(x){return x.name===n;})[0];})+'<div class="cols3">';
     if(p.inner.length)h+=usesBlocks(c.name,p.inner,function(n){return p.subs.filter(function(x){return x.name===n;})[0];},function(u){return 'data-sub="'+p.subs.indexOf(u)+'"';});
     h+=rulesBlock(c)+pathsBlock(c)+'</div></div>';
-    setStage(h,p.z);drawFlow();if(view==='rel')drawAlt();
+    setStage(h,p.z);drawFlow();if(view==='rel'||view==='frame')drawAlt();
   }
   function selectWork(c,row){
-    unselRows();setHash('');curFlow=null;curPart=null;row.classList.add('sel');var map={};
-    if(selName!==null){selName=null;if(view==='rel')drawAlt();}
+    unselRows();setHash('');curFlow=null;curPart=null;curInner=null;row.classList.add('sel');var map={};
+    unpick();
     var list=c.parts.map(function(x){return {name:x.name,n:x.n,files:x.files};});
     list.forEach(function(x){if(byName[x.name])map[x.name]=x.n;});
     light(map,null);
@@ -883,8 +1067,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function taskWins(t){return t.wins.map(winByKey).filter(function(w){return w;});}
   function selectTask(i){
     var t=TASKS[i],list=taskRooms(t),map={},wins=taskWins(t);
-    unselRows();setHash('t'+i);curFlow=null;curPart=null;curTask=i;$('task-'+i).setAttribute('aria-pressed','true');
-    if(selName!==null){selName=null;if(view==='rel')drawAlt();}
+    unselRows();setHash('t'+i);curFlow=null;curPart=null;curInner=null;curTask=i;$('task-'+i).setAttribute('aria-pressed','true');
+    unpick();
     list.forEach(function(x){if(byName[x.name])map[x.name]=x.n;});
     light(map,null,wins.length?wins:null);
     var h='<div class="band"><h2>'+esc(t.name)+'</h2><span class="meta">'+esc(taskWhen(t))+'</span>'+backBtn()+'</div><div class="body">';
@@ -945,8 +1129,9 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   });
   drawWork();
   var m=/^#p(\d+)(?:\.(\d+))?$/.exec(location.hash||''),hp=m&&D.parts[+m[1]];
-  var mt=/^#t(\d+)$/.exec(location.hash||'');
-  if(hp&&m[2]&&hp.subs[+m[2]])selectSub(hp.name,hp.subs[+m[2]].name);else if(hp)selectPart(hp.name);else if(mt&&TASKS[+mt[1]])selectTask(+mt[1]);else home();
+  var mt=/^#t(\d+)$/.exec(location.hash||''),mw=/^#w(\d+)$/.exec(location.hash||'');
+  if(view!=='plan')setView(view);
+  if(hp&&m[2]&&hp.subs[+m[2]])selectSub(hp.name,hp.subs[+m[2]].name);else if(hp)selectPart(hp.name);else if(mw&&WINGS[+mw[1]])selectWing(+mw[1]);else if(mt&&TASKS[+mt[1]])selectTask(+mt[1]);else home();
   quiet=false;
 })();
 </script>
