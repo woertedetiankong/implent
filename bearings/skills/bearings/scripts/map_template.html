@@ -149,6 +149,45 @@ svg.rel{display:block;margin:0 auto}
 .follow.under{margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--hair)}
 .follow .rchips{margin-top:0} .follow .iot{padding-top:0}
 .routebox{margin-top:14px;overflow-x:auto}
+/* one real run of a route. The route is written; this is measured: the steps in the order they began, and for
+   the one picked, the file and line and the values that went in and came out */
+.fn.unrun rect.fb{stroke:var(--warn);stroke-dasharray:6 4}
+.fn.unrun .fbadge rect{fill:var(--warn)}
+.fn.unrun .fbadge text{font-family:var(--f-text);font-size:12px}
+.rchips button .rc{font-size:12px;font-weight:700;margin-left:9px;padding-left:9px;border-left:1.5px solid currentColor}
+.runbox{margin-top:14px}
+.runbox>.ask{margin-top:2px}
+.run{background:var(--sheet);border:1.5px solid var(--hair);border-radius:12px;padding:13px 14px;display:flex;flex-direction:column;gap:11px}
+.runhead{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;font-size:13px;color:var(--muted)}
+.runhead b{font-weight:600;color:var(--ink)}
+.runtag{font-size:12.5px;font-weight:700;color:var(--paper);background:var(--ink);border-radius:999px;padding:1px 11px}
+.runwarn{font-size:13.5px;font-weight:600;color:var(--warn);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.runwarn>span{font-weight:400}
+.runbody{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:720px){.runbody{grid-template-columns:minmax(0,1fr)}}
+.rside{display:flex;flex-direction:column;gap:7px;min-width:0}
+.rsteps{display:flex;flex-direction:column;border:1.5px solid var(--hair);border-radius:10px;overflow:auto;max-height:440px}
+.rstep{flex:none;display:grid;grid-template-columns:1.7em minmax(0,1fr) auto;gap:8px;align-items:baseline;min-height:44px;padding:9px 12px;border:0;border-top:1px solid var(--hair);background:none;text-align:left;cursor:pointer}
+.rstep:first-child{border-top:0}
+.rstep:hover{background:var(--paper)}
+.rstep[aria-pressed="true"]{background:var(--paper);box-shadow:inset 4px 0 0 var(--ink)}
+.rstep:focus-visible{outline-offset:-3px}
+.rstep .rk{font-family:var(--f-num);font-size:15px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.rstep .rb{font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.rstep .rb i{font-style:normal;font-weight:700;color:var(--warn);margin-left:7px}
+.rstep .rb small{display:block;font-family:var(--f-mono);font-size:11.5px;font-weight:400;color:var(--muted);overflow-wrap:anywhere}
+.rms{font-family:var(--f-num);font-size:14.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rdet{display:flex;flex-direction:column;gap:11px;min-width:0}
+.rdh{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.rdh b{font-size:16.5px;font-weight:700}
+.rloc{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.rloc .iot{padding-top:0}
+.rloc code{font-size:13px;user-select:all;-webkit-user-select:all;cursor:text}
+.rvals{display:grid;grid-template-columns:auto minmax(0,max-content) minmax(0,1fr);gap:0 16px;font-size:13.5px}
+.rvals>span{padding:7px 0;border-top:1px solid var(--hair);min-width:0;overflow-wrap:anywhere}
+.rvals .h{font-size:12.5px;font-weight:700;color:var(--muted);border-top:0;padding-top:0}
+.rvals .d{color:var(--muted);white-space:nowrap}
+.rvals .v{font-family:var(--f-mono);font-size:12.5px;line-height:1.7}
 .rchips button{border:1.5px solid var(--ink);background:var(--sheet);border-radius:999px;padding:3px 14px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--muted)}
 .rchips button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
 .undernote{font-size:12.5px;color:var(--muted);margin-top:10px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
@@ -440,6 +479,13 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     work:'每次工作踩到了哪几块',wide:'跨块的',all:'全部',noWork:'最近没有这样的工作。',
     seeFiles:'看具体文件',more:'等 {n} 个',unmapped:'未归类',back:'回到全貌',
     vFrame:'怎么运转',capFrame:'整个项目怎么运转。点一个方框，进到它里面。这是写下来的描述。',frameName:'整体框架图',follow:'跟着一件事走',
+    runChip:'有实测',runNest:'缩进、左边带竖线的步骤，是在它上面那一步里面被调用的。',runH:'一次真实运行',runAt:'录于 {d}',runCommit:'提交 {c}',runSteps:'{n} 步',runMs:'共 {t}',runDirty:'录制时有未提交的改动',runComma:'、',
+    runMiss:'没经过',runMissH:'主线上画了、这次运行没经过：',runMissWhy:'可能是图画错了，也可能是这条路径上代码跳过了它。',
+    runAged:'录完之后这些文件又改了 {n} 次，数值可能已经过时。',runAsk:'想重录，对 AI 说：',runSay:'重录“{n}”的运行记录',
+    runAskNew:'这条主线还没有运行记录。想看每一步的真实数值，对 AI 说：',runSayNew:'给“{n}”录一次真实运行',
+    runStrange:'主线上没有这个方框',runLost:'这个位置在代码里找不到了',runAstray:'这个文件归“{u}”，不归这个方框',
+    runWhere:'代码位置',runDir:'方向',runName:'名字',runCol:'这次运行的实际值',runIn:'进',runOut:'出',runNone:'这一步没有记下数据。',runEmpty:'这份记录里没有步骤。',
+    runCap:'上面的数值是量出来的：来自一次真实运行。它说明这一次是这样走的，不说明每一次都这样走。',runFile:'记录在 {f}',runEarlier:'另有 {n} 份更早的记录',runDropped:'还有 {n} 步没有记下（同一个函数被调用了太多次）。',
     ioH:'进来什么，出去什么',ioIn:'进来',ioOut:'出去',ioBoth:'来回',ioOpen:'虚线的：上一层的图画了这条线，这里面的图还没有接上。',ioFrom:'画在“{w}”上',
     shelf:'不在运行的路上，在旁边支撑',outKey:'色块外面的，是它连着的别的方框，点一下走过去。',
     wingMeta:'{k} 个部分，{n} 个文件',wingAsk:'想看这个区里的部分怎么配合，对 AI 说：',wingSay:'给“{n}”这个区画一张图',
@@ -480,6 +526,13 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     work:'Where each piece of work stepped',wide:'Across parts',all:'All',noWork:'No such work recently.',
     seeFiles:'See the files',more:'and {n} more',unmapped:'Unmapped',back:'Back to the overview',
     vFrame:'How it works',capFrame:'How the whole project works. Pick a box to step inside it. This is a written description.',frameName:'the project diagram',follow:'Follow one thing through',
+    runChip:'measured',runNest:'A step set in on a rail was called from inside the step above it.',runH:'One real run',runAt:'recorded {d}',runCommit:'commit {c}',runSteps:'{n} steps',runMs:'{t} in all',runDirty:'recorded with uncommitted changes',runComma:', ',
+    runMiss:'not passed',runMissH:'Drawn on the route, not passed in this run: ',runMissWhy:'The diagram may be wrong, or the code skipped it on this path.',
+    runAged:'These files changed {n} times after the recording; the values may be out of date.',runAsk:'To record it again, say to the AI:',runSay:'Record the run of "{n}" again',
+    runAskNew:'This route has no recorded run yet. To see the real values at each step, say to the AI:',runSayNew:'Record one real run of "{n}"',
+    runStrange:'The route has no such box',runLost:'This place is no longer in the code',runAstray:'This file belongs to "{u}", not to this box',
+    runWhere:'In the code',runDir:'Way',runName:'Name',runCol:'The value in this run',runIn:'in',runOut:'out',runNone:'Nothing was noted for this step.',runEmpty:'This record holds no steps.',
+    runCap:'The values above are measured: they come from one real run. They show how it went this once, not how it goes every time.',runFile:'Kept in {f}',runEarlier:'{n} earlier records',runDropped:'{n} more steps were not noted (one function was called too many times).',
     ioH:'What goes in, what comes out',ioIn:'In',ioOut:'Out',ioBoth:'Both ways',ioOpen:'Dashed: the level above draws this line; the diagram in here does not show it yet.',ioFrom:'drawn on "{w}"',
     shelf:'Not on the path at run time; these support it',outKey:'Boxes off the tinted floor are what it connects to. Pick one to go there.',
     wingMeta:'{k} parts, {n} files',wingAsk:'To see how the parts of this wing work together, say to the AI:',wingSay:'Draw the diagram for the wing "{n}"',
@@ -812,6 +865,58 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   var view=D.frame?'frame':'plan',selName=null,curRoute=D.frame?-1:0,curPart=null,curWing=null,curInner=null;
   var views=[['plan',T.vPlan,T.capPlan]];
   if(D.frame||D.routes.length)views.unshift(['frame',T.vFrame,D.frame?T.capFrame:T.capRoute]);
+  // ---- one real run of a route ----
+  // A route is written; a run of it is measured. The latest recorded run sits under the route: its steps in the
+  // order they began, and for the one picked, the file and line and the values that went in and came out. On the
+  // route's diagram each box carries the numbers of the steps that passed it. A box the run never passed is
+  // marked: either the diagram or the code is not what the other says.
+  var RUNS=D.runs||[],curStep=0;
+  // Under the diagram of the whole project the routes start folded. One that has a recorded run starts open:
+  // what was measured should not wait behind a click the reader does not know to make.
+  if(D.frame)RUNS.some(function(r,i){if(r){curRoute=i;return true;}return false;});
+  function msText(x){if(x==null)return '';if(x<0.005)return '&lt;0.01 ms';return x>=1000?(x/1000).toFixed(2)+' s':(x<1?x.toFixed(2):x<100?x.toFixed(1):x.toFixed(0))+' ms';}
+  function runOpt(run){var o=linkOpt(null);if(!run)return o;
+    var at=Object.create(null),plain=o.cls;run.steps.forEach(function(s,i){(at[s.box]=at[s.box]||[]).push(i+1);});
+    function miss(n){return run.missed.indexOf(n.name)>=0;}
+    o.cls=function(n){return plain(n)+(miss(n)?' unrun':'');};
+    o.badge=function(n){var a=at[n.name];return a?(a.length>3?a.slice(0,3).join('·')+'…':a.join('·')):(miss(n)?T.runMiss:'');};
+    return o;}
+  function drawRun(){var box=$('runbox');if(!box)return;
+    var r=D.routes[curRoute],run=RUNS[curRoute],name=r.title||f(T.routeN,{n:curRoute+1});
+    if(!run){box.innerHTML='<div class="ask">'+T.runAskNew+'<span class="say">'+esc(f(T.runSayNew,{n:name}))+'</span></div>';return;}
+    if(curStep>=run.steps.length)curStep=0;
+    var meta=[run.name?'<b>'+esc(run.name)+'</b>':'',run.recorded?f(T.runAt,{d:esc(run.recorded)}):'',run.commit?f(T.runCommit,{c:'<code>'+esc(run.commit)+'</code>'}):'',
+      f(T.runSteps,{n:run.steps.length}),run.ms!=null?f(T.runMs,{t:msText(run.ms)}):'',run.dirty?T.runDirty:''].filter(function(x){return x;});
+    var h='<div class="run"><div class="runhead"><span class="runtag">'+T.runH+'</span>'+meta.map(function(x){return '<span>'+x+'</span>';}).join('')+'</div>';
+    if(run.missed.length)h+='<div class="runwarn">'+T.runMissH+run.missed.map(esc).join(T.runComma)+'<span>'+T.runMissWhy+'</span></div>';
+    if(run.aged)h+='<div class="runwarn">'+f(T.runAged,{n:run.aged})+'<span class="ask">'+T.runAsk+'<span class="say">'+esc(f(T.runSay,{n:name}))+'</span></span></div>';
+    var s=run.steps[curStep];
+    if(!s)h+='<div class="fkey">'+T.runEmpty+'</div>';
+    else{
+      // A step that ran inside another is set in under it, on a rail that runs down from the step that called it.
+      var nested=run.steps.some(function(x){return x.depth>0;});
+      h+='<div class="runbody"><div class="rside"><div class="rsteps">'+run.steps.map(function(x,i){var bad=!x.known||x.lost||x.astray,at=[];
+        for(var k=0;k<x.depth;k++)at.push((18+k*18)+'px 0');
+        var rail=at.length?';background-image:'+at.map(function(){return 'linear-gradient(var(--muted),var(--muted))';}).join(',')+';background-position:'+at.join(',')+';background-size:1.5px 100%;background-repeat:no-repeat':'';
+        return '<button type="button" class="rstep" data-step="'+i+'" aria-pressed="'+(i===curStep)+'" style="padding-left:'+(12+x.depth*18)+'px'+rail+'"><span class="rk">'+(i+1)+'</span><span class="rb">'+esc(x.box||'?')+(bad?'<i>!</i>':'')+(x.fn?'<small>'+esc(x.fn)+'()</small>':'')+'</span><span class="rms">'+msText(x.ms)+'</span></button>';}).join('')+'</div>'+
+        (nested?'<div class="fkey">'+T.runNest+'</div>':'')+'</div>';
+      var warn=[];if(!s.known)warn.push(T.runStrange);if(s.lost)warn.push(T.runLost);if(s.astray)warn.push(f(T.runAstray,{u:esc(s.astray)}));
+      var loc=s.file?esc(s.file)+(s.line?':'+s.line:''):'';
+      var rows=s.ins.map(function(v){return [T.runIn,v];}).concat(s.outs.map(function(v){return [T.runOut,v];}));
+      h+='<div class="rdet"><div class="rdh"><b>'+esc(s.box||'?')+'</b><span class="rms">'+msText(s.ms)+'</span></div>'+
+        (warn.length?'<div class="runwarn">'+warn.join(T.sep)+'</div>':'')+
+        (loc||s.fn?'<div class="rloc"><span class="iot">'+T.runWhere+'</span>'+(s.fn?'<code>'+esc(s.fn)+'()</code>':'')+(loc?'<code>'+loc+'</code>':'')+'</div>':'')+
+        (rows.length?'<div class="rvals"><span class="h">'+T.runDir+'</span><span class="h">'+T.runName+'</span><span class="h">'+T.runCol+'</span>'+
+          rows.map(function(x){return '<span class="d">'+x[0]+'</span><span>'+esc(x[1].name)+'</span><span class="v">'+esc(x[1].value)+'</span>';}).join('')+'</div>'
+          :'<div class="fkey">'+T.runNone+'</div>')+
+        (s.note?'<div class="fkey">'+esc(s.note)+'</div>':'')+'</div></div>';
+    }
+    if(run.dropped)h+='<div class="fkey">'+f(T.runDropped,{n:run.dropped})+'</div>';
+    h+='<div class="fkey">'+T.runCap+(run.file?' '+f(T.runFile,{f:'<code>'+esc(run.file)+'</code>'}):'')+(run.earlier?T.sep+f(T.runEarlier,{n:run.earlier}):'')+'</div></div>';
+    box.innerHTML=h;
+    Array.prototype.forEach.call(box.querySelectorAll('[data-step]'),function(b){b.addEventListener('click',function(){
+      var top=box.querySelector('.rsteps').scrollTop;curStep=+b.getAttribute('data-step');drawRun();
+      var list=box.querySelector('.rsteps'),again=box.querySelector('[data-step="'+curStep+'"]');if(list)list.scrollTop=top;if(again)again.focus();});});}
   function setView(v){view=v;views.forEach(function(x){$('view-'+x[0]).setAttribute('aria-pressed',String(x[0]===v));if(x[0]===v)$('vcap').textContent=x[2];});
     $('plan').hidden=v!=='plan';$('alt').hidden=v==='plan';drawAlt();}
   function drawAlt(){var box=$('alt');if(view==='plan'){box.innerHTML='';return;}
@@ -825,13 +930,14 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     }
     if(D.routes.length){ // one thing followed through the project: pick it, and its path is drawn underneath
       h+='<div class="follow'+(D.frame?' under':'')+'"><span class="iot">'+T.follow+'</span><div class="rchips">'+D.routes.map(function(x,i){
-        return '<button type="button" data-route="'+i+'" aria-pressed="'+(i===curRoute)+'">'+esc(x.title||f(T.routeN,{n:i+1}))+'</button>';}).join('')+'</div></div>';
-      if(curRoute>=0)h+='<div class="routebox">'+flowSvg(D.routes[curRoute],avail,linkOpt(null))+'</div>';
+        return '<button type="button" data-route="'+i+'" aria-pressed="'+(i===curRoute)+'">'+esc(x.title||f(T.routeN,{n:i+1}))+(RUNS[i]?'<span class="rc">'+T.runChip+'</span>':'')+'</button>';}).join('')+'</div></div>';
+      if(curRoute>=0)h+='<div class="routebox">'+flowSvg(D.routes[curRoute],avail,runOpt(RUNS[curRoute]))+'</div>';
     }
     if(/class="fe loose"/.test(h))h+='<div class="undernote">'+T.loose+'</div>';
-    box.innerHTML=h;wire(box);
+    if(D.routes.length&&curRoute>=0)h+='<div class="runbox" id="runbox"></div>';
+    box.innerHTML=h;wire(box);drawRun();
     Array.prototype.forEach.call(box.querySelectorAll('[data-route]'),function(b){b.addEventListener('click',function(){var i=+b.getAttribute('data-route');
-      curRoute=D.frame&&curRoute===i?-1:i;drawAlt();});});}
+      curRoute=D.frame&&curRoute===i?-1:i;curStep=0;drawAlt();});});}
   function drawInner(){var box=$('inner');if(box&&curInner){box.innerHTML=relSvg(curInner.units,curInner.links,null,box.clientWidth-26)+relNotes(curInner.units,curInner.links);wire(box);}}
   function unpick(){var had=selName!==null||curWing!==null;selName=null;curWing=null;if(had&&view!=='plan')drawAlt();}
   if(views.length>1){$('viewbar').hidden=false;$('vcap').textContent=views.filter(function(x){return x[0]===view;})[0][2];

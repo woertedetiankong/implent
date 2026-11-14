@@ -16,6 +16,8 @@ it never tells anyone what to change or leave alone.
   bearings.py windows [--json]             every Claude Code and Codex window at work in this project: working,
                                            waiting for you or idle, what it was last asked, what it has changed
                                            and committed, and where two windows collide
+  bearings.py runs [--json]                the recorded runs under docs/runs/: one real run of a route, step by
+                                           step, with the file and line and the values that went in and came out
 
 Uncommitted work is split by window: which Claude Code or Codex session edited each file,
 read from the session records those tools keep on this machine (--no-windows skips that).
@@ -76,6 +78,15 @@ PEOPLE_KEYS = {"名字": "name", "name": "name", "现在": "now", "now": "now",
 # about the part as a whole).
 MARK_RE = re.compile(r"^(.+?)\s*[:：]\s*(.+)$")
 NOTHING_RE = re.compile(r"^(?:none|nothing|n/a|无|没有|暂无)\W*$", re.I)
+# Recorded runs. A route is a written description; a run is the same journey measured once. One JSON file
+# per run, written by scripts/bearings_run.py or by any program that writes the same shape.
+RUNS_DIR = "docs/runs"
+RUN_STEPS = 200    # steps of one run handed to the page
+RUN_VALUES = 12    # values shown going into a step, and coming out of it
+RUN_TEXT = 220     # characters of one value
+RUN_HEAD = 6       # numbers shown from the start of a long list of numbers
+COMMIT_RE = re.compile(r"^[0-9a-f]{4,40}$")
+WHEN_RE = re.compile(r"^\d{4}-\d\d-\d\d(?:[T ]\d\d:\d\d(?::\d\d)?)?")
 
 TEXT = {
     "zh": {
@@ -163,6 +174,26 @@ TEXT = {
         "doctor_mark_box": "“{task}”：“{unit}”的流程图里没有叫“{box}”的框",
         "task_rooms": "动过：{x}",
         "task_folder": "记录在：{x}",
+        "runs_none": "还没有运行记录（{dir}/ 下没有能用的 .json）。",
+        "runs_head": "{n} 条主线有运行记录：",
+        "run_at": "录于 {d}", "run_commit": "提交 {c}", "run_steps": "{n} 步", "run_ms": "共 {t}",
+        "run_dirty": "录制时有未提交的改动",
+        "run_missed": "主线上画了、这次没经过：{x}",
+        "run_aged": "录完之后这些文件又改了 {n} 次，数值可能过时",
+        "run_bare": "没有运行记录的主线：{x}",
+        "run_in": "进", "run_out": "出",
+        "run_flag_strange": "主线上没有这个方框", "run_flag_lost": "代码里找不到这个位置",
+        "run_flag_astray": "文件归“{u}”",
+        "run_why_json": "不是合法的 JSON", "run_why_shape": "缺少 steps 列表",
+        "run_why_route": "清单里没有叫“{route}”的主线",
+        "doctor_run_missed": "主线上画了、运行时没经过的方框 {n} 个（图画错了，或者这条路径上代码跳过了它）：",
+        "doctor_run_strange": "运行记录里有、主线上没有的方框 {n} 个：",
+        "doctor_run_lost": "运行记录指向的代码位置找不到了 {n} 处：",
+        "doctor_run_astray": "运行记录里，步骤所在的文件不归它对应的方框 {n} 处：",
+        "doctor_run_astray_row": "{route}：“{box}”这一步在 {file}，这个文件归“{unit}”",
+        "doctor_run_aged": "录完之后代码又改过的运行记录 {n} 份（数值可能过时）：",
+        "doctor_run_aged_row": "{route}（录于 {date}，之后改了 {n} 次）",
+        "doctor_run_loose": "用不上的运行记录 {n} 份：",
     },
     "en": {
         "no_parts": "No parts list found ({files}). Have the agent draft one first, following the skill.",
@@ -249,6 +280,26 @@ TEXT = {
         "doctor_mark_box": '"{task}": the flow diagram of "{unit}" has no box called "{box}"',
         "task_rooms": "Touched: {x}",
         "task_folder": "Recorded in: {x}",
+        "runs_none": "No recorded runs yet (no usable .json under {dir}/).",
+        "runs_head": "{n} routes have a recorded run:",
+        "run_at": "recorded {d}", "run_commit": "commit {c}", "run_steps": "{n} steps", "run_ms": "{t} in all",
+        "run_dirty": "recorded with uncommitted changes",
+        "run_missed": "drawn on the route, not passed in this run: {x}",
+        "run_aged": "these files changed {n} times after the recording; the values may be out of date",
+        "run_bare": "routes with no recorded run: {x}",
+        "run_in": "in", "run_out": "out",
+        "run_flag_strange": "no such box on the route", "run_flag_lost": "this place is not in the code",
+        "run_flag_astray": "the file belongs to \"{u}\"",
+        "run_why_json": "not valid JSON", "run_why_shape": "no list of steps",
+        "run_why_route": "the list has no route called \"{route}\"",
+        "doctor_run_missed": "{n} boxes drawn on a route that its recorded run did not pass (the diagram is wrong, or the code skipped them on this path):",
+        "doctor_run_strange": "{n} boxes in a recorded run that its route does not have:",
+        "doctor_run_lost": "{n} places a recorded run points at that are no longer in the code:",
+        "doctor_run_astray": "{n} steps of a recorded run whose file does not belong to the step's box:",
+        "doctor_run_astray_row": "{route}: the step \"{box}\" is in {file}, which belongs to \"{unit}\"",
+        "doctor_run_aged": "{n} recorded runs whose code changed after the recording (the values may be out of date):",
+        "doctor_run_aged_row": "{route} (recorded {date}, {n} changes since)",
+        "doctor_run_loose": "{n} recorded runs that cannot be used:",
     },
 }
 
@@ -2146,6 +2197,222 @@ def changes(root, list_path, parts, routes, top, wiring, commits, tasks, days, r
     return out
 
 
+# Recorded runs --------------------------------------------------------------
+# A route says in words how one thing travels through the project. A recorded run is that journey measured
+# once: for each step, the box of the route it belongs to, the file and line the code was at, how long it
+# took, and the values that went in and came out. One JSON file per run under docs/runs/:
+#   {"route": "<the route's title>", "name": "what was run", "recorded": "2026-11-14T10:02:11",
+#    "commit": "c50d8d2", "dirty": false,
+#    "steps": [{"box": "<a box of that route>", "fn": "name_of_the_function", "file": "src/x.py", "line": 41,
+#               "ms": 0.4, "depth": 0, "in": {"name": value}, "out": {"name": value}, "note": "..."}]}
+# The page shows the latest run of each route under it. The check-up compares the two: a box the route
+# draws that the run never passed, a step the route does not have, a place that is no longer in the code.
+# A run shows one path taken once. It cannot show that every path is like it.
+
+def brief(value, limit=RUN_TEXT):
+    """One value as one short line of text. A long list of numbers is cut to its length and its start."""
+    if isinstance(value, str):
+        text = value
+    elif (isinstance(value, list) and len(value) > RUN_HEAD
+          and all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in value)):
+        text = "%d × [%s, …]" % (len(value), ", ".join(json.dumps(x) for x in value[:RUN_HEAD]))
+    else:
+        text = json.dumps(value, ensure_ascii=False)
+    text = " ".join(text.split())
+    return text if len(text) <= limit else text[:limit - 1] + "…"
+
+
+def run_values(raw):
+    """What went into a step, or came out: [{name, value}]. Written as {"name": value}."""
+    if isinstance(raw, dict):
+        pairs = list(raw.items())
+    elif isinstance(raw, list):
+        pairs = [(x.get("name", ""), x.get("value")) for x in raw if isinstance(x, dict)]
+    else:
+        pairs = [] if raw is None else [("", raw)]
+    return [{"name": str(k), "value": brief(v)} for k, v in pairs[:RUN_VALUES]]
+
+
+def line_count(path, seen={}):
+    if path not in seen:
+        try:
+            with open(path, "rb") as fh:
+                seen[path] = fh.read(SOURCE_MAX + 1).count(b"\n") + 1
+        except OSError:
+            seen[path] = 0
+    return seen[path]
+
+
+def commits_since(root, files, commit, when):
+    """How often these files were committed to after a run was recorded: counted from the commit the run
+    names, or, when the repository does not have that commit, from the time the run was recorded."""
+    if not files:
+        return 0
+    spans = ([[commit + "..HEAD"]] if COMMIT_RE.match(commit) else []) + \
+            ([["--since=" + when, "HEAD"]] if WHEN_RE.match(when) else [])
+    for span in spans:
+        out = subprocess.run(["git", "-C", root, "rev-list", "--count", *span, "--", *files],
+                             capture_output=True, text=True)
+        if out.returncode == 0 and out.stdout.strip().isdigit():
+            return int(out.stdout.strip())
+    return 0
+
+
+def read_run(root, raw, route, parts, top):
+    """One run, checked against the route it says it followed and against the code as it is now."""
+    units = {}
+    for u in [x for p in parts for x in [p] + p.children] + list(top["wings"]):
+        units.setdefault(u.name, u)
+    on_route = {n["name"] for n in route["nodes"]}
+    steps, hit = [], set()
+    listed = [s for s in raw["steps"] if isinstance(s, dict)]
+    for s in listed[:RUN_STEPS]:
+        box = str(s.get("box") or "").strip()
+        path = str(s.get("file") or "").strip().replace("\\", "/")
+        if posixpath.isabs(path):
+            path = os.path.relpath(path, root).replace(os.sep, "/")
+        path = posixpath.normpath(path) if path else ""
+        line = s.get("line") if isinstance(s.get("line"), int) and s.get("line") > 0 else 0
+        ms = s.get("ms") if isinstance(s.get("ms"), (int, float)) and not isinstance(s.get("ms"), bool) else None
+        depth = s.get("depth") if isinstance(s.get("depth"), int) else 0
+        inside = bool(path) and not path.startswith("../") and path != ".."
+        full = os.path.join(root, path) if inside else ""
+        lost = bool(path) and (not inside or not os.path.isfile(full) or (line and line > line_count(full)))
+        astray = ""
+        if path and not lost and box in units:
+            home = leaf(path, parts)
+            if home is not None and not within(units[box], home):
+                astray = unit_label(home)
+        hit.add(box)
+        steps.append({"box": box, "fn": brief(str(s.get("fn") or ""), 80), "file": path, "line": line, "ms": ms,
+                      "depth": max(0, min(6, depth)),
+                      "ins": run_values(s.get("in")), "outs": run_values(s.get("out")),
+                      "note": brief(str(s.get("note") or "")), "known": box in on_route, "lost": lost,
+                      "astray": astray})
+    wired = {name for e in route["edges"] for name in (e["a"], e["b"])}
+    # A person, and a service outside the project, are on the route but nothing of theirs can be recorded.
+    missed = [n["name"] for n in route["nodes"] if n["name"] in wired and not n["ext"] and n["icon"] != "user"
+              and n["name"] not in hit]
+    total = raw.get("ms") if isinstance(raw.get("ms"), (int, float)) and not isinstance(raw.get("ms"), bool) else None
+    if total is None and any(s["ms"] is not None for s in steps):
+        total = round(sum(s["ms"] for s in steps if s["ms"] is not None and s["depth"] == 0), 3)
+    when = str(raw.get("recorded") or "").strip()
+    commit = str(raw.get("commit") or "").strip().lower()
+    dropped = raw.get("dropped") if isinstance(raw.get("dropped"), int) else 0
+    return {"route": route["title"], "name": brief(str(raw.get("name") or ""), 80),
+            "recorded": when.replace("T", " ")[:16] if WHEN_RE.match(when) else "",
+            "commit": commit[:10] if COMMIT_RE.match(commit) else "", "dirty": raw.get("dirty") is True,
+            "command": brief(str(raw.get("command") or ""), 160), "ms": total, "steps": steps, "missed": missed,
+            "dropped": dropped + max(0, len(listed) - RUN_STEPS),
+            "aged": commits_since(root, sorted({s["file"] for s in steps if s["file"] and not s["lost"]}),
+                                  commit, when)}
+
+
+def load_runs(root, where, routes, parts, top):
+    """Returns (runs, loose): for each route its latest recorded run, or None, in the order of `routes`; and
+    the files in the runs folder that cannot be used, each with the reason."""
+    base = where if os.path.isabs(where) else os.path.join(root, where)
+    by_title = {r["title"]: r for r in routes}
+    found, loose = collections.defaultdict(list), []
+    for path in sorted(glob.glob(os.path.join(base, "*.json"))):
+        rel = os.path.relpath(path, root).replace(os.sep, "/")
+        try:
+            with open(path, encoding="utf-8") as fh:
+                raw = json.load(fh)
+        except (OSError, ValueError):
+            loose.append({"file": rel, "why": "json", "route": ""})
+            continue
+        if not isinstance(raw, dict) or not isinstance(raw.get("steps"), list):
+            loose.append({"file": rel, "why": "shape", "route": ""})
+            continue
+        title = str(raw.get("route") or "").strip()
+        if title not in by_title:
+            loose.append({"file": rel, "why": "route", "route": title})
+            continue
+        found[title].append((str(raw.get("recorded") or ""), os.path.getmtime(path), rel, raw))
+    runs = []
+    for r in routes:
+        mine = sorted(found.get(r["title"], []), key=lambda x: x[:2], reverse=True)
+        if not mine:
+            runs.append(None)
+            continue
+        run = read_run(root, mine[0][3], r, parts, top)
+        runs.append(dict(run, file=mine[0][2], earlier=len(mine) - 1))
+    return runs, loose
+
+
+def run_problems(runs, loose):
+    """Where a recorded run and its route, or the code, do not agree."""
+    out = {"missed": [], "strange": [], "lost": [], "astray": [], "aged": [], "unused": loose}
+    for run in filter(None, runs):
+        out["missed"] += [{"route": run["route"], "box": b} for b in run["missed"]]
+        seen = set()
+        for s in run["steps"]:
+            row = {"route": run["route"], "box": s["box"], "file": s["file"], "line": s["line"]}
+            if not s["known"] and ("box", s["box"]) not in seen:
+                seen.add(("box", s["box"]))
+                out["strange"].append({"route": run["route"], "box": s["box"]})
+            if (s["lost"] or s["astray"]) and (s["box"], s["file"], s["line"]) not in seen:
+                seen.add((s["box"], s["file"], s["line"]))
+                if s["lost"]:
+                    out["lost"].append(row)
+                else:
+                    out["astray"].append(dict(row, unit=s["astray"]))
+        if run["aged"]:
+            out["aged"].append({"route": run["route"], "recorded": run["recorded"], "changes_since": run["aged"]})
+    return out
+
+
+def ms_text(ms):
+    if ms is None:
+        return ""
+    if ms < 0.005:
+        return "<0.01 ms"
+    if ms >= 1000:
+        return "%.2f s" % (ms / 1000)
+    return ("%.2f ms" if ms < 1 else "%.1f ms" if ms < 100 else "%.0f ms") % ms
+
+
+def cmd_runs(root, parts, t, args):
+    """The recorded runs: for each route its latest run, step by step."""
+    runs, loose = load_runs(root, args.runs, args.routes, parts, args.top)
+    if args.json:
+        print(json.dumps({"folder": args.runs, "runs": [r for r in runs if r],
+                          "routes_without": [x["title"] for x, r in zip(args.routes, runs) if not r],
+                          "unused": loose}, ensure_ascii=False, indent=2))
+        return
+    have = [r for r in runs if r]
+    print(t["runs_head"].format(n=len(have)) if have else t["runs_none"].format(dir=args.runs))
+    for run in have:
+        notes = [run["name"]] if run["name"] else []
+        notes += [t["run_at"].format(d=run["recorded"])] if run["recorded"] else []
+        notes += [t["run_commit"].format(c=run["commit"])] if run["commit"] else []
+        notes += [t["run_steps"].format(n=len(run["steps"]))]
+        notes += [t["run_ms"].format(t=ms_text(run["ms"]))] if run["ms"] is not None else []
+        notes += [t["run_dirty"]] if run["dirty"] else []
+        print("  %s  [%s]" % (run["route"], t["sep"].join(notes)))
+        for k, s in enumerate(run["steps"], 1):
+            flags = [t["run_flag_strange"]] if not s["known"] else []
+            flags += [t["run_flag_lost"]] if s["lost"] else []
+            flags += [t["run_flag_astray"].format(u=s["astray"])] if s["astray"] else []
+            where = "%s:%d" % (s["file"], s["line"]) if s["line"] else s["file"]
+            where = "  ".join(x for x in (s["fn"] + "()" if s["fn"] else "", where) if x)
+            print("      %s%d. %s  %s  %s%s" % ("  " * s["depth"], k, s["box"], where, ms_text(s["ms"]),
+                                              "  ! " + t["sep"].join(flags) if flags else ""))
+            for way, values in ((t["run_in"], s["ins"]), (t["run_out"], s["outs"])):
+                for v in values:
+                    print("          %s%s  %s = %s" % ("  " * s["depth"], way, v["name"], v["value"]))
+        if run["missed"]:
+            print("      ! " + t["run_missed"].format(x=("、" if t is TEXT["zh"] else ", ").join(run["missed"])))
+        if run["aged"]:
+            print("      ! " + t["run_aged"].format(n=run["aged"]))
+    bare = [x["title"] for x, r in zip(args.routes, runs) if not r]
+    if bare:
+        print(t["run_bare"].format(x=("、" if t is TEXT["zh"] else ", ").join(bare)))
+    for x in loose:
+        print("  ! %s%s%s" % (x["file"], "：" if t is TEXT["zh"] else ": ", t["run_why_" + x["why"]].format(route=x["route"])))
+
+
 def cmd_doctor(root, parts, t, args):
     """What a machine can tell about the list: out of date, or miswritten. It reports and stops nothing."""
     files = zlist(git(root, "ls-files", "-z"))
@@ -2183,12 +2450,13 @@ def cmd_doctor(root, parts, t, args):
                   if n >= STALE), key=lambda x: -x[2])
     bare = [label(u) for u in units if not u.outside and not (u.flow and u.flow["nodes"])]
     missed = mark_misses([x for x in tasks_shown(root, args.tasks, parts, [])[0] if not x["old"]], t)
+    ran = run_problems(*load_runs(root, args.runs, args.routes, parts, args.top))
     if args.json:
         print(json.dumps({"list": listed, "dead_paths": [{"unit": u, "path": p} for u, p in dead],
                           "unmapped": len(unmapped), "near_names": near, "wrong_level": level, "unbacked": loose,
                           "wiring": dict(wires, code_gone=gone),
                           "stale": [{"unit": u, "drawn": d, "changes_since": n} for u, d, n in old],
-                          "undrawn": bare, "marks_missed": missed}, ensure_ascii=False, indent=2))
+                          "undrawn": bare, "marks_missed": missed, "runs": ran}, ensure_ascii=False, indent=2))
         return
     zh = t is TEXT["zh"]
     join = "；" if zh else "; "
@@ -2240,6 +2508,17 @@ def cmd_doctor(root, parts, t, args):
                                                            name=x["name"], unit=x["unit"]) for x in gone])
     section(t["doctor_stale"], [t["doctor_stale_row"].format(name=u, date=d, n=n) for u, d, n in old])
     section(t["doctor_marks"], missed)
+    # The recorded runs: does what was measured agree with what was drawn, and with the code as it is now?
+    colon = "：" if zh else ": "
+    section(t["doctor_run_missed"], [x["route"] + colon + x["box"] for x in ran["missed"]])
+    section(t["doctor_run_strange"], [x["route"] + colon + x["box"] for x in ran["strange"]])
+    section(t["doctor_run_lost"], ["%s%s%s → %s%s" % (x["route"], colon, x["box"], x["file"],
+                                                        ":%d" % x["line"] if x["line"] else "") for x in ran["lost"]])
+    section(t["doctor_run_astray"], [t["doctor_run_astray_row"].format(**x) for x in ran["astray"]])
+    section(t["doctor_run_aged"], [t["doctor_run_aged_row"].format(route=x["route"], date=x["recorded"] or "?",
+                                                                   n=x["changes_since"]) for x in ran["aged"]])
+    section(t["doctor_run_loose"], [x["file"] + colon + t["run_why_" + x["why"]].format(route=x["route"])
+                                    for x in ran["unused"]])
     if not found:
         print("  " + t["doctor_ok"])
     if bare:
@@ -2471,6 +2750,8 @@ def cmd_web(root, parts, t, args):
             "files": len(files), "history": len(commits), "recentDays": RECENT_DAYS, "list": listed,
             "parts": out_parts, "commits": out_commits, "pending": pending,
             "links": lifted(links, "top"), "measured": langs, "routes": args.routes,
+            # the latest recorded run of each route, in the routes' order; null where none was recorded
+            "runs": load_runs(root, args.runs, args.routes, parts, args.top)[0],
             "frame": args.top["frame"],
             "wings": [{"name": w.name, "what": w.what, "icon": w.icon, "flow": w.flow, "ports": ports(w),
                        "parts": [parts.index(p) for p in w.parts]} for w in args.top["wings"]],
@@ -2524,6 +2805,15 @@ projects docs/tasks/<task>/handoff.md):
   做成了：/ Done:  怎么试：/ Try:  还没做：/ Not yet:                     what its last finished step came to
   新增：/ Added:  改了：/ Changed:  去掉：/ Removed:   Part / Box: one sentence     (Part / Room / Box for a room)
     marks that box on the part's flow diagram; the names must be the ones on the list
+
+a recorded run (docs/runs/<name>.json): one real run of a route, written by scripts/bearings_run.py (Python),
+scripts/bearings_run.h (C) or any program that writes this shape; the page shows the latest run of each route:
+  {"route": "<the route's title>", "name": "what was run", "recorded": "2026-11-14T10:02:11",
+   "commit": "<HEAD when it ran>", "dirty": false,
+   "steps": [{"box": "<a box of that route>", "fn": "name_of_the_function", "file": "src/x.py", "line": 41,
+              "ms": 0.4, "depth": 0, "in": {"name": value}, "out": {"name": value}, "note": "..."}]}
+  steps are in the order they began; depth is 1 for a step that ran inside another, and so on;
+  ms may be null (a time taken on a desktop says nothing about firmware on its target)
 """
 
 
@@ -2533,7 +2823,11 @@ def main():
     ap.add_argument("--file", help="parts list, relative to the repo root (default: docs/parts.md)")
     ap.add_argument("--tasks", default=TASKS_DIR, metavar="DIR",
                     help="folder of task dossiers kept by the implementation-journal skill (default: docs/tasks)")
+    ap.add_argument("--runs", default=RUNS_DIR, metavar="DIR",
+                    help="folder of recorded runs, one JSON file each (default: docs/runs)")
     sub = ap.add_subparsers(dest="cmd", required=True)
+    r = sub.add_parser("runs", help="the recorded runs: one real run of a route, step by step, with file, line and values")
+    r.add_argument("--json", action="store_true")
     j = sub.add_parser("tasks", help="the tasks in progress and finished lately: what the agent wrote for people, and the parts touched")
     j.add_argument("--json", action="store_true")
     v = sub.add_parser("windows", help="every Claude Code and Codex window at work here: how it stands, what it changed, where two collide")
@@ -2567,7 +2861,7 @@ def main():
                          + TEXT["en"]["no_parts"].format(files=" / ".join(PARTS_FILES)))
     t = TEXT[language(parts)]
     {"parts": cmd_parts, "check": cmd_check, "web": cmd_web, "links": cmd_links, "doctor": cmd_doctor,
-     "tasks": cmd_tasks, "windows": cmd_windows}[args.cmd](root, parts, t, args)
+     "tasks": cmd_tasks, "windows": cmd_windows, "runs": cmd_runs}[args.cmd](root, parts, t, args)
 
 
 if __name__ == "__main__":
