@@ -170,18 +170,26 @@ The script is `scripts/bearings.py` in this skill folder (Claude Code: `${CLAUDE
 - **The user asks to bring a finished task's write-up up to date** ("按现在的代码更新“优惠券”的说明"; the page prints this under a finished task whose files were changed again): `bearings.py tasks --json` says how often (`changed_since`). Read the record's lines for people, then what those later commits did to the files (`git log` on them from the record's date), and rewrite `做成了` / `怎么试` / `还没做` and the marks so they are true of the code as it is now. Change only that section of that record, set its `updated:` date, and regenerate the map. If the later changes were really the same task carried further, say so to the user: the journal skill would open that task again rather than leave it finished.
 - **The user asks what a task came to, or for its write-up after it is done** ("给“课程验收”写一份做完后的说明"): add the `做成了` / `怎么试` / `还没做` lines and the marks to that section, from the record and the code the task changed. Check each mark's box against the part's flow diagram, run `bearings.py tasks` (it reports a mark whose part or box it cannot find), then regenerate the map.
 - **The user asks how the parts connect or what depends on what**: `bearings.py links` for the numbers; on the map, each part's sheet lists what it uses and what uses it. For how the project works as a whole, the map opens on "how it works" when the list has a diagram of the whole project.
+- **The user asks which window is doing what, which one is waiting on them, or whether two windows are in each other's way** ("哪个窗口在等我", "这几个窗口有没有撞车"): `bearings.py windows`, or regenerate the map. Answer with the windows' names as shown, and for a collision name the file or the part and the two windows.
 - **The user asks what a piece of work touched**: `bearings.py check` lists the parts the uncommitted work touched; `--commit <rev>` does the same for one past commit, `--since <rev>` for everything after one. Report it using the part names as written.
 
 ### Several windows at once
 
-People often run several Claude Code or Codex sessions on one project. `git` cannot say which of them changed a file, so the script reads the session records both tools keep on the machine and splits the uncommitted work by window:
+People often run several Claude Code or Codex sessions on one project, and soon cannot say which window is doing what. `git` cannot say which of them changed a file either. So the script reads the session records both tools keep on the machine and puts each window on the project:
 
-- `bearings.py check` adds a "by window" list when more than one window has uncommitted work: a letter, the window's name (its journal task if it is writing in a task's record under `docs/tasks/`, otherwise the session's title or opening request), and the parts it touched.
-- The map shows the same thing as "who is working where", marks each lit room with the letters of the windows in it, and names files two windows both changed. It also counts uncommitted work in the repository's other worktrees.
-- A file changed with an edit tool is matched for certain. A file changed by a shell command is matched by time, and only when exactly one window fits. Anything else is listed as having no window on record; say so rather than guessing.
-- `--no-windows` skips the session records. Nothing is sent anywhere; the window names end up in the generated page, so mention that if the user is about to share the page.
+- **Every window that has been at work here in the last day gets a row**, not only the ones with uncommitted files: a letter, the window's name (its journal task if it is writing in a task's record under `docs/tasks/`, otherwise the session's title or opening request), and which tool it is.
+- **How it stands.** Working: it is in the middle of a turn and its record moved in the last few minutes. Waiting for your reply: the agent has handed back and nobody has answered. Held up: it stopped in the middle of a step for a while, which is what a window waiting for a permission looks like, and also one running a long command; the page says both. Idle: nothing for a long time.
+- **What it was last asked**, in the person's own words, and when it last moved.
+- **What it changed**: its uncommitted files by part, and the commits made while one of its shell commands was running.
+- **Collisions**, worst first: a file two windows both changed in one checkout (one will overwrite the other), a file changed in two worktrees (a conflict when they are merged), and a part two windows are both changing (worth a look). The parts list itself is left out: every window keeps its own lines of it up to date.
 
-When the user asks what "this window" did and several windows are at work, find this session in the list by its name and report that row.
+`bearings.py windows` prints all of this; the map shows it as "who is working where", with the collisions above it, and marks each lit room with the letters of the windows in it. `bearings.py check` still adds its "by window" list. The map also counts uncommitted work in the repository's other worktrees.
+
+- A file changed with an edit tool is matched for certain. A file changed by a shell command is matched by time, and only when exactly one window fits; a commit is matched to a window the same way. Anything else is listed as having no window on record; say so rather than guessing.
+- A window's state is read from its record, so it is as old as the page: regenerate the map before answering "is it still working".
+- `--no-windows` skips the session records. Nothing is sent anywhere. The window names and the latest request typed into each window end up in the generated page, so mention that if the user is about to share the page.
+
+When the user asks what "this window" did and several windows are at work, find this session in the list by its name and report that row. When the list shows that another window has changed a file this session is about to change, tell the user; what to do about it is theirs to decide.
 
 ## What this skill does not do
 

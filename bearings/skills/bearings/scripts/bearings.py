@@ -12,7 +12,10 @@ it never tells anyone what to change or leave alone.
   bearings.py doctor [--json]              check the list against the code; it reports and stops nothing
   bearings.py web [--out FILE] [--open]    write the project map as one HTML page
   bearings.py tasks [--json]               the tasks in progress, from the implementation-journal skill's
-                                           dossiers: the lines written there for people, and the parts touched
+                                           records: the lines written there for people, and the parts touched
+  bearings.py windows [--json]             every Claude Code and Codex window at work in this project: working,
+                                           waiting for you or idle, what it was last asked, what it has changed
+                                           and committed, and where two windows collide
 
 Uncommitted work is split by window: which Claude Code or Codex session edited each file,
 read from the session records those tools keep on this machine (--no-windows skips that).
@@ -53,6 +56,9 @@ SESSION_DAYS = 14   # session records older than this are not read
 EDIT_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
 SHELL_TOOLS = ("Bash", "PowerShell")
 RUN_OPEN = 600      # seconds a shell command with no recorded result is taken to have run
+WINDOW_HOURS = 24   # a window with no uncommitted work is still shown if it was at work here this recently
+BUSY_SECONDS = 180  # a turn in progress whose record moved this recently: the window is working
+HELD_SECONDS = 3600 # a turn in progress that has been still for longer than that is counted as stopped
 PATCH_RE = re.compile(r'\*\*\* (?:Add File|Update File|Delete File|Move to): ([^\n\\"]+)')
 # Tasks. The implementation-journal skill keeps one record per task under docs/tasks/, written for the
 # next AI session. It carries a `## For People` section, the few lines meant for a person:
@@ -88,6 +94,14 @@ TEXT = {
         "sensitive": "敏感：{why}",
         "unmapped_changed": "未归类",
         "by_window": "按窗口分：",
+        "windows_head": "在这个项目里的窗口 {n} 个：",
+        "windows_none": "没有找到最近在这个项目里干活的窗口。",
+        "st_working": "在干活", "st_waiting": "停下来等你回话", "st_held": "停住了，可能在等你批准", "st_idle": "没在动", "st_": "",
+        "win_said": "最近一次要它做：{x}", "win_clean": "没有未提交的改动", "win_commits": "提交了 {n} 次",
+        "clash_head": "撞车 {n} 处：", "clash_none": "窗口之间没有撞车。",
+        "clash_file": "{who} 都改了同一个文件：{file}（{part}）",
+        "clash_merge": "同一个文件在几个工作区里都改了（{where}），合并时会冲突：{file}",
+        "clash_part": "{who} 都在改“{part}”",
         "unknown_window": "没记到是哪个窗口",
         "last_at": "最后改动 {t}",
         "sep": "，",
@@ -166,6 +180,14 @@ TEXT = {
         "sensitive": "sensitive: {why}",
         "unmapped_changed": "Unmapped",
         "by_window": "By window:",
+        "windows_head": "{n} windows at work in this project:",
+        "windows_none": "No window has been at work in this project lately.",
+        "st_working": "working", "st_waiting": "stopped, waiting for your reply", "st_held": "held up, perhaps waiting for your approval", "st_idle": "idle", "st_": "",
+        "win_said": "last asked: {x}", "win_clean": "nothing uncommitted", "win_commits": "{n} commits",
+        "clash_head": "{n} places where windows collide:", "clash_none": "No window is in another's way.",
+        "clash_file": "{who} both changed the same file: {file} ({part})",
+        "clash_merge": "the same file is changed in several checkouts ({where}) and will conflict on merge: {file}",
+        "clash_part": "{who} are both changing \"{part}\"",
         "unknown_window": "no window on record",
         "last_at": "last edit {t}",
         "sep": ", ",
@@ -828,7 +850,7 @@ def inside(path, roots):
 def first_ask(text, limit=60):
     """The opening line of what a person typed; "" for the context blocks the tool adds itself."""
     text = str(text).strip()
-    if not text or text.startswith(("<", "#")):
+    if not text or text.startswith(("<", "#", "This session is being continued")):
         return ""
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     line = next((x for x in lines if not x.startswith("[")), lines[0])
@@ -858,7 +880,20 @@ def mentions(path, roots):
 
 
 def new_session(tool, sid):
-    return {"tool": tool, "id": sid, "title": "", "edits": {}, "runs": [], "open": {}}
+    # `turn`: "busy" while the agent is in the middle of a turn, "done" once it has handed back to the person.
+    # `seen`: when the record last moved. `said`: the latest thing the person asked. `here`: started in a checkout.
+    return {"tool": tool, "id": sid, "title": "", "edits": {}, "runs": [], "open": {},
+            "turn": "", "seen": 0.0, "said": "", "here": False, "born": 0.0}
+
+
+def born(path):
+    """When a session record was started. Windows are lettered in this order, so a window keeps its letter
+    from one look to the next while the same windows are open."""
+    try:
+        info = os.stat(path)
+    except OSError:
+        return 0.0
+    return getattr(info, "st_birthtime", 0) or info.st_ctime
 
 
 def claude_sessions(roots, since):
@@ -873,8 +908,18 @@ def claude_sessions(roots, since):
         sub = os.path.basename(os.path.dirname(path)) == "subagents"
         sid = os.path.basename(os.path.dirname(os.path.dirname(path))) if sub else os.path.basename(path)[:-6]
         s = found.get(sid) or found.setdefault(sid, new_session("Claude Code", sid))
+        newest = not sub and not s["seen"]  # a resumed session has several records; the newest says how it stands
+        if newest:
+            s["seen"] = os.path.getmtime(path)
+        if not sub:
+            s["born"] = min(s["born"] or born(path), born(path))
         with open(path, encoding="utf-8", errors="replace") as fh:
             for line in fh:
+                if not s["here"] and '"cwd":"' in line and any('"cwd":"%s' % json.dumps(r)[1:-1] in line for r in roots):
+                    s["here"] = True
+                if newest and '"stop_reason"' in line and '"type":"assistant"' in line:
+                    # the agent's last word in a turn ends it; anything else means the turn is still running
+                    s["turn"] = "done" if '"stop_reason":"end_turn"' in line else "busy"
                 if '"tool_use"' in line and any(r in line for r in roots):
                     try:
                         d = json.loads(line)
@@ -903,14 +948,18 @@ def claude_sessions(roots, since):
                     for b in blocks if isinstance(blocks, list) else []:
                         if isinstance(b, dict) and b.get("tool_use_id") in s["open"]:
                             s["runs"].append((s["open"].pop(b["tool_use_id"]), stamp(d.get("timestamp"))))
-                elif not sub and not s.get("ask") and '"type":"user"' in line and '"tool_result"' not in line:
+                elif not sub and '"type":"user"' in line and '"tool_result"' not in line:
                     try:  # the opening request names a session that was never given a title
                         d = json.loads(line)
                         said = d["message"]["content"] if d.get("type") == "user" and not d.get("isMeta") else ""
                     except (ValueError, KeyError, TypeError):
                         continue
                     for b in said if isinstance(said, list) else [{"text": said}]:
-                        s["ask"] = s.get("ask") or first_ask(b.get("text") or "" if isinstance(b, dict) else "")
+                        ask = first_ask(b.get("text") or "" if isinstance(b, dict) else "")
+                        if ask:
+                            s["ask"] = s.get("ask") or ask
+                            if newest:  # a new request opens a turn
+                                s["said"], s["turn"] = ask, "busy"
                 elif not sub and ('"ai-title"' in line or '"custom-title"' in line):
                     try:
                         d = json.loads(line)
@@ -946,7 +995,11 @@ def codex_sessions(roots, since):
                     continue
                 call = '_call"' in line and (local or any(r in line for r in roots))
                 done = s["open"] and "_call_output" in line
-                ask = not s["title"] and '"user"' in line
+                ask = '"user"' in line
+                if '"task_started"' in line:
+                    s["turn"] = "busy"
+                elif '"task_complete"' in line or '"turn_aborted"' in line:
+                    s["turn"] = "done"
                 if not (call or done or ask):
                     continue
                 try:
@@ -966,10 +1019,13 @@ def codex_sessions(roots, since):
                     s["runs"].append((s["open"].pop(p["call_id"]), when))
                 elif ask and kind == "message" and p.get("role") == "user":
                     for c in p.get("content") or []:
-                        s["title"] = s["title"] or first_ask(c.get("text") or "" if isinstance(c, dict) else "")
+                        said = first_ask(c.get("text") or "" if isinstance(c, dict) else "")
+                        if said:
+                            s["title"], s["said"] = s["title"] or said, said
         s["runs"] += [(start, start + RUN_OPEN) for start in s["open"].values()]
         s["open"] = {}
-        if s["edits"] or s["runs"]:
+        s["here"], s["seen"], s["born"] = local, os.path.getmtime(path), born(path)
+        if s["edits"] or s["runs"] or s["here"]:
             found.append(s)
     return found
 
@@ -1291,7 +1347,8 @@ def tasks_shown(root, where, parts, commits):
 
 
 def sessions(roots):
-    """Recent sessions that worked in these checkouts: {tool, id, title, task, edits: {path: time}, runs}."""
+    """Recent sessions that worked in these checkouts: {tool, id, title, task, edits: {path: time}, runs,
+    turn, seen, said, here}."""
     since = datetime.datetime.now().timestamp() - SESSION_DAYS * 86400
     found = []
     for reader in (claude_sessions, codex_sessions):
@@ -1306,7 +1363,7 @@ def sessions(roots):
             full = real.get(path) or real.setdefault(path, os.path.realpath(path))
             if inside(full, roots):
                 edits[full] = max(when, edits.get(full, 0))
-        if edits or s["runs"]:
+        if edits or s["runs"] or s["here"]:
             s["edits"], s["task"], s["dossier"] = edits, "", ""
             for path, _ in sorted(edits.items(), key=lambda kv: -kv[1]):
                 hit = task_of(path)
@@ -1367,11 +1424,31 @@ def in_flight(root, parts, look=True, everywhere=False):
             win = by_id[s["id"]]
             win["rows"].append(row)
             win["when"] = max(win["when"], when)
-    windows.sort(key=lambda win: -win["when"])
+    # A window with nothing uncommitted is still at work here if its session sat in a checkout lately:
+    # reading, planning, or already committed.
+    now = datetime.datetime.now().timestamp()
+    by_session = {s["id"]: s for s in found}
+    for s in found:
+        if s["id"] not in by_id and s["here"] and now - s["seen"] <= WINDOW_HOURS * 3600:
+            by_id[s["id"]] = {"tool": s["tool"], "title": s["title"], "task": s["task"], "dossier": s["dossier"],
+                              "unknown": False, "when": 0, "rows": []}
+            windows.append(by_id[s["id"]])
+    for sid, win in by_id.items():
+        s = by_session[sid]
+        win["session"], win["seen"], win["said"] = s, max(s["seen"], win["when"]), s["said"]
+        still = now - win["seen"]
+        # working: in a turn and the record moved a moment ago. held: in a turn but still for a while, which is
+        # what a window waiting for a permission looks like, or one running a long command. waiting: the agent
+        # has handed back and the person has not answered. idle: nothing for a long time.
+        win["state"] = ("working" if still <= BUSY_SECONDS else "held" if still <= HELD_SECONDS else "idle") \
+            if s["turn"] == "busy" else ("waiting" if still <= WINDOW_HOURS * 3600 else "idle") \
+            if s["turn"] == "done" else ("working" if still <= BUSY_SECONDS else "idle")
+    windows.sort(key=lambda win: win["session"]["born"])  # oldest first: a window keeps its letter and its place
     for w in trees:
         loose = [row for row in rows if row["tree"] is w and not row["who"]]
         if loose:
-            windows.append({"tool": "", "title": "", "task": "", "dossier": "", "unknown": True, "when": 0, "rows": loose})
+            windows.append({"tool": "", "title": "", "task": "", "dossier": "", "unknown": True, "when": 0,
+                            "rows": loose, "session": None, "seen": 0, "said": "", "state": ""})
     letters, unknown = 0, 0
     for win in windows:
         if not win["unknown"] and not win["dossier"]:
@@ -1388,13 +1465,64 @@ def in_flight(root, parts, look=True, everywhere=False):
         else:
             win["key"] = chr(65 + letters) if letters < 26 else str(letters + 1)
             letters += 1
-        win["last"] = clock(win["when"]) if win["when"] else ""
+        win["last"] = clock(win["seen"]) if win["seen"] else ""
         win["guessed"] = sum(1 for row in win["rows"] if row["guess"])
         win["where"] = sorted({row["tree"]["branch"] or os.path.basename(row["tree"]["path"])
                                for row in win["rows"] if row["tree"]["path"] != here["path"]})
         for row in win["rows"]:
             row.setdefault("keys", []).append(win["key"])
     return rows, windows
+
+
+def clashes(rows, windows, records=()):
+    """Where windows get in each other's way, worst first: the same file changed by two windows in one
+    checkout (one will overwrite the other), the same file changed in two checkouts (a conflict when they
+    are merged), and the same part being changed by two windows (worth a look). `records` is the parts
+    list followed by the tasks folder. The list is left out altogether: every window keeps its own lines
+    of it up to date, which is what it is for. Both are left out of the last kind."""
+    out, seen = [], set()
+    listed = records[0] if records else ""
+    rows = [r for r in rows if r["file"] != listed]
+    for r in rows:
+        keys = [k for k in r.get("keys", []) if not k.startswith("?")]
+        if len(keys) > 1:
+            seen.add(r["file"])
+            out.append({"kind": "file", "file": r["file"], "part": r["part"], "who": keys, "where": []})
+    trees = collections.defaultdict(list)
+    for r in rows:
+        trees[r["file"]].append(r)
+    for f, same in trees.items():
+        if len({id(r["tree"]) for r in same}) > 1 and f not in seen:
+            seen.add(f)
+            out.append({"kind": "merge", "file": f, "part": same[0]["part"],
+                        "who": sorted({k for r in same for k in r.get("keys", []) if not k.startswith("?")}),
+                        "where": sorted({r["tree"]["branch"] or os.path.basename(r["tree"]["path"]) for r in same})})
+    by_part = collections.defaultdict(lambda: collections.defaultdict(int))
+    for r in rows:
+        if r["part"] and not r["file"].startswith(tuple(records) or ("\0",)):
+            for k in r.get("keys", []):
+                if not k.startswith("?"):
+                    by_part[r["part"]][k] += 1
+    hard = {c["part"] for c in out}
+    for part, who in by_part.items():
+        if len(who) > 1 and part not in hard:
+            out.append({"kind": "part", "file": "", "part": part, "who": sorted(who), "where": [],
+                        "n": dict(who)})
+    return out
+
+
+def window_commits(windows, commits):
+    """Gives each window the commits made while one of its shell commands was running, when exactly one
+    window fits: the same reasoning that matches a file changed by a shell command. Each window gets
+    `commits`, [{hash, subject, parts}], newest first."""
+    for win in windows:
+        win["commits"] = []
+    for c in commits:
+        near = [win for win in windows if win.get("session") and
+                any(a - 1 <= c["when"] <= b + 2 for a, b in win["session"]["runs"])]
+        if len(near) == 1:
+            near[0]["commits"].append({"hash": c["hash"], "subject": c["subject"],
+                                       "parts": sorted(name for name in c["groups"] if name)})
 
 
 def grouped(rows, parts):
@@ -2187,6 +2315,50 @@ def cmd_tasks(root, parts, t, args):
         print("  ! " + row)
 
 
+def cmd_windows(root, parts, t, args):
+    """Every window at work in this project: how it stands, what it was last asked, what it has changed and
+    committed, and where two windows get in each other's way."""
+    rows, windows = in_flight(root, parts, everywhere=True)
+    window_commits(windows, history(root, parts))
+    listed = os.path.relpath(args.list_path, root).replace(os.sep, "/")
+    tasks_rel = os.path.relpath(args.tasks if os.path.isabs(args.tasks) else os.path.join(root, args.tasks), root)
+    hits = clashes(rows, windows, (listed, tasks_rel.replace(os.sep, "/") + "/"))
+    known = [w for w in windows if not w["unknown"]]
+    if args.json:
+        print(json.dumps({"windows": [{"key": w["key"], "tool": w["tool"], "name": w["task"] or w["title"],
+                                       "state": w["state"], "last_active": w["last"], "last_asked": w["said"],
+                                       "task": w["dossier"], "uncommitted": [{"part": g["name"], "files": g["n"]}
+                                                                              for g in grouped(w["rows"], parts)],
+                                       "commits": [c["hash"] for c in w["commits"]]} for w in known],
+                          "no_window_on_record": sum(len(w["rows"]) for w in windows if w["unknown"]),
+                          "clashes": hits}, ensure_ascii=False, indent=2))
+        return
+    if not known:
+        print(t["windows_none"])
+        return
+    print(t["windows_head"].format(n=len(known)))
+    for w in known:
+        print("  %s  %s  [%s%s%s%s%s]" % (w["key"], w["task"] or w["title"] or w["tool"], w["tool"], t["sep"],
+                                         t["st_" + w["state"]], t["sep"], t["last_at"].format(t=w["last"])))
+        if w["said"] and w["said"] != (w["task"] or w["title"]):
+            print("      " + t["win_said"].format(x=w["said"]))
+        groups = grouped(w["rows"], parts)
+        print("      " + (t["sep"].join("%s %d" % (g["name"] or t["unmapped_changed"], g["n"]) for g in groups)
+                          if groups else t["win_clean"])
+              + ((t["sep"] + t["win_commits"].format(n=len(w["commits"]))) if w["commits"] else ""))
+    loose = sum(len(w["rows"]) for w in windows if w["unknown"])
+    if loose:
+        print("  ?  %s  %s" % (t["unknown_window"], t["files"].format(n=loose)))
+    if not hits:
+        print(t["clash_none"])
+        return
+    print(t["clash_head"].format(n=len(hits)))
+    for c in hits:
+        print("  " + t["clash_" + c["kind"]].format(who="、".join(c["who"]) if t is TEXT["zh"] else ", ".join(c["who"]),
+                                                    file=c["file"], part=c["part"] or t["unmapped_changed"],
+                                                    where="、".join(c["where"])))
+
+
 def cmd_web(root, parts, t, args):
     lang = language(parts)
     files = zlist(git(root, "ls-files", "-z"))
@@ -2198,6 +2370,7 @@ def cmd_web(root, parts, t, args):
 
     # What is uncommitted, in every checkout of the repository, split by window.
     rows, windows = in_flight(root, parts, look=not args.no_windows, everywhere=True)
+    window_commits(windows, commits)
     by_name = {p.name: p for p in parts}
     waiting = collections.Counter((r["part"], r["sub"]) for r in rows)
 
@@ -2278,7 +2451,10 @@ def cmd_web(root, parts, t, args):
                   for g in short(grouped(rows, parts))],
         "windows": [{"key": w["key"], "tool": w["tool"], "title": w["title"], "task": w["task"], "last": w["last"],
                      "where": "、".join(w["where"]) if lang == "zh" else ", ".join(w["where"]),
-                     "unknown": w["unknown"], "n": len(w["rows"]), "guessed": w["guessed"], "parts": short(grouped(w["rows"], parts))}
+                     "unknown": w["unknown"], "n": len(w["rows"]), "guessed": w["guessed"], "parts": short(grouped(w["rows"], parts)),
+                     "state": w["state"], "said": w["said"],
+                     "commits": [{"hash": c["hash"], "subject": c["subject"][:90], "parts": c["parts"]} for c in w["commits"][:6]],
+                     "committed": len(w["commits"])}
                     for w in windows],
         "shared": [{"file": r["file"], "who": r["keys"]} for r in rows if len(r["who"]) > 1][:8],
     }
@@ -2288,6 +2464,7 @@ def cmd_web(root, parts, t, args):
                                 (tasks[0]["rel"] + "/") if tasks and tasks[0]["rel"] else "") if x)
     lately = [changes(root, args.list_path, parts, args.routes, args.top, wiring, commits, tasks, days, records)
               for days in SPANS]
+    pending["clashes"] = clashes(rows, windows, records)[:12]
     keep_list(root, args.list_path)
     data = {"project": os.path.basename(root), "lang": lang, "generated": datetime.date.today().isoformat(),
             "lately": lately,
@@ -2359,6 +2536,8 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     j = sub.add_parser("tasks", help="the tasks in progress and finished lately: what the agent wrote for people, and the parts touched")
     j.add_argument("--json", action="store_true")
+    v = sub.add_parser("windows", help="every Claude Code and Codex window at work here: how it stands, what it changed, where two collide")
+    v.add_argument("--json", action="store_true")
     p = sub.add_parser("parts", help="list parts and unmapped files")
     p.add_argument("--json", action="store_true")
     p.add_argument("--all", action="store_true", help="list every unmapped file")
@@ -2388,7 +2567,7 @@ def main():
                          + TEXT["en"]["no_parts"].format(files=" / ".join(PARTS_FILES)))
     t = TEXT[language(parts)]
     {"parts": cmd_parts, "check": cmd_check, "web": cmd_web, "links": cmd_links, "doctor": cmd_doctor,
-     "tasks": cmd_tasks}[args.cmd](root, parts, t, args)
+     "tasks": cmd_tasks, "windows": cmd_windows}[args.cmd](root, parts, t, args)
 
 
 if __name__ == "__main__":

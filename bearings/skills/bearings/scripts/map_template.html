@@ -297,6 +297,18 @@ details .tags{flex-direction:row;flex-wrap:wrap}
 .lane .wb{width:28px;height:28px;font-size:18px}
 .lane .lt{font-weight:700;font-size:15px;line-height:1.35;overflow-wrap:anywhere}
 .lane .ls{display:block;font-size:12.5px;font-weight:400;color:var(--muted)}
+.lane .ln{display:flex;flex-wrap:wrap;gap:4px 9px;align-items:center}
+.lane .lsaid{display:block;font-size:13px;font-weight:500;line-height:1.45;margin-top:2px;overflow-wrap:anywhere}
+/* how a window stands: at work, handed back to the person, stuck in the middle of a step, or quiet */
+.st{font-size:11.5px;font-weight:700;border-radius:999px;padding:0 9px;line-height:19px;white-space:nowrap}
+.st.working{background:var(--z1);color:var(--on)}
+.st.waiting{background:var(--warn);color:var(--on)}
+.st.held{color:var(--warn);box-shadow:inset 0 0 0 1.5px var(--warn)}
+.st.idle{color:var(--muted);box-shadow:inset 0 0 0 1.5px var(--hair)}
+.clashes{display:flex;flex-direction:column;gap:7px}
+.clash{display:flex;flex-wrap:wrap;gap:6px 9px;align-items:center;font-size:14px}
+.clash.hard{color:var(--warn);font-weight:600} .clash.hard code{color:var(--ink);font-weight:400}
+.clash .ic{font-size:17px} .clash .wbs{display:inline-flex;gap:3px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{display:inline-flex;align-items:center;gap:7px;background:var(--zs);border-radius:8px;padding:3px 10px 3px 3px;font-size:13.5px;font-weight:600}
 .chip .pic{width:22px;height:22px;font-size:14px;border-radius:6px}
@@ -415,7 +427,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     tUpdated:'{d} 更新',tStale:'{d} 更新，{n} 天没动了',tNeeds:'等你',tNext:'接下来',tRooms:'这件事动过哪几块',tNoRooms:'还没量到它动过哪一块。',tWin:'正在做这件事',
     tAsk:'想让它接着做，开一个新窗口，对 AI 说：',tSay:'继续做“{n}”',tAskBare:'想在这里看到它做到哪了，对 AI 说：',tSayBare:'给“{n}”写一份给人看的说明',
     noteTasks:'“正在做的事”是 AI 在任务记录里专门写给人看的几行；它动过哪几块，是从提交记录和未提交的改动里量出来的。',
-    sumWin:'{w} 个窗口在动。',nWin:'{w} 个窗口',fromOne:'来自“{t}”',who:'谁在动哪里',sep:'，',
+    sumWin:'{w} 个窗口在这个项目里{x}。',sumWork:'{n} 个在干活',sumWait:'{n} 个在等你',nWin:'{w} 个窗口',who:'谁在动哪里',sep:'，',stWorking:'在干活',stWaiting:'等你回话',stHeld:'停住了',stIdle:'没在动',stHeldTip:'它在一步操作中间停了一阵：可能在等你批准，也可能在跑一条很久的命令。',wSaid:'最近要它做：',wClean:'没有未提交的改动',wCommits:'提交了 {n} 次',wOnly:'这个窗口没有还没提交的改动。',whoBand:'谁在动哪里',whoMeta:'现在没有未提交的改动',clashH:'撞车',clashFile:'都改了同一个文件',clashMerge:'同一个文件在几个工作区里都改了（{w}），合并时会冲突',clashPart:'都在改这一块',
     unknownWin:'没记到是哪个窗口',unknownSub:'手动改的，或记录里找不到',lastAt:'最后改动 {t}',otherTree:'在 {b} 工作区',
     both:'都动过',nowBy:'正在动这一块',
     noteWin:'“谁在动哪里”读的是本机 Claude Code 和 Codex 的会话记录：编辑工具改的文件是确定的，命令改的文件按改动时间推断。',
@@ -455,7 +467,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     tUpdated:'updated {d}',tStale:'updated {d}, quiet for {n} days',tNeeds:'Waiting for you',tNext:'Next',tRooms:'The parts this task touched',tNoRooms:'No part measured for it yet.',tWin:'working on this now',
     tAsk:'To have it carry on, open a new window and say to the AI:',tSay:'Continue "{n}"',tAskBare:'To see here where it stands, say to the AI:',tSayBare:'Write the lines for people for "{n}"',
     noteTasks:'"In progress" shows the few lines the agent wrote for people in its task records; the parts a task touched are measured from commits and uncommitted changes.',
-    sumWin:' {w} windows are at work.',nWin:'{w} windows',fromOne:'from "{t}"',who:'Who is working where',sep:', ',
+    sumWin:' {w} windows are in this project{x}.',sumWork:'{n} working',sumWait:'{n} waiting for you',nWin:'{w} windows',who:'Who is working where',sep:', ',stWorking:'working',stWaiting:'waiting for your reply',stHeld:'held up',stIdle:'idle',stHeldTip:'It stopped in the middle of a step for a while: it may be waiting for your approval, or running a long command.',wSaid:'last asked: ',wClean:'nothing uncommitted',wCommits:'{n} commits',wOnly:'This window has nothing uncommitted.',whoBand:'Who is working where',whoMeta:'nothing is uncommitted right now',clashH:'Collisions',clashFile:'both changed the same file',clashMerge:'the same file is changed in several checkouts ({w}) and will conflict on merge',clashPart:'are both changing this part',
     unknownWin:'No window on record',unknownSub:'changed by hand, or not in the records',lastAt:'last edit {t}',otherTree:'in the {b} worktree',
     both:'both changed',nowBy:'working on this part now',
     noteWin:'"Who is working where" reads the Claude Code and Codex session records on this machine: files changed with the edit tools are certain, files changed by shell commands are matched by time.',
@@ -512,7 +524,10 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       dash:function(e){return !!e.loose;}};
   }
   var hasPending=D.pending.parts.length>0;
-  var WIN=D.pending.windows||[],multi=WIN.length>1,known=WIN.filter(function(w){return !w.unknown;});
+  var WIN=D.pending.windows||[],known=WIN.filter(function(w){return !w.unknown;}),multi=known.length>0;
+  var CLASH=D.pending.clashes||[];
+  function state(w){var k={working:T.stWorking,waiting:T.stWaiting,held:T.stHeld,idle:T.stIdle}[w.state];
+    return k?'<span class="st '+w.state+'"'+(w.state==='held'?' title="'+esc(T.stHeldTip)+'"':'')+'>'+k+'</span>':'';}
   function winName(w){return w.unknown?T.unknownWin:(w.task||w.title||w.tool);}
   function winSub(w){var a=w.unknown?[T.unknownSub]:[w.tool].concat(w.last?[f(T.lastAt,{t:w.last})]:[]);
     if(w.where)a.push(f(T.otherTree,{b:w.where}));return a.join(T.sep);}
@@ -529,7 +544,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   var offList=D.pending.parts.reduce(function(a,x){return a+(x.part?0:x.n);},0);
   $('sum').textContent=f(T.sumA,{n:D.parts.length,g:groups.length})+
     (litParts?f(T.sumOn,{k:litParts})+(offList?f(T.sumUn,{n:offList}):''):(offList?f(T.sumUnOnly,{n:offList}):T.sumOff))+
-    (hasPending&&multi&&known.length?f(T.sumWin,{w:known.length}):'');
+    (known.length?f(T.sumWin,{w:known.length,x:(function(){var a=known.filter(function(w){return w.state==='working';}).length,b=known.filter(function(w){return w.state==='waiting'||w.state==='held';}).length;
+      var x=[a?f(T.sumWork,{n:a}):'',b?f(T.sumWait,{n:b}):''].filter(function(y){return y;}).join(T.sep);return x?T.sep+x:'';})()}):'');
   $('key').innerHTML=(multi?'<span><span class="wb kwb">A</span>'+T.kWin+'</span>':'')+'<span><i class="kroom"></i>'+T.kOn+'</span><span><i class="kcare"></i>'+T.kCare+'</span><span style="color:var(--z0)">'+dots(8)+'<span style="color:var(--muted)">'+f(T.kDots,{d:D.recentDays})+'</span></span>';
   $('note').textContent=f(T.note,{n:D.history,p:D.list})+(D.measured.length?' '+f(T.noteRel,{l:D.measured.join(T.sep)}):'')+(known.length?' '+T.noteWin:'')+(TASKS.length?' '+T.noteTasks:'');
 
@@ -886,31 +902,40 @@ details .tags{flex-direction:row;flex-wrap:wrap}
 
   var curWin=null;
   function lanes(){ // one row per window; picking a row keeps only that window's rooms lit
-    var h='<div class="blk"><h3>'+T.who+'</h3><div class="lanes">';
+    var h='';
+    if(CLASH.length){ // where two windows are in each other's way, worst first
+      h+='<div class="blk"><h3>'+T.clashH+'</h3><div class="clashes">'+CLASH.map(function(c){
+        var who='<span class="wbs">'+c.who.map(function(key){var w=winByKey(key);return w?wb(w):'';}).join('')+'</span>',p=byName[c.part];
+        var where=p?'<span class="chip '+p.z+'">'+pic(p.icon)+esc(p.name)+'</span>':'';
+        return '<div class="clash'+(c.kind==='part'?'':' hard')+'">'+(c.kind==='part'?'':ic('sign'))+who+'<span>'+
+          esc(c.kind==='file'?T.clashFile:c.kind==='merge'?f(T.clashMerge,{w:c.where.join(T.sep)}):T.clashPart)+'</span>'+where+(c.file?'<code>'+esc(c.file)+'</code>':'')+'</div>';}).join('')+'</div></div>';
+    }
+    h+='<div class="blk"><h3>'+T.who+'</h3><div class="lanes">';
     WIN.forEach(function(w,k){
+      var chips=w.parts.map(function(x){var p=byName[x.name];return '<span class="chip '+(p?p.z:'zx')+'">'+pic(p?p.icon:'box')+esc(p?x.name:T.unmapped)+'<span class="n">'+x.n+'</span></span>';}).join('');
+      if(!chips&&!w.unknown)chips='<span class="sub">'+T.wClean+'</span>';
+      if(w.committed)chips+='<span class="sub" title="'+esc(w.commits.map(function(c){return c.subject;}).join('\n'))+'">'+f(T.wCommits,{n:w.committed})+'</span>';
       h+='<button type="button" class="lane" data-win="'+k+'" aria-pressed="'+(curWin===k)+'">'+wb(w)+
-        '<span class="lt">'+esc(winName(w))+'<span class="ls">'+esc(winSub(w))+'</span></span><span class="chips">'+
-        w.parts.map(function(x){var p=byName[x.name];return '<span class="chip '+(p?p.z:'zx')+'">'+pic(p?p.icon:'box')+esc(p?x.name:T.unmapped)+'<span class="n">'+x.n+'</span></span>';}).join('')+'</span></button>';});
-    h+='</div>';
-    (D.pending.shared||[]).slice(0,3).forEach(function(x){
-      h+='<div class="both"><span class="wbs">'+x.who.map(function(key){return wb(WIN.filter(function(w){return w.key===key;})[0]);}).join('')+'</span>'+T.both+'<code>'+esc(x.file)+'</code></div>';});
-    return h+'</div>';
+        '<span class="lt"><span class="ln">'+esc(winName(w))+state(w)+'</span><span class="ls">'+esc(winSub(w))+'</span>'+
+        (w.said&&w.said!==winName(w)?'<span class="lsaid">'+T.wSaid+esc(w.said)+'</span>':'')+'</span><span class="chips">'+chips+'</span></button>';});
+    return h+'</div></div>';
   }
   function home(k){
     unselRows();setHash('');curFlow=null;curPart=null;curInner=null;curWin=(k==null||!multi)?null:k;
     unpick();
-    if(!hasPending){light({},null);setStage('<div class="band"><h2>'+T.none+'</h2></div>');return;}
+    if(!hasPending){light({},null);
+      // nothing uncommitted, but windows at work here still say how they stand
+      setStage(known.length?'<div class="band"><h2>'+T.whoBand+'</h2><span class="meta">'+T.whoMeta+'</span></div><div class="body">'+lanes()+'</div>':'<div class="band"><h2>'+T.none+'</h2></div>');return;}
     var src=curWin==null?D.pending.parts.map(function(x){return {name:x.part,n:x.n,files:x.files};}):WIN[curWin].parts;
     var list=src.map(function(x){return {name:x.name,n:x.n,files:x.files};}),map={};
     list.forEach(function(x){if(byName[x.name])map[x.name]=x.n;});
     light(map,null,multi?(curWin==null?WIN:[WIN[curWin]]):null);
     var meta=landedText(list);
     if(multi&&curWin==null&&known.length)meta+=T.sep+f(T.nWin,{w:known.length});
-    else if(!multi&&known.length)meta+=T.sep+f(T.fromOne,{t:winName(known[0])});
     // files that no part owns: say what that means and the sentence that puts them on the map
     var askList=list.some(function(x){return !byName[x.name];})?'<div class="ask">'+T.askList+'<span class="say">'+esc(T.sayList)+'</span></div>':'';
     setStage('<div class="band"><h2>'+(curWin==null?T.pending:wb(WIN[curWin])+' '+esc(winName(WIN[curWin])))+'</h2><span class="meta">'+meta+'</span></div><div class="body">'+
-      (multi?lanes():'')+stackBar(list)+legend(list)+askList+'</div>');
+      (multi?lanes():'')+(list.length?stackBar(list)+legend(list):'<p class="sub">'+T.wOnly+'</p>')+askList+'</div>');
   }
   // A part nobody has drawn yet still has a picture: who uses it and whom it uses, taken from the measured links.
   function around(u,links,find){
