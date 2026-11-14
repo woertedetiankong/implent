@@ -54,8 +54,8 @@ EDIT_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
 SHELL_TOOLS = ("Bash", "PowerShell")
 RUN_OPEN = 600      # seconds a shell command with no recorded result is taken to have run
 PATCH_RE = re.compile(r'\*\*\* (?:Add File|Update File|Delete File|Move to): ([^\n\\"]+)')
-# Tasks. The implementation-journal skill keeps one dossier per task under docs/tasks/, written for the
-# next AI session. Its handoff carries a `## For People` section, the few lines meant for a person:
+# Tasks. The implementation-journal skill keeps one record per task under docs/tasks/, written for the
+# next AI session. It carries a `## For People` section, the few lines meant for a person:
 TASKS_DIR = "docs/tasks"
 PEOPLE_HEAD_RE = re.compile(r"^##\s+(?:For People|给人看的?)\s*$", re.I)
 PEOPLE_RE = re.compile(r"^\s*(?:[-*]\s+)?(名字|Name|现在|Now|等你|Needs you|下一步|Next|做成了|Done|怎么试|Try"
@@ -986,10 +986,35 @@ def brief_name(folder):
     return re.sub(r"^\d{4}-\d{2}-\d{2}-", "", os.path.basename(folder))
 
 
+NOT_TASKS = ("next-session.md", "index.md", "readme.md")  # Markdown beside the task records that is not one
+
+
+def file_title(path):
+    """What a one-file task record calls its task: its `#` heading, or the file's name without the date."""
+    for line in slurp(path).split("\n"):
+        if line.startswith("# "):
+            return line[2:].strip()
+    return re.sub(r"^\d{4}-\d{2}-\d{2}-", "", os.path.basename(path)[:-3])
+
+
 def task_of(path):
-    """The journal task a file under docs/tasks/<dossier>/ belongs to: (dossier folder name, task name)."""
+    """The journal task a file belongs to: (task id, task name). A task's record is one file,
+    docs/tasks/<id>.md, or in older projects a folder of several, docs/tasks/<id>/."""
     m = re.match(r"(.*?/docs/tasks/([^/]+))/[^/]+$", path)
-    return (m.group(2), brief_name(m.group(1))) if m else None
+    if m:
+        return m.group(2), brief_name(m.group(1))
+    m = re.match(r".*?/docs/tasks/([^/]+)\.md$", path)
+    if m and os.path.basename(path).lower() not in NOT_TASKS:
+        return m.group(1), file_title(path)
+    return None
+
+
+def task_at(rest):
+    """The task id a path inside the tasks folder belongs to, or None: `<id>/anything` or `<id>.md`."""
+    first, slash, _ = rest.partition("/")
+    if slash:
+        return first
+    return first[:-3] if first.lower().endswith(".md") and first.lower() not in NOT_TASKS else None
 
 
 def slurp(path):
@@ -1038,8 +1063,12 @@ def load_tasks(root, where):
     session, so only two things are read from them: the handoff's status and date, and its `## For People`
     section, the few lines the agent writes there in the reader's own language: where the task stands
     (名字/Name, 现在/Now, 等你/Needs you, 下一步/Next) and what its last finished step came to (做成了/Done,
-    怎么试/Try, 还没做/Not yet, 新增/Added, 改了/Changed, 去掉/Removed). A dossier without that section is
-    still a task; it has a name from its brief and no more."""
+    怎么试/Try, 还没做/Not yet, 新增/Added, 改了/Changed, 去掉/Removed). A record without that section is
+    still a task; it has a name from its heading and no more.
+
+    A task's record is one file, `<id>.md` with a `status:` in its header, or, in projects that started
+    with the older form, a folder `<id>/` whose `handoff.md` is read the same way. `home` is that file or
+    folder, `file` the file the lines for people are in, both relative to the tasks folder."""
     base = where if os.path.isabs(where) else os.path.join(root, where)
     try:
         names = sorted(os.listdir(base))
@@ -1048,18 +1077,26 @@ def load_tasks(root, where):
     tasks = []
     for name in names:
         folder = os.path.join(base, name)
-        handoff = slurp(os.path.join(folder, "handoff.md"))
+        single = not os.path.isdir(folder)
+        if single and (not name.lower().endswith(".md") or name.lower() in NOT_TASKS):
+            continue
+        handoff = slurp(folder if single else os.path.join(folder, "handoff.md"))
         if not handoff:
             continue
         meta, said, marks = read_handoff(handoff)
+        if single and "status" not in meta:
+            continue  # some other Markdown file kept beside the task records
         when = re.search(r"\d{4}-\d{2}-\d{2}", meta.get("updated", "") or name)
-        tasks.append({"id": name, "name": said["name"] or brief_name(folder), "plain": bool(said["name"] and said["now"]),
+        tasks.append({"id": name[:-3] if single else name, "home": name,
+                      "file": name if single else name + "/handoff.md",
+                      "name": said["name"] or (file_title(folder) if single else brief_name(folder)),
+                      "plain": bool(said["name"] and said["now"]),
                       "now": said["now"], "needs": said["needs"][:5], "next": said["next"],
                       "made": said["made"][:4], "try": said["try"], "left": said["left"][:6], "marks": marks[:16],
                       "done": meta.get("status", "").lower().startswith("complete"),
                       "updated": when.group(0) if when else "",
-                      "cited": set(re.findall(r"\b[0-9a-f]{7,40}\b",
-                                              handoff + slurp(os.path.join(folder, "implementation-log.md"))))})
+                      "cited": set(re.findall(r"\b[0-9a-f]{7,40}\b", handoff + (
+                          "" if single else slurp(os.path.join(folder, "implementation-log.md")))))})
     return tasks
 
 
@@ -1073,7 +1110,7 @@ def task_stories(root, rel, tasks):
     how things stand now. A handoff that was never committed has no story."""
     if not rel or not tasks:
         return {}
-    paths = {posixpath.join(rel, t["id"], "handoff.md"): t["id"] for t in tasks}
+    paths = {posixpath.join(rel, t["file"]): t["id"] for t in tasks}
     out = subprocess.run(["git", "-C", root, "log", "--format=%x01%H%x02%ad", "--date=short", "--name-only",
                           "--", *paths], capture_output=True)
     if out.returncode:
@@ -1123,8 +1160,8 @@ def task_rooms(task, commits, rel):
     for c in commits:
         mine = any(t.startswith(c["hash"]) or c["hash"].startswith(t) for t in task["cited"])
         if not mine and prefix:
-            mine = {f[len(prefix):].split("/")[0] for fs in c["groups"].values() for f in fs
-                    if f.startswith(prefix) and "/" in f[len(prefix):]} == {task["id"]}
+            mine = {task_at(f[len(prefix):]) for fs in c["groups"].values() for f in fs
+                    if f.startswith(prefix)} - {None} == {task["id"]}
         if mine:
             own.add(c["hash"])
             last = max(last, c["when"])
@@ -1159,7 +1196,7 @@ def older_commits(root, parts, rel, tasks, commits):
     if rel:
         for t in tasks:
             out = subprocess.run(["git", "-C", root, "log", "--no-merges", "--format=%H", "-n", "100", "--",
-                                  posixpath.join(rel, t["id"])], capture_output=True)
+                                  posixpath.join(rel, t["home"])], capture_output=True)
             revs.update(out.stdout.decode().split())
     revs = [r for r in revs if not any(r.startswith(k) for k in known)]
     return history(root, parts, revs) if revs else []
@@ -2138,7 +2175,7 @@ def cmd_tasks(root, parts, t, args):
         if x["rooms"]:
             print("      " + t["task_rooms"].format(x="  ".join("%s %d" % (r["name"] or t["unmapped_changed"], r["n"])
                                                                 for r in x["rooms"])))
-        print("      " + t["task_folder"].format(x=posixpath.join(x["rel"] or args.tasks, x["id"])))
+        print("      " + t["task_folder"].format(x=posixpath.join(x["rel"] or args.tasks, x["home"])))
     if older:
         print(t["tasks_older_head"].format(n=len(older)))
         for x in older:
@@ -2228,7 +2265,8 @@ def cmd_web(root, parts, t, args):
                           # uncommitted work in the task's files; none is reported when its own record is being
                           # rewritten in the same work, since then the lines are moving along with the code
                           "touched": 0 if task["rel"] and any(
-                              r["file"].startswith("%s/%s/" % (task["rel"], task["id"])) for r in rows)
+                              task_at(r["file"][len(task["rel"]) + 1:]) == task["id"] for r in rows
+                              if r["file"].startswith(task["rel"] + "/"))
                           else sum(1 for r in rows if r["file"] in task["files"]),
                           "days": task["days"], "parts": task["rooms"],
                           "pending": short(grouped(list(mine.values()), parts)), "wins": [w["key"] for w in on]})
@@ -2303,7 +2341,8 @@ the parts list (docs/parts.md, PARTS.md or .bearings/parts.md), every keyword it
     a box named exactly like a wing, part or room is a door to it
   under a `# Wing` heading, before its first part: one plain line on what the wing is for, and 图标：/ Icon:
 
-a task's lines for people (the `## For People` section at the top of docs/tasks/<task>/handoff.md):
+a task's lines for people (the `## For People` section of its record, docs/tasks/<task>.md; in older
+projects docs/tasks/<task>/handoff.md):
   名字：/ Name:  现在：/ Now:  等你：/ Needs you: (one line each)  下一步：/ Next:     where the task stands
   做成了：/ Done:  怎么试：/ Try:  还没做：/ Not yet:                     what its last finished step came to
   新增：/ Added:  改了：/ Changed:  去掉：/ Removed:   Part / Box: one sentence     (Part / Room / Box for a room)

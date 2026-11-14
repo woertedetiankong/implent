@@ -1,32 +1,33 @@
 #!/usr/bin/env python3
-"""Validate implementation-journal artifacts against the skill's discipline.
+"""Validate implementation-journal task records against the skill's rules.
 
-Checks the mechanical rules from SKILL.md and references/ so drift is caught
-by a command instead of model diligence:
+A task's record is one file, docs/tasks/<date>-<slug>.md, with a header and
+three sections. This checks the mechanical rules from SKILL.md and
+references/task-file.md, so drift is caught by a command instead of by
+model diligence:
 
-- handoff.md: frontmatter (status/updated), required sections, a runnable
-  Restart Verify block with expected outputs, no "verify manually",
-  read budget (WARN past HANDOFF_MAX_LINES). The For People section, which
-  the bearings map shows to a person: Name and Now lines, no backticks, a
-  sentence on every Added/Changed/Removed mark, WARN when a repo with a parts
-  list has an open task without the section or a newly finished one without
-  a Done line.
-- task-brief.md: Goal, Success Criteria, Parent plan, Created date.
-- implementation-log.md: dated entry headings; consistency with the handoff
-  (a missing log must be declared "Not required" in the handoff).
-- next-session.md (one per dossier): handoff pointer that resolves to the
-  handoff beside it, Errata / Now do / Red lines / First verify fields.
-  WARN when a repo-level entry sits beside per-task entries.
-- Markdown files: relative-date phrases ("today", "last week", ...), broken
+- the header: `status:` Open or Complete, `updated:` with a YYYY-MM-DD date
+- the three sections: For People, Decided, Next
+- For People, which the bearings map shows to a person: Name and Now lines,
+  no backticks, a sentence on every Added/Changed/Removed mark, no "None"
+  under Needs you, at most three Not yet lines, a Done line on a task that
+  was finished lately
+- the read budget (WARN past MAX_LINES, and past MAX_DECIDED lines under
+  Decided)
+- in any record: relative-date phrases ("today", "last week", ...), broken
   relative links, leftover template placeholders. Code fences are skipped.
+
+Projects that started with the earlier form of the skill keep a folder per
+task. In such a folder only handoff.md is looked at, and only its For People
+section and the checks that apply to any record: the old layout is not
+enforced any more.
 
 Usage:
   validate_journal.py [PATH ...] [--strict]
 
-PATH may be a tasks directory (default: docs/tasks), a dossier directory,
-or individual files; file roles are inferred from names. Exit 1 on ERROR
-(or on WARN too with --strict), 0 otherwise. Repos with their own
-conventions can pass explicit paths; unknown layouts degrade to warnings.
+PATH may be a tasks directory (default: docs/tasks), an older dossier
+directory, or individual files. A Markdown file that is not a task record is
+passed over. Exit 1 on ERROR (or on WARN too with --strict), 0 otherwise.
 """
 
 import argparse
@@ -42,36 +43,23 @@ RELATIVE_DATE_RE = re.compile(
     re.IGNORECASE,
 )
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)[^)]*\)")
-PLACEHOLDERS = (
-    "<YYYY-MM-DD>", "<command 1>", "<Verifiable criterion>",
-    "<One concrete sentence", "<observable output>", "<milestone or slice>",
-    "<Next action", "<one-sentence result", "<enforceable instruction",
-    "<Decision and rationale", "<Risk>", "<Follow-up>", "<Assumption or",
-    "<path or subsystem>", "<special environment state",
-    "<what the person would call", "<where it stands", "<one thing the work is waiting",
-    "<what happens once",
-)
-HANDOFF_REQUIRED = ("Summary", "Current State", "Next Steps", "Restart Verify")
-# references/handoff-discipline.md read budget.
-HANDOFF_MAX_LINES = 100
-# Always written even when one line, because their absence is ambiguous.
-HANDOFF_DECLARE = ("Git And Persistent State", "Implementation Log")
-# references/handoff-discipline.md "For People": the one section a person reads, on the bearings map.
-# bearings.py parses the same heading and keys; change them in both places or not at all.
+PLACEHOLDERS = ("<YYYY-MM-DD>", "<slug>", "<what the person would call", "<where it stands",
+                "<one thing the work is waiting", "<what happens once", "<decision", "<next step")
+MAX_LINES = 80      # references/task-file.md read budget
+MAX_DECIDED = 14    # past a dozen lines, Decided has usually started to describe the code
+NOT_RECORDS = ("next-session.md", "index.md", "readme.md")
+# The one section a person reads, on the bearings map. bearings.py parses the same heading and keys;
+# change them in both places or not at all.
 PEOPLE_HEADINGS = ("For People", "给人看的", "给人看")
 PEOPLE_REQUIRED = (("Name", "Name|名字"), ("Now", "Now|现在"))
 PEOPLE_DONE = "Done|做成了"
+PEOPLE_NEEDS_RE = re.compile(r"^\s*(?:[-*]\s+)?(?:Needs you|等你)\s*[:：]\s*(.*)$", re.IGNORECASE)
+PEOPLE_LEFT_RE = re.compile(r"^\s*(?:[-*]\s+)?(?:Not yet|还没做)\s*[:：]\s*\S", re.IGNORECASE)
 # A mark on a flow diagram: `Changed: Part / Box: sentence`. Without the sentence the page shows a bare name.
 PEOPLE_MARK_RE = re.compile(r"^\s*(?:[-*]\s+)?(Added|Changed|Removed|新增|改了|去掉)\s*[:：]\s*(.*)$", re.IGNORECASE)
 PEOPLE_RECENT_DAYS = 7  # a task finished this lately is asked for its Done line; older ones are left alone
-PARTS_LISTS = ("docs/parts.md", "PARTS.md", ".bearings/parts.md")
-# A conditional section whose every line matches this is placeholder-only
-# and should be omitted per references/handoff-discipline.md.
-NONEISH_RE = re.compile(
-    r"^(?:[\w /()-]+:)?\s*(?:none(?: known| yet)?|unknown(?:/not applicable)?"
-    r"|not applicable|n/a)\s*\.?\s*$",
-    re.IGNORECASE,
-)
+NONE_RE = re.compile(r"^(?:none|nothing|n/a|无|没有|暂无)\W*$", re.IGNORECASE)
+
 
 class Report:
     def __init__(self):
@@ -104,30 +92,30 @@ def fence_mask(lines):
 
 
 def parse_frontmatter(lines):
-    """Return (dict, last_line_index) for a leading --- block, or ({}, 0)."""
+    """The fields of a leading --- block, or {}."""
     if not lines or lines[0].strip() != "---":
-        return {}, 0
+        return {}
     fields = {}
-    for i, line in enumerate(lines[1:], start=1):
+    for line in lines[1:]:
         if line.strip() == "---":
-            return fields, i
+            return fields
         if ":" in line:
             key, _, value = line.partition(":")
-            fields[key.strip()] = value.strip()
-    return {}, 0
+            fields[key.strip().lower()] = value.strip()
+    return {}
 
 
 def sections(lines):
-    """Map '## Heading' -> (line_no, body_text)."""
+    """Map '## Heading' -> (first line number of its body, body text)."""
     found, current, start = {}, None, 0
     for i, line in enumerate(lines):
         match = re.match(r"##\s+(.*)", line)
         if match:
             if current:
-                found[current] = (start, "\n".join(lines[start: i]))
+                found[current] = (start + 1, "\n".join(lines[start: i]))
             current, start = match.group(1).strip(), i + 1
     if current:
-        found[current] = (start, "\n".join(lines[start:]))
+        found[current] = (start + 1, "\n".join(lines[start:]))
     return found
 
 
@@ -146,14 +134,8 @@ def check_common(path, lines, report):
         for target in LINK_RE.findall(line):
             if target.startswith(("http://", "https://", "mailto:", "#")):
                 continue
-            resolved = (path.parent / target.split("#")[0]).resolve()
-            if not resolved.exists():
+            if not (path.parent / target.split("#")[0]).resolve().exists():
                 report.error(path, i, f"broken relative link: {target}")
-
-
-def has_parts_list(path):
-    """True when a bearings parts list sits in a folder above this file (the repo root, in practice)."""
-    return any((base / rel).is_file() for base in list(path.resolve().parents)[:8] for rel in PARTS_LISTS)
 
 
 def recently(date_text):
@@ -165,193 +147,129 @@ def recently(date_text):
     return 0 <= (datetime.date.today() - then).days <= PEOPLE_RECENT_DAYS
 
 
-def check_handoff(path, report):
-    lines = read_lines(path)
-    if len(lines) > HANDOFF_MAX_LINES:
-        report.warn(path, len(lines),
-                    f"handoff is {len(lines)} lines (budget {HANDOFF_MAX_LINES}) — move narrative into implementation-log.md")
-    fm, _ = parse_frontmatter(lines)
-    status = fm.get("status", "")
-    if not re.match(r"(Complete|Provisional)\b", status):
-        report.error(path, 1, 'frontmatter "status:" must be Complete or Provisional')
-    if not DATE_RE.search(fm.get("updated", "")):
-        report.error(path, 1, 'frontmatter "updated:" must carry a YYYY-MM-DD date')
-
-    found = sections(lines)
-    for name in HANDOFF_REQUIRED:
-        if name not in found:
-            report.error(path, 1, f'missing required section "## {name}"')
-    for name in HANDOFF_DECLARE:
-        if name not in found:
-            report.warn(path, 1, f'missing "## {name}" — always declare it, one line is enough')
-    if status.startswith("Complete") and "Validation" not in found:
-        report.warn(path, 1, 'status Complete but no "## Validation" section — record the evidence')
-
-    for name, (line_no, body) in found.items():
-        if name in HANDOFF_REQUIRED or name in HANDOFF_DECLARE:
-            continue
-        content = [l.strip().lstrip("-*").strip() for l in body.splitlines()]
-        content = [l for l in content if l and not l.startswith("```")]
-        if not content or all(NONEISH_RE.match(l) for l in content):
-            report.warn(path, line_no,
-                        f'section "## {name}" is empty or placeholder-only — omit conditional sections instead')
-
-    if "Restart Verify" in found:
-        line_no, body = found["Restart Verify"]
-        commands = [l for l in body.splitlines()
-                    if l.strip() and not l.strip().startswith(("```", "#"))]
-        if not commands:
-            report.error(path, line_no, "Restart Verify has no runnable command")
-        if "expected" not in body:
-            report.error(path, line_no, "Restart Verify commands must state expected output")
-        elif "mismatch" not in body:
-            report.warn(path, line_no, "Restart Verify should say what a mismatch means")
-
+def check_people(path, found, complete, updated, report):
+    """The lines the project map shows to a person."""
     people = next((found[name] for name in PEOPLE_HEADINGS if name in found), None)
-    if people:
-        line_no, body = people
-        for key, names in PEOPLE_REQUIRED:
-            if not re.search(rf"^\s*(?:[-*]\s+)?(?:{names})\s*[:：]\s*\S", body, re.MULTILINE | re.IGNORECASE):
-                report.warn(path, line_no, f'For People has no "{key}:" line — the project map cannot show the task properly')
-        if "`" in body:
-            report.warn(path, line_no,
-                        "For People is read by a person on the project map — no file names, code names or commands in backticks")
-        for offset, text in enumerate(body.splitlines()):
-            mark = PEOPLE_MARK_RE.match(text)
-            if mark and not re.search(r"\S\s*[:：]\s*\S", mark.group(2)):
-                report.warn(path, line_no + offset, f'"{mark.group(1)}" mark has no sentence — write it as '
-                                                    '"Part / Box: what is different"')
-    has_done = bool(people and re.search(rf"^\s*(?:[-*]\s+)?(?:{PEOPLE_DONE})\s*[:：]\s*\S", people[1],
-                                         re.MULTILINE | re.IGNORECASE))
-    if status.startswith("Complete") and not has_done and has_parts_list(path) and recently(fm.get("updated", "")):
-        report.warn(path, people[0] if people else 1,
-                    'finished task with no "Done:" line under "## For People" — the project map drops it at once, '
-                    "and the user never sees what it came to")
-    elif people:
-        pass
-    elif not status.startswith("Complete") and has_parts_list(path):
-        report.warn(path, 1, 'no "## For People" section — this repo has a bearings parts list, '
-                             "and its map cannot say where this task stands or what is waiting on the user")
-
-    for i, line in enumerate(lines, start=1):
-        if "verify manually" in line.lower():
-            report.warn(path, i, 'says "verify manually" — name the exact command, screen, file, or artifact')
-
-    log_section = found.get("Implementation Log")
-    log_file = path.parent / "implementation-log.md"
-    if not log_file.exists():
-        if log_section and "not required" not in log_section[1].lower():
-            report.warn(path, log_section[0],
-                        'no implementation-log.md: section must say "Not required" with the reason')
-    elif log_section and "implementation-log.md" not in log_section[1]:
-        report.warn(path, log_section[0], "implementation-log.md exists but is not referenced here")
+    if not people:
+        if not complete:
+            report.warn(path, 1, 'no "## For People" section — the project map cannot say where this task stands '
+                                 "or what is waiting on the user")
+        return
+    line_no, body = people
+    for key, names in PEOPLE_REQUIRED:
+        if not re.search(rf"^\s*(?:[-*]\s+)?(?:{names})\s*[:：]\s*\S", body, re.MULTILINE | re.IGNORECASE):
+            report.warn(path, line_no, f'For People has no "{key}:" line — the project map cannot show the task properly')
+    if "`" in body:
+        report.warn(path, line_no,
+                    "For People is read by a person on the project map — no file names, code names or commands in backticks")
+    left = 0
+    for offset, text in enumerate(body.splitlines()):
+        mark = PEOPLE_MARK_RE.match(text)
+        if mark and not re.search(r"\S\s*[:：]\s*\S", mark.group(2)):
+            report.warn(path, line_no + offset, f'"{mark.group(1)}" mark has no sentence — write it as '
+                                                '"Part / Box: what is different"')
+        needs = PEOPLE_NEEDS_RE.match(text)
+        if needs and NONE_RE.match(needs.group(1).strip()):
+            report.warn(path, line_no + offset, 'a "Needs you" line that says nothing is waiting — leave the line out')
+        left += bool(PEOPLE_LEFT_RE.match(text))
+    if left > 3:
+        report.warn(path, line_no, f'{left} "Not yet" lines — keep the three that would surprise the person most')
+    has_done = re.search(rf"^\s*(?:[-*]\s+)?(?:{PEOPLE_DONE})\s*[:：]\s*\S", body, re.MULTILINE | re.IGNORECASE)
+    if complete and not has_done and recently(updated):
+        report.warn(path, line_no, 'finished task with no "Done:" line under "## For People" — the project map '
+                                   "drops it at once, and the user never sees what it came to")
 
 
-def check_brief(path, report):
+def check_record(path, report):
+    """A one-file task record."""
     lines = read_lines(path)
-    text = "\n".join(lines)
-    for heading in ("## Goal", "## Success Criteria", "## Scope", "## Constraints"):
-        if heading not in text:
-            report.error(path, 1, f'missing section "{heading}"')
-    if "Parent plan:" not in text:
-        report.warn(path, 1, 'missing "Parent plan:" line (use "None found" when no plan exists)')
-    if not any("Created:" in l and DATE_RE.search(l) for l in lines):
-        report.warn(path, 1, 'missing "Created: YYYY-MM-DD" line')
+    fm = parse_frontmatter(lines)
+    status = fm.get("status", "")
+    if not re.match(r"(Open|Complete|Provisional)\b", status, re.IGNORECASE):
+        report.error(path, 1, 'header "status:" must be Open or Complete')
+    if not DATE_RE.search(fm.get("updated", "")):
+        report.error(path, 1, 'header "updated:" must carry a YYYY-MM-DD date')
+    complete = status.lower().startswith("complete")
+    found = sections(lines)
+    for name in ("Decided", "Next"):
+        if name not in found:
+            report.error(path, 1, f'missing section "## {name}"')
+    check_people(path, found, complete, fm.get("updated", ""), report)
+    if "Decided" in found:
+        line_no, body = found["Decided"]
+        entries = [l for l in body.splitlines() if l.lstrip().startswith(("- ", "* "))]
+        if len(entries) > MAX_DECIDED:
+            report.warn(path, line_no, f"{len(entries)} lines under Decided — remove the ones the code now shows by itself")
+    if "Next" in found and not complete:
+        line_no, body = found["Next"]
+        steps = [l.strip() for l in body.splitlines() if l.strip()]
+        if not steps or all(NONE_RE.match(l.lstrip("-*0123456789. ")) for l in steps):
+            report.warn(path, line_no, "an open task with nothing under Next — say what the next session should start on")
+    if len(lines) > MAX_LINES:
+        report.warn(path, len(lines), f"record is {len(lines)} lines (budget {MAX_LINES}) — "
+                                      "it has probably started to describe the code")
+    check_common(path, lines, report)
 
 
-def check_log(path, report):
-    text = "\n".join(read_lines(path))
-    if not re.search(r"^###\s+\d{4}-\d{2}-\d{2}", text, re.MULTILINE):
-        report.error(path, 1, "no dated entry heading (### YYYY-MM-DD); an empty log should not exist")
-
-
-def check_next_session(path, report):
+def check_old_handoff(path, report):
+    """handoff.md in an older dossier folder: only what the map reads, and what applies to any record."""
     lines = read_lines(path)
-    text = "\n".join(lines)
-    pointer = re.search(r"Read\s+`([^`]+)`\s+first", text)
-    if not pointer:
-        report.error(path, 1, 'missing handoff pointer ("Read `<handoff path>` first")')
-    else:
-        target = Path(pointer.group(1))
-        # Pointers may be written relative to the entry, the repo root, or
-        # any directory between, so try every ancestor; cwd-independent.
-        bases = [path.resolve().parent, *path.resolve().parents]
-        hits = [target] if target.is_absolute() and target.exists() else \
-            [base / target for base in bases if (base / target).exists()]
-        own = path.parent / "handoff.md"
-        if not hits:
-            report.error(path, 1, f"handoff pointer does not resolve: {pointer.group(1)}")
-        elif own.exists() and hits[0].resolve() != own.resolve():
-            # One entry per dossier: it restarts its own task, not another one.
-            report.warn(path, 1, f"entry points at another dossier's handoff ({pointer.group(1)}) — "
-                                 "point it at the handoff.md beside it")
-    if not (path.parent / "handoff.md").exists():
-        own_entries = [p for p in path.parent.glob("*/*") if p.name.lower() == "next-session.md"]
-        if own_entries:
-            report.warn(path, 1, "repo-level entry beside per-task entries — move it into the dossier "
-                                 "it points at as next-session.md; tasks open at the same time must not share one file")
-    for field in ("Errata:", "Now do:", "Red lines:", "First verify:"):
-        if field not in text:
-            report.warn(path, 1, f'missing "{field}" field')
+    fm = parse_frontmatter(lines)
+    complete = fm.get("status", "").lower().startswith("complete")
+    check_people(path, sections(lines), complete, fm.get("updated", ""), report)
+    check_common(path, lines, report)
 
 
-def classify(path):
-    name = path.name.lower()
-    if "handoff" in name:
-        return check_handoff
-    if "brief" in name:
-        return check_brief
-    if "implementation-log" in name or name == "log.md":
-        return check_log
-    if "next-session" in name:
-        return check_next_session
-    return None
+def is_record(path):
+    """A Markdown file with a `status:` in its header and at least one of the record's sections."""
+    if path.suffix.lower() != ".md" or path.name.lower() in NOT_RECORDS:
+        return False
+    lines = read_lines(path)
+    if "status" not in parse_frontmatter(lines):
+        return False
+    return any(name in sections(lines) for name in ("Decided", "Next") + PEOPLE_HEADINGS)
 
 
 def collect(paths):
-    """Expand args into journal files; default tasks dir when none given."""
-    if not paths:
-        default = Path("docs/tasks")
-        if not default.is_dir():
-            print("No paths given and docs/tasks not found; pass the tasks dir, "
-                  "dossier dirs, or files explicitly.", file=sys.stderr)
-            sys.exit(2)
-        paths = [default]
-    files = []
-    for raw in paths:
-        p = Path(raw)
-        if p.is_dir():
-            files.extend(sorted(p.rglob("*.md")))
-        elif p.is_file():
-            files.append(p)
-        else:
-            print(f"Path not found: {p}", file=sys.stderr)
-            sys.exit(2)
-    return files
+    """(records, old handoffs) among the given paths."""
+    records, old = [], []
+    for path in paths:
+        if path.is_dir():
+            if (path / "handoff.md").is_file():          # one older dossier folder
+                old.append(path / "handoff.md")
+                continue
+            for child in sorted(path.iterdir()):
+                if child.is_dir() and (child / "handoff.md").is_file():
+                    old.append(child / "handoff.md")
+                elif child.is_file() and is_record(child):
+                    records.append(child)
+        elif path.is_file():
+            if path.name == "handoff.md":
+                old.append(path)
+            elif is_record(path):
+                records.append(path)
+    return records, old
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("paths", nargs="*", help="tasks dir, dossier dirs, or files")
-    parser.add_argument("--strict", action="store_true", help="warnings also fail")
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("paths", nargs="*", type=Path)
+    parser.add_argument("--strict", action="store_true", help="exit 1 on warnings too")
     args = parser.parse_args()
-
+    paths = args.paths or [Path("docs/tasks")]
+    missing = [p for p in paths if not p.exists()]
+    if missing:
+        print("no such path: " + ", ".join(str(p) for p in missing))
+        return 1
+    records, old = collect(paths)
     report = Report()
-    files = collect(args.paths)
-    checked = 0
-    for path in files:
-        checker = classify(path)
-        if path.suffix.lower() == ".md":
-            check_common(path, read_lines(path), report)
-        if checker:
-            checker(path, report)
-            checked += 1
-
-    print(f"\n{len(files)} file(s) scanned, {checked} journal file(s) checked: "
-          f"{report.errors} error(s), {report.warnings} warning(s)")
-    if report.errors or (args.strict and report.warnings):
-        sys.exit(1)
+    for path in records:
+        check_record(path, report)
+    for path in old:
+        check_old_handoff(path, report)
+    print(f"\n{len(records) + len(old)} task record(s) checked: {report.errors} error(s), {report.warnings} warning(s)")
+    return 1 if report.errors or (args.strict and report.warnings) else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

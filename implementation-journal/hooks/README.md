@@ -6,8 +6,8 @@ The hooks register themselves through the Claude Code plugin: `hooks/hooks.json`
 
 ## What each hook does
 
-- `session-start.sh` (SessionStart), which runs `session_start.py` beside it: tells a new session which tasks are open in the project. A task is open while its dossier has a `next-session.md` and its handoff is not Complete. With one open task, that entry is injected into context, so resuming needs no pasting. With several, the session gets a short list and is told to settle which task it is for before touching any dossier, because other sessions may be working in the others. A project that still has only the older repo-level `docs/tasks/NEXT-SESSION.md` gets that file injected as before. When the session start was caused by compaction (`source: "compact"`), it also injects a reminder to refresh the dossier, covering the *unplanned* context loss the skill's "refresh before any planned pause" rule cannot catch. Exits silently in projects without a journal, so a global install is safe.
-- `post-edit-validate.sh` (PostToolUse on Edit/Write; Claude Code no longer has a MultiEdit tool): after any edit to a Markdown file under `docs/tasks/`, runs the skill's `scripts/validate_journal.py` on that file and feeds ERROR lines straight back to Claude via exit code 2. The edit is not blocked; warnings are deliberately excluded so drafting isn't nagged — they stay in the quality-gate run.
+- `session-start.sh` (SessionStart), which runs `session_start.py` beside it: tells a new session which tasks are open in the project. A task is open until its record, `docs/tasks/<date>-<slug>.md`, says `status: Complete`. With one open task the hook prints that record, so resuming needs no pasting; with several it prints a short list and tells the session to settle which task it is for. In a project that started with the earlier form of the skill, a task is a folder, open while it has a `next-session.md` and its `handoff.md` is not Complete; those are still listed. After a compaction it also reminds the session to bring its record up to date.
+- `post-edit-validate.sh` (PostToolUse on Edit/Write; Claude Code no longer has a MultiEdit tool): after any edit to a Markdown file under `docs/tasks/`, runs the skill's `scripts/validate_journal.py` on it and feeds ERROR lines back to the session at once. The validator passes over a Markdown file that is not a task record, so other files in that folder are left alone. Warnings wait for the check before finishing.
 
 A separate PreCompact hook was considered and rejected: PreCompact hook output is not added to Claude's context, so it cannot instruct the session to refresh anything. The SessionStart `compact` source is the working equivalent, firing immediately after compaction.
 
@@ -55,5 +55,5 @@ Notes:
 
 ## Review checklist
 
-- Read the scripts (`session-start.sh`, `session_start.py`, `post-edit-validate.sh`); they only read stdin JSON, read journal files, and run the bundled validator. Neither writes files or touches the network.
-- If your repos keep dossiers somewhere other than `docs/tasks/`, adjust the path in both scripts first.
+- Read the scripts (`session-start.sh`, `session_start.py`, `post-edit-validate.sh`); they only read stdin JSON, read task records, and run the bundled validator. Neither writes files or touches the network.
+- If your repos keep task records somewhere other than `docs/tasks/`, adjust the path in both scripts first.

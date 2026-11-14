@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # PostToolUse hook for the implementation-journal skill.
 #
-# After Edit/Write to a journal file (anything under docs/tasks/), run
-# the skill's scripts/validate_journal.py on that file and feed ERROR lines back to
+# After Edit/Write to a file under docs/tasks/, run the skill's
+# scripts/validate_journal.py on that file and feed ERROR lines back to
 # Claude immediately (PostToolUse exit code 2 sends stderr to the model;
-# the edit itself is not blocked). Warnings are left to the quality gate
-# so drafting is not nagged mid-flow.
+# the edit itself is not blocked). The validator passes over a Markdown file
+# that is not a task record, so other files kept in that folder are left
+# alone. Warnings are left to the check before finishing, so drafting is not
+# nagged mid-flow.
 #
 # Repos that keep dossiers elsewhere: adjust the case pattern below.
 # Registered automatically by the Claude Code plugin (hooks/hooks.json);

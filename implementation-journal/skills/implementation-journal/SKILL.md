@@ -1,101 +1,76 @@
 ---
 name: implementation-journal
-description: "Maintain cross-session implementation memory for milestone-sized coding work, so the next AI session can pick up where this one stopped: a plan-linked task dossier, a decisions-only implementation log, a restart-ready handoff, and reconciliation of durable knowledge into the project docs. Use when work spans sessions, touches multiple modules or architecture, or when the user asks for implementation notes, handoff or restart docs, task dossiers, decision logging, knowledge reconciliation, or phase-complete cleanup. Do not use for single-session fixes that need no continuity."
+description: "Keep one short record per task, so the next AI session can carry on where this one stopped and the person steering the work can see where it stands: what was decided that neither the code nor git history shows, what comes next, and a few plain lines for the person. Use when work will span sessions, when the user makes a decision or names a constraint that should outlive the chat, when the user asks for a handoff, restart notes, a task record or a decision log, or asks to continue or change a task that already has a record under docs/tasks/. Do not use for a single-session fix that leaves nothing to remember."
 ---
 
 # Implementation Journal
 
-Use this skill to make long-running AI-assisted development compound instead of evaporating into chat history. The job is not to keep a command transcript. The job is to connect a plan, the current milestone, the implementation reasoning, the restart handoff, and the project docs.
+A new session starts knowing nothing of the last one. Most of what it needs it can find by itself: the code says what was built, and git says what changed and what was taken back. What it cannot find anywhere is what was only ever said: a decision the user made, a limit someone else imposes, a guess made where the request was silent, a question still waiting for an answer. This skill keeps exactly that, in one small file per task, together with a few lines for the person.
 
-These records are written for the next AI session. They are not the way a person gets to understand the project; for that, the companion skill `bearings` draws the project as a map with a flow diagram per part. One piece of a dossier is written for a person all the same: the handoff's `## For People` section, a few plain lines that the map shows as the task's standing and as what is waiting on them (workflow step 4).
+It keeps nothing else. A record that repeats the code costs time to write, time to read, and goes stale.
 
-## Core Rule
+## The record
 
-For ordinary small fixes, do not create ceremony unless the user asks for it. For milestone-sized work, create or update a task dossier, log meaningful implementation decisions only when there is a real decision trail to preserve, keep restart continuity current, and finish by reconciling what became true back into the plan and docs.
+One file per task, `docs/tasks/<YYYY-MM-DD>-<slug>.md`, with three sections and about 300 to 400 words in all. Read [references/task-file.md](references/task-file.md) before writing one; it has the format and the rules for each line.
 
-Existing project conventions win. If the repo already has task folders, decision records, wiki pages, or handoff docs, use those names and locations instead of the defaults below.
+- `## For People`: what the task is called, where it stands, what is waiting on the person, and what the last finished step came to. Plain words. The companion skill `bearings` shows these lines on the project map, and for most people that map is the only place they see them.
+- `## Decided`: what the next session could not work out from the code and git history.
+- `## Next`: what to do next, in order.
 
-## Documents
+There is no brief, no log, no restart note and no index. The dated file names are the index.
 
-Creation conditions live in this file only; the references hold formats and field-level guidance.
+Where the file lives: `docs/tasks/` unless the project already keeps task records somewhere, in which case use that. Check first whether the project tests or lints its `docs/` folder; if a file there would fail a check, put the records in a folder the project ignores and say where they are.
 
-- Long-term plan: an existing roadmap, issue, goal brief, plan document, or user-provided plan. Do not invent a roadmap when the user only asked for one slice; if none exists, set `Parent plan: None found` in the task brief. When the plan lives in this repo, maintain its status dashboard (references/document-model.md); never bootstrap a dashboard for an external plan.
-- Task dossier at `docs/tasks/<YYYY-MM-DD>-<slug>/` for milestone-sized work:
-  - `task-brief.md`: the contract for this slice.
-  - `implementation-log.md`: append-only decision log, started at the first log trigger (workflow step 3).
-  - `handoff.md`: rewritten near completion so the next human or AI can continue without reading the whole log.
-- New-session entry at `next-session.md` inside the dossier, one per task: a short pasteable restart opener plus errata pointing at that dossier's handoff — never a second status document. There is no repo-wide entry: several sessions can have tasks open at once, and one shared file would be overwritten by whichever session wrote last.
+## When to write
 
-That is the whole set. Do not add an index of dossiers, a wiki, or a summary page on your own judgment: every extra file is one more place that goes stale. The dated dossier folders are the index. A repo that already keeps such files falls under "existing project conventions win".
+- **Open the record** when the work will outlive this session, or at the first decision worth keeping, whichever comes first. A small fix that is done in one sitting and decides nothing gets no record.
+- **Add to `Decided` as it happens**, not at the end. The moment to write is when the user settles something, when you learn of a limit from outside the code, when you choose one reading of an unclear request, when you leave something out on purpose, or when you try an approach and drop it for a reason a commit message will not carry.
+- **Bring the record up to date before any pause**: a final response, a hand back to the user, the end of a step. `Now`, `Next` and the status say how things stand at that moment, not how they were planned.
+- **Close it** by setting `status: Complete` and rewriting the lines for people to describe the task as a whole.
 
-## Goal Brief Input
+Do not commit on your own because of this skill. When the work is committed, its record goes into the same commit.
 
-`goal-brief-builder` is an optional upstream skill, not a dependency. If a `goal-brief-*.md`, `/goal` brief, issue brief, or similar execution brief exists, treat it as the parent plan and source of intent. Extract only the current slice, success criteria, constraints, forbidden shortcuts, validation expectations, and expected docs updates; do not copy the whole brief into `task-brief.md`, and do not run a goal-brief interview from this skill unless the request is too ambiguous or risky to implement safely.
+## What belongs in Decided
 
-Read [references/document-model.md](references/document-model.md) when choosing artifact paths or deciding which document owns a piece of knowledge.
-Read [references/handoff-discipline.md](references/handoff-discipline.md) before creating or refreshing a handoff or new-session entry.
-Read [references/templates.md](references/templates.md) before creating new documents.
-Read [references/knowledge-sync.md](references/knowledge-sync.md) before end-of-stage cleanup or docs reconciliation.
+Ask of each line: could a careful reader get this from the code and `git log`? If yes, leave it out.
 
-## Workflow
+Belongs:
 
-1. Ground in the plan and repo.
-   - Locate the long-term plan or the most specific source of intent.
-   - Discover existing conventions before creating files: task folders, handoffs, session entries, todo files, decision records, roadmap docs, README, AGENTS/CLAUDE, and docs directories.
-   - Identify the current slice, success criteria, scope, constraints, and known affected docs. For multi-module work, identify upstream/downstream modules and existing dossiers that may reference the changed contract.
-   - Settle which dossier this session works in: the one the user names, the one whose restart entry opened the session, or a new one. The user may name a task the way the project map shows it ("继续做“语音助手”", "continue the voice assistant"): that is the `Name` in a handoff's For People section, not a folder name. When several tasks are open and it is not clear which this session is for, ask before reading or writing any dossier.
-   - If the milestone is too large to finish safely in one implementation pass, carve out the smallest coherent sub-slice that preserves the milestone intent, record it in `task-brief.md`, and ask for confirmation only when the slice boundary changes user-visible scope or risk.
+- What the user decided, with the date, in a form the next session can act on ("shipping is refunded only with the last items of an order").
+- A limit from outside: a provider's quota, a policy, a deadline, a machine that is not available.
+- A guess. Say that it is one, so the next session checks it first when something fails.
+- What was left out on purpose, and why.
+- What is waiting on the user, and what must not be decided for them meanwhile.
+- An approach that was tried and dropped, when the reason is not in the commit that removed it.
 
-2. Create or update the task dossier.
-   - Keep `task-brief.md` current when scope or acceptance criteria materially change.
-   - Link the dossier from the long-term plan when one exists.
+Does not belong: what was implemented, which files changed, how the code is laid out, test counts, anything a commit message already says.
 
-3. Log implementation memory when a log trigger occurs.
-   - Log triggers: behavior chosen for an ambiguous spec, hidden constraint discovered, approach abandoned, tradeoff made, intentional deviation from the plan, validation that changed understanding, risk or follow-up identified, or cross-session reasoning that would be hard to reconstruct.
-   - Create `implementation-log.md` at the first trigger. Milestone-sized work almost always has one; in the rare case it does not, the handoff says so (references/handoff-discipline.md) instead of inventing entries.
-   - When a logged decision lands in code, record the commit hash or PR number in the entry so future debugging can jump from the decision to the diff.
-   - Do not log file-opening commands, obvious edits, or narration that merely says "implemented X".
-   - After each verified work unit (passing tests, a commit, a settled decision, a new risk), write back progress, evidence, and changed next steps. Do not wait until the end of the chat if the state has materially changed.
-   - When a confirmed discovery affects shared contracts, architecture rules, integration behavior, or future slices, update the relevant docs immediately if another active or upcoming module may depend on it. Use a clearly named durable-knowledge follow-up only when the fact needs user confirmation, would expand scope, or cannot be safely edited now.
-   - Use absolute dates such as `2026-06-10`; never relative dates such as "today" or "recently".
+## The project's own docs
 
-4. Refresh the handoff before any planned pause, final response, commit, or phase completion.
-   - Rewrite `handoff.md` to reflect the final code state and current next steps, following references/handoff-discipline.md. Mark it provisional if implementation or validation is intentionally incomplete.
-   - Refresh this dossier's new-session entry so it matches the handoff. If part of the handoff is already stale, record the correction as errata in the entry instead of silently rewriting history.
-   - When the repo has a `bearings` parts list (`docs/parts.md`, `PARTS.md` or `.bearings/parts.md`), write or rewrite the handoff's `## For People` section, following references/handoff-discipline.md. The project map shows those lines to the person steering the work, and it is often the only way they learn that the work is waiting on them. When the session finished a step a person could notice, the section also says what the step came to (`Done`, `Try`, `Not yet`, and marks on the parts list's flow diagrams); for a task being marked Complete these lines are what the map keeps showing, so write them before closing it. Write the section too whenever the user asks for a task's lines for people or for a write-up of what it came to; the map prints those requests under a task that lacks them.
+A fact that is now true of the project for good belongs in the project's documents, not in a task file that will be closed. When this work makes something in the README, in AGENTS or CLAUDE guidance, or in other docs untrue, correct it in the same change: rewrite the stale sentence, do not leave it standing with a correction underneath. When the project has a `bearings` parts list and the work changed how a part works or added a new area, update that part's paths and flow diagram too.
 
-5. Reconcile durable knowledge.
-   - Update the long-term plan status for the slice with absolute dates and links to the dossier or handoff. For an in-repo plan, refresh its status dashboard per references/document-model.md.
-   - Update README, AGENTS/CLAUDE guidance, and docs that now describe stale behavior: merge duplicates, rewrite outdated sections, delete superseded claims. Replace a stale instruction; never leave it in place with a correction appended underneath. Preserve important history in the implementation log or a decision record, not in current-facing docs.
-   - Run the cleanup loop in references/knowledge-sync.md: inventory likely stale docs, classify each as rewrite/merge/delete/keep, edit, then rerun targeted searches for the old commands, names, routes, or claims.
-   - When the repo has a parts list for the `bearings` map (`docs/parts.md`, or `PARTS.md` / `.bearings/parts.md` where the project keeps it) and this work changed how a part works or added a new area, update that part's paths and flow diagram there. It is the picture people read, so it goes stale the same way a README does.
+## Several sessions at once
 
-## Parallel Sessions
+More than one session may be at work in the same project, in the same folder or in separate worktrees.
 
-More than one session may be working in the same repo at the same time, in the same folder or in separate worktrees. The records stay correct only if each session keeps to its own task:
+- One session, one task file. Write only your own. Do not tidy another task's record, even if it looks stale: another session may be working from it.
+- A file every task shares (README, docs, the parts list) is edited narrowly: read it again right before editing, change only the lines that belong to your work, never rewrite it whole from memory.
+- Before opening a new record, look at the open ones. If one already covers the same part of the project, tell the user before starting.
+- When several tasks are open and it is not clear which one this session is for, ask before reading or writing any of them. The user may name a task the way the map shows it ("继续做“语音助手”"): that is the `Name` in a record's lines for people, not a file name.
 
-- One session, one dossier. Write only your own dossier's files. Do not edit, refresh, or "tidy" another dossier, even if it looks stale: another session may own it.
-- If you learn something that affects another open task, record it under Cross-Module References in your own handoff and tell the user. Do not write it into the other dossier.
-- Files that every task shares (the plan's status dashboard, README, docs, a `bearings` parts list) are edited in place and narrowly: read the file again right before editing, change only the rows or sections that belong to your work, and never rewrite the whole file from memory. Another session may have changed it since you last read it.
-- Before opening a new dossier, look at the open ones. If one already covers the same part of the project, say so to the user before starting, so two sessions do not make conflicting decisions about the same thing.
-- A task is open while its dossier has a `next-session.md` and its handoff is not Complete. Closing a task means marking the handoff Complete; that is what takes it off the list a new session sees.
-- Coming back to a finished task. When the user asks to change something a finished dossier covers (they may hand you its handoff, or name the task the way the project map does), that is the same task opened again, not a new one. Work in that dossier: set the handoff's status back to Provisional, note in the implementation log that it was opened again, when and why, write a fresh `next-session.md`, and keep the task's `Name`. Open a new dossier only when the request is a different piece of work that happens to touch the same code, and then name the earlier task in its brief.
-- Do not change code that a finished dossier describes and leave its handoff saying the old thing. Its For People section is what the map goes on showing people as what the task came to. If the change is too small to open the task again (a fix, a setting), correct the lines of that section it made untrue, rewrite its marks so they name what this change did, and set the handoff's `updated:` date; that one narrow edit to a finished dossier is allowed.
+## Coming back to a finished task
 
-## Quality Gate
+- When the user asks to change something a finished record covers, that is the same task opened again, not a new one. Set its status back to `Open`, say in `Now` what is being changed, add what is decided this time under `Decided`, and keep the `Name`. Open a new record only for a different piece of work that happens to touch the same code, and name the earlier task in it.
+- Do not change code that a finished record describes and leave the record saying the old thing: the map goes on showing those lines to people as what the task came to. For a change too small to open the task again, correct the lines it made untrue, rewrite the marks so they name what this change did, and set `updated:`. That narrow edit to a finished record is allowed.
 
-Before finishing a milestone, run the mechanical check, then judge what it cannot see.
+## Older records
 
-Run [scripts/validate_journal.py](scripts/validate_journal.py) with python3 from the repo root (in Claude Code the path is `${CLAUDE_SKILL_DIR}/scripts/validate_journal.py`), passing the repo's tasks dir or the touched dossier files — plus any reconciled docs, so the relative-date and broken-link checks cover them. Fix every ERROR and rerun until clean. Accept a WARN only deliberately and name it in the final response. If python3 is unavailable, say so and apply the same checks by hand.
+A project that used the earlier form of this skill has a folder per task (`handoff.md`, `task-brief.md`, `implementation-log.md`, `next-session.md`). Leave those folders as they are. To continue such a task, read its `handoff.md`, and its log when a decision's reason is unclear, and keep writing in that `handoff.md`: the lines for people at the top, new decisions under its key decisions. Do not convert old folders unless the user asks. New tasks get the one-file form.
 
-Then check by judgment, since the script checks presence and shape, not truth:
+## Check
 
-- `handoff.md` reflects the actual final code state (or is clearly marked provisional), and its restart verify expected-outputs are truthful.
-- `implementation-log.md` holds decisions, not narration.
-- This dossier's new-session entry points to this dossier's handoff and matches its current state.
-- A For People section, when there is one, says the same as the handoff below it, in words a person who cannot program would follow, every `Needs you` line is still unanswered, and every mark names a box that is on the part's flow diagram as it now stands.
-- Current-facing docs contain no stale claims about the changed behavior, and the long-term plan status (including an in-repo dashboard) is updated when a parent plan exists.
+Before finishing, run [scripts/validate_journal.py](scripts/validate_journal.py) with python3 on the record (in Claude Code the path is `${CLAUDE_SKILL_DIR}/scripts/validate_journal.py`). Fix every ERROR. Accept a WARN only on purpose and say so. The script checks shape, not truth, so also read the record once as the next session would: does `Now` match the code as it stands, is every line under `Decided` something that is written nowhere else, and is every `Needs you` line still unanswered?
 
-## Final Response
+## Final response
 
-State the dossier path, the handoff path and whether it is complete or provisional, and which docs were reconciled. If no dossier or implementation log was created, say why in one sentence.
+Say where the record is and whether the task is open or complete, what was added under `Decided`, and which of the project's own docs were corrected. If no record was written, say why in one sentence.

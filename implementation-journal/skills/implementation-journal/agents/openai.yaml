@@ -1,4 +1,4 @@
 interface:
   display_name: "Implementation Journal"
-  short_description: "Plan-linked journals, restart handoffs, and docs sync"
-  default_prompt: "Use $implementation-journal for this milestone so the plan, task dossier, implementation log, restart handoff, new-session entry, and relevant docs stay aligned."
+  short_description: "One short record per task: decisions, next steps, lines for people"
+  default_prompt: "Use $implementation-journal for this task so its record under docs/tasks/ holds what was decided, what comes next, and the lines for people."

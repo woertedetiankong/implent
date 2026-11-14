@@ -1,6 +1,6 @@
 {
   "name": "implementation-journal",
-  "description": "Cross-session memory for AI coding work: a task dossier, a decisions-only log, a restart-ready handoff, and docs kept in step, so the next session picks up where this one stopped.",
+  "description": "Cross-session memory for AI coding work: one short record per task holding what the code and git cannot show (what was decided, what comes next) and a few plain lines for the person, so the next session picks up where this one stopped.",
   "author": { "name": "woertedetiankong" },
   "homepage": "https://github.com/woertedetiankong/implent",
   "repository": "https://github.com/woertedetiankong/implent",
