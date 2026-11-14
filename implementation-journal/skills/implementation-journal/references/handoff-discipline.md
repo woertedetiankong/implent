@@ -57,6 +57,8 @@ When the session finished a step a person could notice (something they can now d
   - `Removed:` names a box that was taken off the diagram, or a thing that was tried and dropped; say why in the sentence.
   - A line that names only a part (`Changed: Deployment: two new settings`) is fine when no box fits.
 - These lines describe the last finished step. Replace them when a later step finishes; do not let them pile up. When the task is marked Complete, rewrite them to describe the task as a whole.
+- When a finished task is opened again, leave the `Done` lines as they are until the new step is finished: they are still what a person can do today. Say in `Now:` what is being changed. When the task is finished again, rewrite them for the task as it now stands.
+- The map shows how a task got to where it is (finished, opened again, finished a second time) by reading the history of this file from git. It can only show versions that were committed. This is no reason to commit on your own: when the work is committed, the handoff that describes it goes into the same commit.
 - Chinese keys: `做成了：` `怎么试：` `还没做：` `新增：` `改了：` `去掉：`.
 - After writing marks, check them: load the `bearings` skill if it is available (its SKILL.md gives the path of `bearings.py`) and run `bearings.py tasks`, which reports each mark whose part or box it cannot find. Without that skill, compare each name with the parts list by eye and say you did.
 
