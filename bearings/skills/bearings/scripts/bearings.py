@@ -135,6 +135,9 @@ TEXT = {
         "task_needs": "等你：{x}",
         "task_next": "下一步：{x}",
         "tasks_done_head": "最近做完的事 {n} 件：",
+        "tasks_older_head": "更早做完的事 {n} 件：",
+        "task_again": "做完过，现在重新打开了", "task_times": "第 {n} 次做完",
+        "task_after": "做完之后它动过的文件又被改了 {n} 次",
         "task_made": "做成了：{x}",
         "task_try": "怎么试：{x}",
         "task_left": "还没做：{x}",
@@ -210,6 +213,9 @@ TEXT = {
         "task_needs": "Needs you: {x}",
         "task_next": "Next: {x}",
         "tasks_done_head": "{n} finished lately:",
+        "tasks_older_head": "{n} finished earlier:",
+        "task_again": "finished once, open again", "task_times": "finished for the {n}th time",
+        "task_after": "the files it changed were changed {n} times since",
         "task_made": "Done: {x}",
         "task_try": "Try: {x}",
         "task_left": "Not yet: {x}",
@@ -987,6 +993,38 @@ def slurp(path):
         return ""
 
 
+def read_handoff(handoff):
+    """A handoff's header and its `## For People` section: (meta, said, marks)."""
+    lines = handoff.split("\n")
+    meta, body = {}, 0
+    if lines[0].strip() == "---":
+        for at, line in enumerate(lines[1:], 1):
+            if line.strip() == "---":
+                body = at + 1
+                break
+            key, sep, value = line.partition(":")
+            if sep:
+                meta[key.strip().lower()] = value.strip()
+    said, inside = {"name": "", "now": "", "needs": [], "next": "", "made": [], "try": "", "left": []}, False
+    marks = []
+    for line in lines[body:]:
+        if line.startswith("## "):
+            inside = bool(PEOPLE_HEAD_RE.match(line))
+        elif inside:
+            m = PEOPLE_RE.match(line)
+            if m and not NOTHING_RE.match(m.group(2)):
+                key = PEOPLE_KEYS[m.group(1).lower()]
+                if key in ("new", "chg", "gone"):
+                    where = MARK_RE.match(m.group(2))
+                    path = [x for x in re.split(r"\s+/\s+", where.group(1) if where else m.group(2)) if x]
+                    marks.append({"kind": key, "path": path, "text": where.group(2) if where else ""})
+                elif key in ("needs", "made", "left"):
+                    said[key].append(m.group(2))
+                else:
+                    said[key] = said[key] or m.group(2)
+    return meta, said, marks
+
+
 def load_tasks(root, where):
     """The tasks the implementation-journal skill keeps, one dossier folder each: [{id, name, plain, now,
     needs, next, made, try, left, marks, done, updated, cited}]. Those records are written for the next AI
@@ -1006,33 +1044,7 @@ def load_tasks(root, where):
         handoff = slurp(os.path.join(folder, "handoff.md"))
         if not handoff:
             continue
-        lines = handoff.split("\n")
-        meta, body = {}, 0
-        if lines[0].strip() == "---":
-            for at, line in enumerate(lines[1:], 1):
-                if line.strip() == "---":
-                    body = at + 1
-                    break
-                key, sep, value = line.partition(":")
-                if sep:
-                    meta[key.strip().lower()] = value.strip()
-        said, inside = {"name": "", "now": "", "needs": [], "next": "", "made": [], "try": "", "left": []}, False
-        marks = []
-        for line in lines[body:]:
-            if line.startswith("## "):
-                inside = bool(PEOPLE_HEAD_RE.match(line))
-            elif inside:
-                m = PEOPLE_RE.match(line)
-                if m and not NOTHING_RE.match(m.group(2)):
-                    key = PEOPLE_KEYS[m.group(1).lower()]
-                    if key in ("new", "chg", "gone"):
-                        where = MARK_RE.match(m.group(2))
-                        path = [x for x in re.split(r"\s+/\s+", where.group(1) if where else m.group(2)) if x]
-                        marks.append({"kind": key, "path": path, "text": where.group(2) if where else ""})
-                    elif key in ("needs", "made", "left"):
-                        said[key].append(m.group(2))
-                    else:
-                        said[key] = said[key] or m.group(2)
+        meta, said, marks = read_handoff(handoff)
         when = re.search(r"\d{4}-\d{2}-\d{2}", meta.get("updated", "") or name)
         tasks.append({"id": name, "name": said["name"] or brief_name(folder), "plain": bool(said["name"] and said["now"]),
                       "now": said["now"], "needs": said["needs"][:5], "next": said["next"],
@@ -1044,21 +1056,82 @@ def load_tasks(root, where):
     return tasks
 
 
+STORY = 12   # past versions of a handoff read for a task's story
+
+
+def task_stories(root, rel, tasks):
+    """How each task got to where it is, read from the history of its handoff: {task id: [{date, done,
+    made}]}, oldest first, one entry each time its status or what it had made changed. This is what shows
+    that a finished task was opened again and finished a second time: the handoff itself only ever says
+    how things stand now. A handoff that was never committed has no story."""
+    if not rel or not tasks:
+        return {}
+    paths = {posixpath.join(rel, t["id"], "handoff.md"): t["id"] for t in tasks}
+    out = subprocess.run(["git", "-C", root, "log", "--format=%x01%H%x02%ad", "--date=short", "--name-only",
+                          "--", *paths], capture_output=True)
+    if out.returncode:
+        return {}
+    revs = collections.defaultdict(list)  # task id -> [(rev, date)], newest first
+    for block in out.stdout.decode("utf-8", "replace").split("\x01")[1:]:
+        head, _, names = block.partition("\n")
+        rev, _, date = head.partition("\x02")
+        for name in names.split("\n"):
+            if name.strip() in paths:
+                revs[paths[name.strip()]].append((rev, date.strip(), name.strip()))
+    asked = [(tid, rev, date, path) for tid, rows in revs.items() for rev, date, path in rows[:STORY]]
+    if not asked:
+        return {}
+    blobs = subprocess.run(["git", "-C", root, "cat-file", "--batch"], capture_output=True,
+                           input="".join("%s:%s\n" % (rev, path) for _, rev, _, path in asked).encode())
+    raw, at, stories = blobs.stdout, 0, collections.defaultdict(list)
+    for tid, rev, date, path in asked:
+        end = raw.find(b"\n", at)
+        if end < 0:
+            break
+        head = raw[at:end].split()
+        at = end + 1
+        if len(head) < 3 or head[1] != b"blob":
+            continue
+        size = int(head[2])
+        meta, said, _ = read_handoff(raw[at:at + size].decode("utf-8", "replace"))
+        at += size + 1
+        stories[tid].append({"date": date, "done": meta.get("status", "").lower().startswith("complete"),
+                             "made": said["made"][0] if said["made"] else ""})
+    for tid, rows in stories.items():
+        rows.reverse()
+        kept = []
+        for row in rows:
+            if not kept or (kept[-1]["done"], kept[-1]["made"]) != (row["done"], row["made"]):
+                kept.append(row)
+        stories[tid] = kept
+    return stories
+
+
 def task_rooms(task, commits, rel):
     """Where a task's committed work landed, as {part name: files}. Measured, not written: the commits
     its records cite by hash, and the commits that changed its dossier and no other task's. The dossier's
     own files are bookkeeping and are left out, so the picture is of the work itself."""
     rooms, prefix = collections.Counter(), rel + "/" if rel else None
+    files, last, own = set(), 0, set()
     for c in commits:
         mine = any(t.startswith(c["hash"]) or c["hash"].startswith(t) for t in task["cited"])
         if not mine and prefix:
             mine = {f[len(prefix):].split("/")[0] for fs in c["groups"].values() for f in fs
                     if f.startswith(prefix) and "/" in f[len(prefix):]} == {task["id"]}
         if mine:
+            own.add(c["hash"])
+            last = max(last, c["when"])
             for name, fs in c["groups"].items():
-                n = sum(1 for f in fs if not (prefix and f.startswith(prefix)))
-                if n:
-                    rooms[name] += n
+                work = [f for f in fs if not (prefix and f.startswith(prefix))]
+                files.update(work)
+                if work:
+                    rooms[name] += len(work)
+    # What happened to those files afterwards, in commits that are not this task's. A finished task's
+    # write-up describes the code as it was then; this is how a reader learns it has moved on since.
+    task["after"] = None if not files else sum(
+        1 for c in commits if c["when"] > last and c["hash"] not in own
+        and any(f in files for fs in c["groups"].values() for f in fs))
+    task["files"] = files
     return rooms
 
 
@@ -1085,11 +1158,14 @@ def place_marks(task, parts):
 
 
 def tasks_shown(root, where, parts, commits):
-    """(tasks to show, how many were left out). A task is in progress until its handoff says Complete; a
-    finished one stays for RECENT_DAYS if the agent wrote lines for people, so the reader can see what it
-    came to, and then leaves. An unfinished one with no lines for people that has not moved in RECENT_DAYS
-    is left out: it would be a stale name the reader can do nothing with. Each task gets `rooms`,
-    [{name, n}] in the order of the list."""
+    """(tasks to show, how many were left out). A task is in progress until its handoff says Complete. A
+    finished one is kept for as long as its record is, provided the agent wrote lines for people: for
+    RECENT_DAYS as "finished lately", after that as `old`, which the page folds away. An unfinished one
+    with no lines for people that has not moved in RECENT_DAYS is left out: it would be a stale name the
+    reader can do nothing with. Each task gets `rooms`, [{name, n}] in the order of the list; `after`, how
+    often the files it changed were changed again by later work (None when its commits are not known);
+    `story`, how its status and result changed over time; `times`, how often it was finished; `again`,
+    whether it was finished once and is open again."""
     base = where if os.path.isabs(where) else os.path.join(root, where)
     rel = os.path.relpath(base, root).replace(os.sep, "/")
     rel = None if rel.startswith("..") else rel
@@ -1100,8 +1176,9 @@ def tasks_shown(root, where, parts, commits):
         except ValueError:
             t["days"] = -1
         recent = 0 <= t["days"] <= RECENT_DAYS
-        if t["done"] and not (recent and (t["plain"] or t["made"])):
+        if t["done"] and not (t["plain"] or t["made"]):
             continue
+        t["old"] = t["done"] and not recent  # finished a while ago: kept, but out of the way
         if not t["done"] and not t["plain"] and not recent:
             left_out += 1
             continue
@@ -1112,9 +1189,18 @@ def tasks_shown(root, where, parts, commits):
         t["rel"] = rel
         place_marks(t, parts)
         shown.append(t)
+    stories = task_stories(root, rel, shown)
+    for t in shown:
+        story = stories.get(t["id"], [])
+        # the file as it stands may be ahead of its last commit
+        if story and (story[-1]["done"], story[-1]["made"]) != (t["done"], t["made"][0] if t["made"] else ""):
+            story.append({"date": t["updated"], "done": t["done"], "made": t["made"][0] if t["made"] else ""})
+        t["story"] = story[-8:]
+        t["times"] = sum(1 for i, row in enumerate(story) if row["done"] and (i == 0 or not story[i - 1]["done"]))
+        t["again"] = not t["done"] and any(row["done"] for row in story)  # finished once, open again
     shown.sort(key=lambda t: t["updated"], reverse=True)
-    # what waits on the reader comes first, what is finished comes last
-    shown.sort(key=lambda t: (t["done"], not t["needs"]))
+    # what waits on the reader comes first, what is finished comes last, what was finished long ago after that
+    shown.sort(key=lambda t: (t["old"], t["done"], not t["needs"]))
     return shown, left_out
 
 
@@ -1755,7 +1841,7 @@ def cmd_doctor(root, parts, t, args):
     old = sorted(((label(u), d, n) for u, (d, n) in aging(root, args.list_path, parts, history(root, parts)).items()
                   if n >= STALE), key=lambda x: -x[2])
     bare = [label(u) for u in units if not u.outside and not (u.flow and u.flow["nodes"])]
-    missed = mark_misses(tasks_shown(root, args.tasks, parts, [])[0], t)
+    missed = mark_misses([x for x in tasks_shown(root, args.tasks, parts, [])[0] if not x["old"]], t)
     if args.json:
         print(json.dumps({"list": listed, "dead_paths": [{"unit": u, "path": p} for u, p in dead],
                           "unmapped": len(unmapped), "near_names": near, "wrong_level": level, "unbacked": loose,
@@ -1842,16 +1928,25 @@ def cmd_tasks(root, parts, t, args):
                                      "for_people": x["plain"], "now": x["now"],
                                      "needs": x["needs"], "next": x["next"], "done": x["made"], "try": x["try"],
                                      "not_yet": x["left"], "marks": x["marks"], "updated": x["updated"],
-                                     "parts": x["rooms"]} for x in tasks], "not_listed": left_out,
-                          "marks_missed": mark_misses(tasks, t)},
+                                     "parts": x["rooms"], "finished_long_ago": x["old"],
+                                     "changed_since": x["after"], "times_finished": x["times"],
+                                     "open_again": x["again"], "story": x["story"]} for x in tasks],
+                          "not_listed": left_out,
+                          "marks_missed": mark_misses([x for x in tasks if not x["old"]], t)},
                          ensure_ascii=False, indent=2))
         return
+    older = [x for x in tasks if x["old"]]
+    tasks = [x for x in tasks if not x["old"]]
     doing, done = [x for x in tasks if not x["done"]], [x for x in tasks if x["done"]]
     print(t["tasks_head"].format(n=len(doing)) if doing else t["tasks_none"])
     for x in doing + done:
         if done and x is done[0]:
             print(t["tasks_done_head"].format(n=len(done)))
-        print("  %s  [%s]" % (x["name"], t["task_updated"].format(d=x["updated"] or "?")))
+        notes = [t["task_updated"].format(d=x["updated"] or "?")]
+        notes += [t["task_again"]] if x["again"] else []
+        notes += [t["task_times"].format(n=x["times"])] if x["done"] and x["times"] > 1 else []
+        notes += [t["task_after"].format(n=x["after"])] if x["done"] and x["after"] else []
+        print("  %s  [%s]" % (x["name"], t["sep"].join(notes)))
         said = [t["task_now"].format(x=x["now"])] if x["now"] else []
         said += [t["task_needs"].format(x=need) for need in x["needs"]]
         said += [t["task_next"].format(x=x["next"])] if x["next"] else []
@@ -1868,6 +1963,11 @@ def cmd_tasks(root, parts, t, args):
             print("      " + t["task_rooms"].format(x="  ".join("%s %d" % (r["name"] or t["unmapped_changed"], r["n"])
                                                                 for r in x["rooms"])))
         print("      " + t["task_folder"].format(x=posixpath.join(x["rel"] or args.tasks, x["id"])))
+    if older:
+        print(t["tasks_older_head"].format(n=len(older)))
+        for x in older:
+            print("  %s  [%s]%s" % (x["name"], t["task_updated"].format(d=x["updated"] or "?"),
+                                   "  " + t["task_after"].format(n=x["after"]) if x["after"] else ""))
     if left_out:
         print(t["tasks_old"].format(n=left_out))
     for row in mark_misses(tasks, t):
@@ -1947,7 +2047,13 @@ def cmd_web(root, parts, t, args):
         out_tasks.append({"id": task["id"], "name": task["name"], "plain": task["plain"], "now": task["now"],
                           "needs": task["needs"], "next": task["next"], "updated": task["updated"],
                           "finished": task["done"], "made": task["made"], "try": task["try"], "left": task["left"],
-                          "marks": task["marks"],
+                          "marks": task["marks"], "old": task["old"], "after": task["after"], "story": task["story"],
+                          "times": task["times"], "again": task["again"],
+                          # uncommitted work in the task's files; none is reported when its own record is being
+                          # rewritten in the same work, since then the lines are moving along with the code
+                          "touched": 0 if task["rel"] and any(
+                              r["file"].startswith("%s/%s/" % (task["rel"], task["id"])) for r in rows)
+                          else sum(1 for r in rows if r["file"] in task["files"]),
                           "days": task["days"], "parts": task["rooms"],
                           "pending": short(grouped(list(mine.values()), parts)), "wins": [w["key"] for w in on]})
 

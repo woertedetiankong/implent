@@ -198,6 +198,11 @@ svg.rel{display:block;margin:0 auto}
 .flag.me{background:var(--warn);color:var(--on)}
 .tline{font-size:17px;font-weight:500;line-height:1.55;max-width:44em}
 .flag.fin{color:var(--muted);border-color:var(--muted)}
+.older summary{cursor:pointer;font-size:14px;font-weight:700;color:var(--muted);padding:2px 0}
+.older[open] summary{margin-bottom:10px}
+.older .tcard{padding:10px 13px 9px} .older .tn{font-size:15px}
+.story{display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:6px 12px;align-items:baseline;font-size:14.5px;line-height:1.5}
+.story .sd{font-family:var(--f-num);font-size:15px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
 /* what a finished step came to: three short answers, then the flow diagrams with the changed boxes marked */
 .three{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:1.5px;background:var(--hair);border:1.5px solid var(--hair);border-radius:10px;overflow:hidden}
 .three>div{background:var(--sheet);padding:12px 14px 13px;min-width:0;display:flex;flex-direction:column;gap:4px}
@@ -346,6 +351,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   <section class="tasks" id="tasks" hidden>
     <div class="thd"><h2 id="tasksh"></h2><span class="sub" id="tasksm"></span></div>
     <div class="tcards" id="tcards"></div>
+    <details class="older" id="tolder" hidden><summary id="tolders"></summary><div class="tcards" id="tcards2"></div></details>
     <p class="sub" id="taskso" hidden></p>
   </section>
   <section class="stage" id="stage" aria-live="polite"></section>
@@ -394,7 +400,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     tMade:'做成了什么',tTry:'你可以怎么试',tLeft:'还没做的',tChg:'流程图上变了哪里',tChgNote:'这些标记是 AI 收尾时写的，不是量出来的。',
     mNew:'新增',mChg:'改了',mGone:'去掉',mSame:'没变的框变淡',mNoBox:'图上没有这个框',mNoFlow:'这一块还没有流程图，所以只有文字。',
     tAskMade:'想在这里看到它做成了什么样，对 AI 说：',tSayMade:'给“{n}”写一份做完后的说明',
-    tasksH:'正在做的事',tasksN:'{n} 件',tasksWait:'{k} 件在等你',needsFlag:'等你 {n} 件',tasksOld:'另有 {n} 件很久没动、也没有说明的事，没有列出。',
+    tOlder:'更早做完的事 {n} 件',tOlderH:'做完的事',againFlag:'重新打开',afterFlag:'之后又改过',timesFlag:'第 {n} 次做完',tStory:'这件事的经过',sDone:'做完了',sMore:'又改了',sAgain:'重新打开',sStep:'做完一步',sOpen:'进行中',tAfter:'这份说明写于 {d}。之后这件事动过的文件又被别的工作改了 {n} 次，现在可能已经不是说明里的样子。',tTouched:'这件事动过的文件里，现在有 {n} 个有还没提交的改动。',tAskFresh:'想让说明跟上现在的样子，对 AI 说：',tSayFresh:'按现在的代码更新“{n}”的说明',tasksH:'正在做的事',tasksN:'{n} 件',tasksWait:'{k} 件在等你',needsFlag:'等你 {n} 件',tasksOld:'另有 {n} 件很久没动、也没有说明的事，没有列出。',
     tBare:'AI 还没有给这件事写给人看的说明。',tBareLong:'AI 记着这件事，但还没有写给人看的说明，所以这里只有它的名字和它动过哪几块。',
     tUpdated:'{d} 更新',tStale:'{d} 更新，{n} 天没动了',tNeeds:'等你',tNext:'接下来',tRooms:'这件事动过哪几块',tNoRooms:'还没量到它动过哪一块。',tWin:'正在做这件事',
     tAsk:'想让它接着做，开一个新窗口，对 AI 说：',tSay:'继续做“{n}”',tAskBare:'想在这里看到它做到哪了，对 AI 说：',tSayBare:'给“{n}”写一份给人看的说明',
@@ -434,7 +440,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     tMade:'What was made',tTry:'How you can try it',tLeft:'Not done yet',tChg:'What changed on the flow diagrams',tChgNote:'The agent wrote these marks when it wrapped up; they are not measured.',
     mNew:'added',mChg:'changed',mGone:'removed',mSame:'unchanged boxes are faded',mNoBox:'no such box on the diagram',mNoFlow:'This part has no flow diagram yet, so there are only words.',
     tAskMade:'To see here what it came to, say to the AI:',tSayMade:'Write up what "{n}" came to',
-    tasksH:'In progress',tasksN:'{n} tasks',tasksWait:'{k} waiting for you',needsFlag:'needs you: {n}',tasksOld:'{n} more have been quiet for a long time and have no lines for people; they are not listed.',
+    tOlder:'{n} finished earlier',tOlderH:'Finished',againFlag:'open again',afterFlag:'changed since',timesFlag:'finished, time {n}',tStory:'How it went',sDone:'finished',sMore:'changed again',sAgain:'opened again',sStep:'a step finished',sOpen:'in progress',tAfter:'These lines were written on {d}. The files this task changed have been changed {n} times since by other work, so things may no longer be as described.',tTouched:'{n} of the files this task changed have uncommitted changes right now.',tAskFresh:'To bring the lines up to date, say to the AI:',tSayFresh:'Update the write-up of "{n}" to match the code as it is now',tasksH:'In progress',tasksN:'{n} tasks',tasksWait:'{k} waiting for you',needsFlag:'needs you: {n}',tasksOld:'{n} more have been quiet for a long time and have no lines for people; they are not listed.',
     tBare:'The agent has not written its lines for people about this yet.',tBareLong:'The agent keeps a record of this task but has written no lines for people yet, so all there is to show is its name and the parts it touched.',
     tUpdated:'updated {d}',tStale:'updated {d}, quiet for {n} days',tNeeds:'Waiting for you',tNext:'Next',tRooms:'The parts this task touched',tNoRooms:'No part measured for it yet.',tWin:'working on this now',
     tAsk:'To have it carry on, open a new window and say to the AI:',tSay:'Continue "{n}"',tAskBare:'To see here where it stands, say to the AI:',tSayBare:'Write the lines for people for "{n}"',
@@ -787,8 +793,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     if(D.frame){ // the whole project as one box: where you are in it, and where uncommitted work landed
       var fo=linkOpt(null),plain=fo.cls;fo.frame=opens(D.frame)?{title:D.project}:null;
       fo.cls=function(n){var u=fo.door(n);return plain(n)+(u&&(u.wing!=null?u.wing===curWing:u.name===selName)?' sel':'');};
-      fo.badge=function(n){var u=fo.door(n),k=0;if(!u)return '';
-        D.pending.parts.forEach(function(x){if(x.part&&(u.wing!=null?wingOf[x.part]===u:x.part===u.name))k+=x.n;});return k||'';};
+      fo.badge=function(n){var u=fo.door(n),k=0;if(!u)return ''; // how many files of what is lit landed in this box
+        Object.keys(landed).forEach(function(name){if(+landed[name]&&(u.wing!=null?wingOf[name]===u:name===u.name))k+=+landed[name];});return k||'';};
       h=flowSvg(D.frame,avail,fo);
     }
     if(D.routes.length){ // one thing followed through the project: pick it, and its path is drawn underneath
@@ -824,8 +830,9 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     $('plan').appendChild(w);
   });
   $('plan').style.gridTemplateColumns=planCols.join(' ');
+  var landed={}; // what is lit just now: files per part, for the uncommitted work, a task or one commit
   function light(map,sel,wins){ // with a room picked, the map marks its companions; otherwise it lights where work landed
-    var any=Object.keys(map).length>0;
+    var any=Object.keys(map).length>0,was=JSON.stringify(landed);landed=sel?{}:map;
     D.parts.forEach(function(p){
       var r=rooms[p.name],on=Object.prototype.hasOwnProperty.call(map,p.name);
       r.classList.toggle('lit',on&&!sel);r.classList.toggle('mate',on&&!!sel);r.classList.toggle('sel',p.name===sel);
@@ -834,6 +841,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       var here=on&&wins?winsOn(p.name,wins):[]; // which windows are in this room
       r.querySelector('.who').innerHTML=here.slice(0,3).map(function(w){return wb(w);}).join('')+(here.length>3?'<span class="more">+</span>':'');
     });
+    // the diagram of the whole project carries the same counts on its boxes, so it has to follow
+    if(view==='frame'&&D.frame&&was!==JSON.stringify(landed)&&$('alt').firstChild)drawAlt();
   }
   var quiet=true;
   function setHash(h){try{history.replaceState(null,'',h?'#'+h:location.pathname+location.search);}catch(e){}}
@@ -1042,8 +1051,19 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     Object.keys(n).forEach(function(k){if(names.indexOf(k)<0)names.push(k);});
     return names.map(function(k){return {name:k,n:n[k],files:files[k]};});
   }
-  function taskWhen(t){var d=t.updated.slice(5);return t.finished?f(T.tDone,{d:d}):t.days>=14?f(T.tStale,{d:d,n:t.days}):f(T.tUpdated,{d:d});}
+  function taskWhen(t){var d=t.old?t.updated:t.updated.slice(5);return t.finished?f(T.tDone,{d:d}):t.days>=14?f(T.tStale,{d:d,n:t.days}):f(T.tUpdated,{d:d});}
   function hasMade(t){return t.made.length||t.try||t.left.length||t.marks.length;}
+  // A finished task's lines describe the code as it was when they were written. Whether it has moved on is
+  // measured: later commits, and uncommitted work, in the files the task itself changed.
+  function moved(t){return t.finished&&((t.after||0)>0||(t.touched||0)>0);}
+  function movedBlock(t){if(!moved(t))return '';
+    return '<div class="blk"><div class="aged much">'+ic('sign')+'<span>'+[t.after?f(T.tAfter,{d:t.updated,n:t.after}):'',t.touched?f(T.tTouched,{n:t.touched}):''].filter(function(x){return x;}).join(' ')+'</span></div>'+
+      '<div class="ask">'+T.tAskFresh+'<span class="say">'+esc(f(T.tSayFresh,{n:t.name}))+'</span></div></div>';}
+  // How the task got here, from the history of its record: finished, opened again, finished again.
+  function storyBlock(t){var st=t.story||[];if(st.length<2)return '';
+    return '<div class="blk"><h3>'+T.tStory+'</h3><div class="story">'+st.map(function(r,i){
+      var word=r.done?(i&&st[i-1].done?T.sMore:T.sDone):(i&&st[i-1].done?T.sAgain:r.made?T.sStep:T.sOpen);
+      return '<span class="sd">'+esc(r.date)+'</span><span class="mk-b'+(r.done?'':i&&st[i-1].done?' chg':' off')+'">'+word+'</span><span>'+esc(r.made||'')+'</span>';}).join('')+'</div></div>';}
   function madeBlock(t){ // what the last finished step came to, in the agent's words for people
     var cells=[[T.tMade,t.made],[T.tTry,t.try?[t.try]:[]],[T.tLeft,t.left]].filter(function(c){return c[1].length;});
     return cells.length?'<div class="three">'+cells.map(function(c){return '<div><h3>'+c[0]+'</h3>'+c[1].map(function(x){return '<p>'+esc(x)+'</p>';}).join('')+'</div>';}).join('')+'</div>':'';
@@ -1082,7 +1102,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       if(t.needs.length)h+='<div class="blk"><h3>'+T.tNeeds+'</h3><div class="signs">'+t.needs.map(function(x){return '<div class="sign">'+ic('user')+'<span>'+esc(x)+'</span></div>';}).join('')+'</div></div>';
       if(t.next)h+='<div class="blk"><h3>'+T.tNext+'</h3><p>'+esc(t.next)+'</p></div>';
     }else if(!hasMade(t))h+='<div class="empty">'+T.tBareLong+'</div>';
-    h+=madeBlock(t);
+    h+=madeBlock(t)+movedBlock(t)+storyBlock(t);
     if(wins.length)h+='<div class="nowby">'+wins.map(function(w){return wb(w)+'<span>'+esc(winName(w))+'</span>';}).join('')+'<span class="sub">'+T.tWin+'</span></div>';
     h+='<div class="blk"><h3>'+T.tRooms+'</h3>'+(list.length?stackBar(list)+legend(list):'<p class="sub">'+T.tNoRooms+'</p>')+'</div>';
     h+=marksBlock(t);
@@ -1091,19 +1111,21 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     setStage(h+'</div>');drawTaskFlows();
   }
   if(TASKS.length||D.tasksOld){
-    var fin=TASKS.filter(function(t){return t.finished;}).length,doing=TASKS.length-fin;
-    $('tasks').hidden=false;$('tasksh').textContent=fin?(doing?T.tasksH2:T.tasksH3):T.tasksH;
+    var older=TASKS.filter(function(t){return t.old;}).length,fin=TASKS.filter(function(t){return t.finished&&!t.old;}).length,doing=TASKS.length-fin-older;
+    $('tasks').hidden=false;$('tasksh').textContent=fin?(doing?T.tasksH2:T.tasksH3):(doing||!older?T.tasksH:T.tOlderH);
+    if(older){$('tolder').hidden=false;$('tolder').open=!fin&&!doing;$('tolders').textContent=f(T.tOlder,{n:older});}
     var waitingOn=TASKS.filter(function(t){return t.needs.length&&!t.finished;}).length;
     $('tasksm').textContent=[doing?f(T.tasksN,{n:doing}):'',waitingOn?f(T.tasksWait,{k:waitingOn}):'',fin&&doing?f(T.tasksFin,{k:fin}):''].filter(function(x){return x;}).join(T.sep);
     TASKS.forEach(function(t,i){
       var b=document.createElement('button');b.type='button';b.className='tcard';b.id='task-'+i;b.setAttribute('aria-pressed','false');
       var rooms=taskRooms(t).filter(function(x){return byName[x.name];}).sort(function(x,y){return y.n-x.n;}).slice(0,6);
-      b.innerHTML='<span class="tt"><span class="tn">'+esc(t.name)+'</span>'+(t.finished?'<span class="flag fin">'+T.finFlag+'</span>':t.needs.length?'<span class="flag me">'+f(T.needsFlag,{n:t.needs.length})+'</span>':'')+'</span>'+
+      b.innerHTML='<span class="tt"><span class="tn">'+esc(t.name)+'</span>'+(t.finished?'<span class="flag fin">'+(t.times>1?f(T.timesFlag,{n:t.times}):T.finFlag)+'</span>':t.needs.length?'<span class="flag me">'+f(T.needsFlag,{n:t.needs.length})+'</span>':'')+
+        (t.again?'<span class="flag">'+T.againFlag+'</span>':'')+(moved(t)?'<span class="flag">'+T.afterFlag+'</span>':'')+'</span>'+
         '<span class="tnow'+(t.plain||t.made.length?'':' none')+'">'+esc(t.finished&&t.made.length?t.made[0]:t.plain?t.now:t.made.length?t.made[0]:T.tBare)+'</span><span class="tf">'+
         (rooms.length?'<span class="tpics">'+rooms.map(function(x){var p=byName[x.name];return '<span class="pic '+p.z+'" title="'+esc(p.name)+'">'+ic(p.icon)+'</span>';}).join('')+'</span>':'')+
         taskWins(t).map(function(w){return wb(w);}).join('')+'<span>'+esc(taskWhen(t))+'</span></span>';
       b.addEventListener('click',function(){if(curTask===i)home();else selectTask(i);});
-      $('tcards').appendChild(b);});
+      $(t.old?'tcards2':'tcards').appendChild(b);});
     if(D.tasksOld){$('taskso').hidden=false;$('taskso').textContent=f(T.tasksOld,{n:D.tasksOld});}
   }
 
