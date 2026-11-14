@@ -179,7 +179,13 @@ svg.rel{display:block;margin:0 auto}
 .room .more{font-family:var(--f-num);font-size:14px;font-weight:700}
 
 /* what is being worked on: tasks from the journal the agent keeps, shown in the lines it wrote there for people */
-.tasks{display:flex;flex-direction:column;gap:10px}
+.tasks,.since{display:flex;flex-direction:column;gap:10px}
+.since[hidden]{display:none}
+/* what changed lately: measured from the list's own history, the tasks' histories and the commits */
+.sbody{background:var(--sheet);border:1.5px solid var(--hair);border-radius:12px;padding:13px 14px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px 14px;align-items:start}
+.sbody .wide{grid-column:1/-1}
+.pchip .cnt{font-family:var(--f-num);font-size:15px;color:var(--z);font-variant-numeric:tabular-nums}
+@media (max-width:560px){.sbody{grid-template-columns:minmax(0,1fr);gap:4px 0} .sbody .iot{padding-top:6px}}
 .tasks[hidden]{display:none}
 .thd{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline}
 .thd h2{font-size:21px;font-weight:900;margin:0}
@@ -348,6 +354,10 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   <div class="viewbar" id="viewbar" hidden><div class="seg" id="views"></div><span class="vcap" id="vcap"></span></div>
   <div class="plan" id="plan"></div>
   <div class="alt" id="alt" hidden></div>
+  <section class="since" id="since" hidden>
+    <div class="thd"><h2 id="sinceh"></h2><div class="seg" id="sinceseg"></div><span class="sub" id="sincem"></span></div>
+    <div class="sbody" id="sinceb"></div>
+  </section>
   <section class="tasks" id="tasks" hidden>
     <div class="thd"><h2 id="tasksh"></h2><span class="sub" id="tasksm"></span></div>
     <div class="tcards" id="tcards"></div>
@@ -400,7 +410,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     tMade:'做成了什么',tTry:'你可以怎么试',tLeft:'还没做的',tChg:'流程图上变了哪里',tChgNote:'这些标记是 AI 收尾时写的，不是量出来的。',
     mNew:'新增',mChg:'改了',mGone:'去掉',mSame:'没变的框变淡',mNoBox:'图上没有这个框',mNoFlow:'这一块还没有流程图，所以只有文字。',
     tAskMade:'想在这里看到它做成了什么样，对 AI 说：',tSayMade:'给“{n}”写一份做完后的说明',
-    tOlder:'更早做完的事 {n} 件',tOlderH:'做完的事',againFlag:'重新打开',afterFlag:'之后又改过',timesFlag:'第 {n} 次做完',tStory:'这件事的经过',sDone:'做完了',sMore:'又改了',sAgain:'重新打开',sStep:'做完一步',sOpen:'进行中',tAfter:'这份说明写于 {d}。之后这件事动过的文件又被别的工作改了 {n} 次，现在可能已经不是说明里的样子。',tTouched:'这件事动过的文件里，现在有 {n} 个有还没提交的改动。',tAskFresh:'想让说明跟上现在的样子，对 AI 说：',tSayFresh:'按现在的代码更新“{n}”的说明',tasksH:'正在做的事',tasksN:'{n} 件',tasksWait:'{k} 件在等你',needsFlag:'等你 {n} 件',tasksOld:'另有 {n} 件很久没动、也没有说明的事，没有列出。',
+    sinceH:'这段时间的变化',sDays:'{n} 天',sMeta:'从 {d} 起，{n} 次提交',sSeen:'你上次打开这页是 {n} 天前。',sLocal:'清单没有提交过，这里比的是本机留的旧副本。',sShort:'提交太多，只数了最近的一部分。',sListNew:'清单是这段时间里新建的，所以不列新增和重画。',sListNone:'量不出清单这段时间变了什么：它没有提交过，本机留的副本也还没有那么早。',sQuiet:'这段时间没有提交，也没有量到变化。',sBoxPlus:'多了 {a} 个方框',sBoxMinus:'少了 {b} 个方框',sAdded:'新增的块',sRemoved:'去掉的块',sRedrawn:'重画的图',sFirst:'第一次画',sBoxes:'方框 +{a} −{b}',sArrows:'连线变了',sRoute:'主线',sTDone:'做完了',sTAgain:'重新打开',sTMore:'做完后又改了',sTNew:'开始了',sTStep:'有进展',sTasks:'事情',sBusy:'改得最多',sWatch:'该留意的',sOld:'图可能过时',sNothing:'这段时间清单和任务记录都没有变化。',tOlder:'更早做完的事 {n} 件',tOlderH:'做完的事',againFlag:'重新打开',afterFlag:'之后又改过',timesFlag:'第 {n} 次做完',tStory:'这件事的经过',sDone:'做完了',sMore:'又改了',sAgain:'重新打开',sStep:'做完一步',sOpen:'进行中',tAfter:'这份说明写于 {d}。之后这件事动过的文件又被别的工作改了 {n} 次，现在可能已经不是说明里的样子。',tTouched:'这件事动过的文件里，现在有 {n} 个有还没提交的改动。',tAskFresh:'想让说明跟上现在的样子，对 AI 说：',tSayFresh:'按现在的代码更新“{n}”的说明',tasksH:'正在做的事',tasksN:'{n} 件',tasksWait:'{k} 件在等你',needsFlag:'等你 {n} 件',tasksOld:'另有 {n} 件很久没动、也没有说明的事，没有列出。',
     tBare:'AI 还没有给这件事写给人看的说明。',tBareLong:'AI 记着这件事，但还没有写给人看的说明，所以这里只有它的名字和它动过哪几块。',
     tUpdated:'{d} 更新',tStale:'{d} 更新，{n} 天没动了',tNeeds:'等你',tNext:'接下来',tRooms:'这件事动过哪几块',tNoRooms:'还没量到它动过哪一块。',tWin:'正在做这件事',
     tAsk:'想让它接着做，开一个新窗口，对 AI 说：',tSay:'继续做“{n}”',tAskBare:'想在这里看到它做到哪了，对 AI 说：',tSayBare:'给“{n}”写一份给人看的说明',
@@ -440,7 +450,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     tMade:'What was made',tTry:'How you can try it',tLeft:'Not done yet',tChg:'What changed on the flow diagrams',tChgNote:'The agent wrote these marks when it wrapped up; they are not measured.',
     mNew:'added',mChg:'changed',mGone:'removed',mSame:'unchanged boxes are faded',mNoBox:'no such box on the diagram',mNoFlow:'This part has no flow diagram yet, so there are only words.',
     tAskMade:'To see here what it came to, say to the AI:',tSayMade:'Write up what "{n}" came to',
-    tOlder:'{n} finished earlier',tOlderH:'Finished',againFlag:'open again',afterFlag:'changed since',timesFlag:'finished, time {n}',tStory:'How it went',sDone:'finished',sMore:'changed again',sAgain:'opened again',sStep:'a step finished',sOpen:'in progress',tAfter:'These lines were written on {d}. The files this task changed have been changed {n} times since by other work, so things may no longer be as described.',tTouched:'{n} of the files this task changed have uncommitted changes right now.',tAskFresh:'To bring the lines up to date, say to the AI:',tSayFresh:'Update the write-up of "{n}" to match the code as it is now',tasksH:'In progress',tasksN:'{n} tasks',tasksWait:'{k} waiting for you',needsFlag:'needs you: {n}',tasksOld:'{n} more have been quiet for a long time and have no lines for people; they are not listed.',
+    sinceH:'What changed lately',sDays:'{n} days',sMeta:'since {d}, {n} commits',sSeen:'You last opened this page {n} days ago.',sLocal:'The list has never been committed; this compares with an older copy kept on this machine.',sShort:'Too many commits; only the most recent were counted.',sListNew:'The list was first written within this stretch, so nothing is listed as added or redrawn.',sListNone:'No telling what changed on the list: it was never committed, and the copies kept on this machine do not go back that far.',sQuiet:'No commits in this stretch, and no change measured.',sBoxPlus:'{a} more boxes',sBoxMinus:'{b} fewer boxes',sAdded:'Parts added',sRemoved:'Parts removed',sRedrawn:'Diagrams redrawn',sFirst:'drawn for the first time',sBoxes:'boxes +{a} −{b}',sArrows:'lines changed',sRoute:'route',sTDone:'finished',sTAgain:'opened again',sTMore:'changed after it was finished',sTNew:'started',sTStep:'moved on',sTasks:'Tasks',sBusy:'Changed most',sWatch:'Worth a look',sOld:'diagram may be out of date',sNothing:'Neither the list nor the task records changed in this stretch.',tOlder:'{n} finished earlier',tOlderH:'Finished',againFlag:'open again',afterFlag:'changed since',timesFlag:'finished, time {n}',tStory:'How it went',sDone:'finished',sMore:'changed again',sAgain:'opened again',sStep:'a step finished',sOpen:'in progress',tAfter:'These lines were written on {d}. The files this task changed have been changed {n} times since by other work, so things may no longer be as described.',tTouched:'{n} of the files this task changed have uncommitted changes right now.',tAskFresh:'To bring the lines up to date, say to the AI:',tSayFresh:'Update the write-up of "{n}" to match the code as it is now',tasksH:'In progress',tasksN:'{n} tasks',tasksWait:'{k} waiting for you',needsFlag:'needs you: {n}',tasksOld:'{n} more have been quiet for a long time and have no lines for people; they are not listed.',
     tBare:'The agent has not written its lines for people about this yet.',tBareLong:'The agent keeps a record of this task but has written no lines for people yet, so all there is to show is its name and the parts it touched.',
     tUpdated:'updated {d}',tStale:'updated {d}, quiet for {n} days',tNeeds:'Waiting for you',tNext:'Next',tRooms:'The parts this task touched',tNoRooms:'No part measured for it yet.',tWin:'working on this now',
     tAsk:'To have it carry on, open a new window and say to the AI:',tSay:'Continue "{n}"',tAskBare:'To see here where it stands, say to the AI:',tSayBare:'Write the lines for people for "{n}"',
@@ -1127,6 +1137,49 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       b.addEventListener('click',function(){if(curTask===i)home();else selectTask(i);});
       $(t.old?'tcards2':'tcards').appendChild(b);});
     if(D.tasksOld){$('taskso').hidden=false;$('taskso').textContent=f(T.tasksOld,{n:D.tasksOld});}
+  }
+
+  // ---- what changed lately ----
+  // For a reader who comes back after a while. Everything in it is measured: the list against its own earlier
+  // version, the tasks against their histories, the commits counted. The stretch it opens on is the shortest
+  // one that reaches back to the reader's last visit, which this browser remembers.
+  var LATELY=D.lately||[],curSpan=Math.min(1,LATELY.length-1),seenDays=null;
+  try{var key='bearings.seen.'+D.project,prev=+localStorage.getItem(key);
+    if(prev){seenDays=Math.floor((Date.now()-prev)/86400000);
+      for(var si=0;si<LATELY.length;si++){curSpan=si;if(LATELY[si].days>=Math.max(1,seenDays))break;}}
+    localStorage.setItem(key,String(Date.now()));}catch(e){}
+  function drawSince(){
+    var c=LATELY[curSpan],h='',any=false;
+    function row(title,inner){any=true;h+='<span class="iot">'+title+'</span><div class="pals">'+inner+'</div>';}
+    function chip(u,id,name,note,cnt){var tail=(note?'<span class="pl">'+esc(note)+'</span>':'')+(cnt?'<span class="cnt">'+cnt+'</span>':'');
+      return u?'<button type="button" class="pchip '+u.z+'" data-to="'+esc(id)+'">'+pic(u.icon)+'<span>'+esc(name)+'</span>'+tail+'</button>'
+        :'<span class="pchip plain"><span>'+esc(name)+'</span>'+tail+'</span>';}
+    if(c.base==='new')h+='<p class="sub wide">'+T.sListNew+'</p>';
+    else if(c.base==='short')h+='<p class="sub wide">'+T.sListNone+'</p>';
+    if(c.added.length)row(T.sAdded,c.added.map(function(x){return chip(byId(x.to),x.to,x.name);}).join(''));
+    if(c.removed.length)row(T.sRemoved,c.removed.map(function(x){return chip(null,'',x.name);}).join(''));
+    if(c.redrawn.length)row(T.sRedrawn,c.redrawn.map(function(x){
+      var name=x.kind==='frame'?T.frameName:x.name,note=x.first?T.sFirst:(x.plus&&x.minus?f(T.sBoxes,{a:x.plus,b:x.minus}):x.plus?f(T.sBoxPlus,{a:x.plus}):x.minus?f(T.sBoxMinus,{b:x.minus}):T.sArrows);
+      return chip(byId(x.to),x.to,name,(x.kind==='route'?T.sRoute+T.sep:'')+note);}).join(''));
+    if(c.tasks.length)row(T.sTasks,c.tasks.map(function(x){var t=TASKS[x.i];if(!t)return '';
+      return '<button type="button" class="pchip plain" style="cursor:pointer" data-task="'+x.i+'"><span>'+esc(t.name)+'</span><span class="pl">'+{done:T.sTDone,again:T.sTAgain,more:T.sTMore,'new':T.sTNew,step:T.sTStep}[x.what]+'</span></button>';}).join(''));
+    if(!any&&(c.base==='git'||c.base==='local'))h+='<p class="sub wide">'+T.sNothing+'</p>';
+    if(c.busy.length)row(T.sBusy,c.busy.map(function(x){var u=byName[x.name];return chip(u,u?'p'+D.parts.indexOf(u):'',x.name,'',x.n);}).join(''));
+    // not a change, but what a returning reader should not trust blindly: write-ups and diagrams the code has left behind
+    var watch=TASKS.map(function(t,i){return moved(t)?'<button type="button" class="pchip plain" style="cursor:pointer" data-task="'+i+'"><span>'+esc(t.name)+'</span><span class="pl">'+T.afterFlag+'</span></button>':'';}).join('');
+    D.parts.forEach(function(p,i){[p].concat(p.subs).forEach(function(u,k){if(u.flow&&u.since>=8)watch+=chip(u,k?'p'+i+'.'+(k-1):'p'+i,u.name,T.sOld);});});
+    if(watch)row(T.sWatch,watch);
+    $('sinceb').innerHTML=h||'<p class="sub wide">'+T.sQuiet+'</p>';
+    $('sincem').textContent=f(T.sMeta,{d:c.since.slice(5),n:c.commits})+(c.base==='local'?' '+T.sLocal:'')+(c.short?' '+T.sShort:'')+(seenDays>=1?' '+f(T.sSeen,{n:seenDays}):'');
+    wire($('sinceb'));
+    Array.prototype.forEach.call($('sinceb').querySelectorAll('[data-task]'),function(b){b.addEventListener('click',function(){selectTask(+b.getAttribute('data-task'));});});
+  }
+  if(LATELY.some(function(c){return c.added.length||c.removed.length||c.redrawn.length||c.tasks.length||c.commits;})){
+    $('since').hidden=false;$('sinceh').textContent=T.sinceH;
+    LATELY.forEach(function(c,i){var b=document.createElement('button');b.type='button';b.textContent=f(T.sDays,{n:c.days});b.setAttribute('aria-pressed',String(i===curSpan));
+      b.addEventListener('click',function(){curSpan=i;Array.prototype.forEach.call($('sinceseg').children,function(x){x.setAttribute('aria-pressed',String(x===b));});drawSince();});
+      $('sinceseg').appendChild(b);});
+    drawSince();
   }
 
   // ---- footprints ----

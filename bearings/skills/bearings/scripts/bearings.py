@@ -18,8 +18,9 @@ Uncommitted work is split by window: which Claude Code or Codex session edited e
 read from the session records those tools keep on this machine (--no-windows skips that).
 The map also counts the uncommitted work in the repository's other worktrees.
 
-Read-only towards the project: the only file it writes is the map page, under the git dir
-unless --out says otherwise. Python 3 standard library only.
+Read-only towards the project: it writes the map page, under the git dir unless --out says otherwise,
+and beside it a dated copy of the parts list whenever the list has changed, so that "what changed lately"
+can be measured for a list nobody has committed. Python 3 standard library only.
 """
 import argparse
 import collections
@@ -365,7 +366,13 @@ def load_parts(root, explicit=None):
             break
     else:
         return None, None, [], {"frame": None, "wings": []}
-    lines = open(path, encoding="utf-8").read().split("\n")
+    parts, routes, top = read_list(open(path, encoding="utf-8").read())
+    return parts, path, routes, top
+
+
+def read_list(text):
+    """The parts list from its text: (parts, routes, top)."""
+    lines = text.split("\n")
     shift = 1 if title_form(lines) else 0
     parts, routes, cur, top, group, flow = [], [], None, None, "", None
     frame, wings, wing = None, [], None
@@ -438,8 +445,8 @@ def load_parts(root, explicit=None):
                 cur.patterns.append((pat, compile_pattern(pat), literal_len(pat)))
         elif not cur.what and not line.startswith(("#", ">")):
             cur.what = line.strip()
-    return parts, path, routes, {"frame": frame if frame and frame["nodes"] else None,
-                                 "wings": [w for w in wings if w.parts]}
+    return parts, routes, {"frame": frame if frame and frame["nodes"] else None,
+                           "wings": [w for w in wings if w.parts]}
 
 
 # Wiring -------------------------------------------------------------------
@@ -1131,8 +1138,46 @@ def task_rooms(task, commits, rel):
     task["after"] = None if not files else sum(
         1 for c in commits if c["when"] > last and c["hash"] not in own
         and any(f in files for fs in c["groups"].values() for f in fs))
-    task["files"] = files
+    task["files"], task["last"], task["own"] = files, last, own
     return rooms
+
+
+def older_commits(root, parts, rel, tasks, commits):
+    """The commits a task's records point at that lie further back than the map's window: the ones cited
+    by hash, and the ones that changed its dossier. Without them a task finished long ago would show no
+    parts at all. Returns them in the form `history` gives."""
+    known = {c["hash"] for c in commits}
+    words = {w for t in tasks for w in t["cited"] if not any(w.startswith(k) or k.startswith(w) for k in known)}
+    revs = set()
+    if words:  # a word of hex digits in a record is not always a commit
+        out = subprocess.run(["git", "-C", root, "cat-file", "--batch-check"], capture_output=True,
+                             input="\n".join(sorted(words)).encode())
+        for line in out.stdout.decode("utf-8", "replace").splitlines():
+            bits = line.split()
+            if len(bits) >= 2 and bits[1] == "commit":
+                revs.add(bits[0])
+    if rel:
+        for t in tasks:
+            out = subprocess.run(["git", "-C", root, "log", "--no-merges", "--format=%H", "-n", "100", "--",
+                                  posixpath.join(rel, t["id"])], capture_output=True)
+            revs.update(out.stdout.decode().split())
+    revs = [r for r in revs if not any(r.startswith(k) for k in known)]
+    return history(root, parts, revs) if revs else []
+
+
+def changed_after(root, task):
+    """How many later commits, not the task's own, changed the files the task changed. Asked of git over
+    the whole history, so it does not stop at the map's window."""
+    files = sorted(task["files"])[:300]
+    if not files or not task["last"]:
+        return task["after"]
+    out = subprocess.run(["git", "-C", root, "rev-list", "--no-merges", "--abbrev-commit",
+                          "--max-age=%d" % (task["last"] + 1), "HEAD", "--", *files],
+                         capture_output=True)
+    if out.returncode:
+        return task["after"]
+    revs = out.stdout.decode().split()
+    return sum(1 for r in revs if not any(r.startswith(o) or o.startswith(r) for o in task["own"]))
 
 
 def place_marks(task, parts):
@@ -1170,7 +1215,9 @@ def tasks_shown(root, where, parts, commits):
     rel = os.path.relpath(base, root).replace(os.sep, "/")
     rel = None if rel.startswith("..") else rel
     today, shown, left_out = datetime.date.today(), [], 0
-    for t in load_tasks(root, where):
+    loaded = load_tasks(root, where)
+    commits = commits + older_commits(root, parts, rel, loaded, commits) if commits else commits
+    for t in loaded:
         try:
             t["days"] = (today - datetime.date.fromisoformat(t["updated"])).days
         except ValueError:
@@ -1187,6 +1234,8 @@ def tasks_shown(root, where, parts, commits):
         if landed[""]:
             t["rooms"].append({"name": "", "n": landed[""]})
         t["rel"] = rel
+        if t["done"] and commits:
+            t["after"] = changed_after(root, t)
         place_marks(t, parts)
         shown.append(t)
     stories = task_stories(root, rel, shown)
@@ -1732,12 +1781,16 @@ def cmd_check(root, parts, t, args):
             print("      " + where)
 
 
-def history(root, parts):
-    """The last HISTORY commits, each with the parts it changed. Outside code is not the project's work."""
+def history(root, parts, revs=None):
+    """The last HISTORY commits, each with the parts it changed; or, given `revs`, exactly those commits,
+    however far back they are. Outside code is not the project's work."""
     # -z gives file names as they are. Without it git quotes every name that is not plain ASCII
     # ("docs/\344\275\277...md"), and a file with a Chinese name would match no part.
-    raw = git(root, "log", "-z", "-n", str(HISTORY), "--no-merges", "--date=short", "--name-only",
-              "--format=%x01%h%x02%ad%x02%ct%x02%s").decode("utf-8", "replace")
+    span = ["--no-walk=unsorted", "--stdin"] if revs is not None else ["-n", str(HISTORY), "--no-merges"]
+    if revs is not None and not revs:
+        return []
+    raw = git(root, "log", "-z", *span, "--date=short", "--name-only", "--format=%x01%h%x02%ad%x02%ct%x02%s",
+              stdin="\n".join(revs).encode() if revs is not None else None).decode("utf-8", "replace")
     commits = []
     for block in raw.split("\x01")[1:]:
         head, _, rest = block.partition("\0")
@@ -1803,6 +1856,129 @@ def aging(root, list_path, parts, commits):
 
 
 STALE = 8   # commits to a unit's code after its flow was drawn, before the check-up mentions it
+SPANS = (7, 30, 90)   # the stretches of days the page can report changes over
+KEPT = 60             # copies of the list kept beside the map page, for a list that is not committed
+
+
+def list_before(root, list_path, when):
+    """The text of the parts list as it stood at unix time `when`, and where that came from: its last
+    committed version before then ("git"), or, for a list that was not committed by then, the newest copy
+    kept beside the map page ("local"). ("", "new") when the list was first committed after `when`;
+    ("", "short") when it was never committed and the copies kept do not reach back that far; ("", "")
+    when it was never committed and no copy has been kept yet."""
+    rel = os.path.relpath(list_path, root).replace(os.sep, "/")
+    if not rel.startswith(".."):
+        out = subprocess.run(["git", "-C", root, "log", "-1", "--format=%H", "--before=%d" % when, "--", rel],
+                             capture_output=True)
+        rev = out.stdout.decode().strip()
+        if rev:
+            text = subprocess.run(["git", "-C", root, "show", "%s:%s" % (rev, rel)], capture_output=True)
+            if text.returncode == 0:
+                return text.stdout.decode("utf-8", "replace"), "git"
+    kept = sorted(glob.glob(os.path.join(os.path.dirname(state_path(root)), "lists", "*.md")))
+    day = datetime.date.fromtimestamp(when).isoformat()
+    before = [k for k in kept if os.path.basename(k)[:10] <= day]
+    if before:
+        return slurp(before[-1]), "local"
+    first = subprocess.run(["git", "-C", root, "log", "--diff-filter=A", "--format=%ct", "--", rel],
+                           capture_output=True).stdout.decode().split() if not rel.startswith("..") else []
+    if first:
+        return "", "new"
+    return "", "short" if kept else ""
+
+
+def keep_list(root, list_path):
+    """Keeps today's copy of the list beside the map page when it differs from the last one kept. A list
+    that lives uncommitted for weeks has no history in git; these copies are what "changed lately" is
+    measured against then. They are local, like the page itself."""
+    folder = os.path.join(os.path.dirname(state_path(root)), "lists")
+    text = slurp(list_path)
+    kept = sorted(glob.glob(os.path.join(folder, "*.md")))
+    if not text or (kept and slurp(kept[-1]) == text):
+        return
+    os.makedirs(folder, exist_ok=True)
+    with open(os.path.join(folder, datetime.date.today().isoformat() + ".md"), "w", encoding="utf-8") as fh:
+        fh.write(text)
+    for old in sorted(glob.glob(os.path.join(folder, "*.md")))[:-KEPT]:
+        os.remove(old)
+
+
+def drawing(flow):
+    """What a diagram says, in a form two versions can be compared by."""
+    if not (flow and flow["nodes"]):
+        return None
+    return ({n["name"] for n in flow["nodes"]}, {(e["a"], e["b"], e["label"], e["both"]) for e in flow["edges"]})
+
+
+def list_units(parts, routes, top):
+    """{label: (kind, drawing)} for everything on a list that has a name: wings, parts, rooms, routes, and
+    the diagram of the whole project under the label ""."""
+    out = {"": ("frame", drawing(top["frame"]))}
+    for w in top["wings"]:
+        out["# " + w.name] = ("wing", drawing(w.flow))
+    for p in parts:
+        out[p.name] = ("part", drawing(p.flow))
+        for c in p.children:
+            out[p.name + " / " + c.name] = ("room", drawing(c.flow))
+    for r in routes:
+        out["~ " + (r["title"] or "")] = ("route", drawing(r))
+    return out
+
+
+def changes(root, list_path, parts, routes, top, wiring, commits, tasks, days, records=()):
+    """What changed in the last `days` days, measured: the list as it stands against the list as it stood
+    then, the tasks' own histories, and the commits. Nothing here is written by anyone."""
+    now = datetime.datetime.now().timestamp()
+    since = now - days * 86400
+    day = datetime.date.fromtimestamp(since).isoformat()
+    out = {"days": days, "since": day, "base": "", "added": [], "removed": [], "redrawn": [], "tasks": [],
+           "busy": [], "commits": 0, "short": False}
+    text, out["base"] = list_before(root, list_path, since)
+    ids = {unit_label(u): wiring.ids[u] for u in wiring.ids if not isinstance(u, Wing)}
+    ids.update({"# " + u.name: wiring.ids[u] for u in wiring.ids if isinstance(u, Wing)})
+    if text:
+        then = list_units(*read_list(text))
+        today = list_units(parts, routes, top)
+        plain = lambda label: label[2:] if label[:2] in ("# ", "~ ") else label
+        for label, (kind, drew) in today.items():
+            if label not in then:
+                if kind in ("part", "room", "wing"):
+                    out["added"].append({"name": plain(label), "to": ids.get(label, ""), "kind": kind})
+                elif kind == "route" or drew:
+                    out["redrawn"].append({"name": plain(label), "to": "", "kind": kind, "plus": len(drew[0]) if drew else 0,
+                                           "minus": 0, "first": True})
+                continue
+            was = then[label][1]
+            if drew != was and drew:
+                out["redrawn"].append({"name": plain(label), "to": ids.get(label, ""), "kind": kind,
+                                       "plus": len(drew[0] - was[0]) if was else len(drew[0]),
+                                       "minus": len(was[0] - drew[0]) if was else 0, "first": not was})
+        out["removed"] = [{"name": plain(label), "kind": kind} for label, (kind, _) in then.items()
+                          if label not in today and kind in ("part", "room", "wing")]
+    for at, t in enumerate(tasks):
+        story = [r for r in t["story"]]
+        events = []
+        for i, row in enumerate(story):
+            if row["date"] < day:
+                continue
+            before = story[i - 1] if i else None
+            events.append("done" if row["done"] and not (before and before["done"]) else
+                          "more" if row["done"] else "again" if before and before["done"] else
+                          "new" if before is None else "step")
+        if not story and t["updated"] >= day:
+            events.append("done" if t["done"] else "step")
+        if events:  # one line a task: where the stretch left it
+            out["tasks"].append({"i": at, "what": events[-1]})
+    busy = collections.Counter()
+    for c in commits:
+        if c["when"] >= since:
+            out["commits"] += 1
+            for name, fs in c["groups"].items():  # the list and the task records are bookkeeping, not work on a part
+                if name and any(not f.startswith(records) for f in fs):
+                    busy[name] += 1
+    out["busy"] = [{"name": name, "n": n} for name, n in busy.most_common(6)]
+    out["short"] = len(commits) >= HISTORY and commits[-1]["when"] > since  # the window ends inside the span
+    return out
 
 
 def cmd_doctor(root, parts, t, args):
@@ -2070,7 +2246,13 @@ def cmd_web(root, parts, t, args):
     }
 
     listed = os.path.relpath(args.list_path, root).replace(os.sep, "/")
+    records = tuple(x for x in (os.path.relpath(args.list_path, root).replace(os.sep, "/"),
+                                (tasks[0]["rel"] + "/") if tasks and tasks[0]["rel"] else "") if x)
+    lately = [changes(root, args.list_path, parts, args.routes, args.top, wiring, commits, tasks, days, records)
+              for days in SPANS]
+    keep_list(root, args.list_path)
     data = {"project": os.path.basename(root), "lang": lang, "generated": datetime.date.today().isoformat(),
+            "lately": lately,
             "files": len(files), "history": len(commits), "recentDays": RECENT_DAYS, "list": listed,
             "parts": out_parts, "commits": out_commits, "pending": pending,
             "links": lifted(links, "top"), "measured": langs, "routes": args.routes,
