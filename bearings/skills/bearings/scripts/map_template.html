@@ -145,6 +145,10 @@ svg.rel{display:block;margin:0 auto}
 .fn.plain rect.fb{stroke:var(--ink)} .fn.plain rect.fp{fill:var(--ink)}
 .fe.loose{stroke-dasharray:6 5}
 .rchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.follow{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.follow.under{margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--hair)}
+.follow .rchips{margin-top:0} .follow .iot{padding-top:0}
+.routebox{margin-top:14px;overflow-x:auto}
 .rchips button{border:1.5px solid var(--ink);background:var(--sheet);border-radius:999px;padding:3px 14px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--muted)}
 .rchips button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
 .undernote{font-size:12.5px;color:var(--muted);margin-top:10px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
@@ -407,19 +411,19 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     forCoders:'给看代码的人',
     work:'每次工作踩到了哪几块',wide:'跨块的',all:'全部',noWork:'最近没有这样的工作。',
     seeFiles:'看具体文件',more:'等 {n} 个',unmapped:'未归类',back:'回到全貌',
-    vFrame:'框架图',capFrame:'整个项目怎么运转。点一个方框，进到它里面。这是写下来的描述。',
+    vFrame:'怎么运转',capFrame:'整个项目怎么运转。点一个方框，进到它里面。这是写下来的描述。',frameName:'整体框架图',follow:'跟着一件事走',
     ioH:'进来什么，出去什么',ioIn:'进来',ioOut:'出去',ioBoth:'来回',ioOpen:'虚线的：上一层的图画了这条线，这里面的图还没有接上。',ioFrom:'画在“{w}”上',
     shelf:'不在运行的路上，在旁边支撑',outKey:'色块外面的，是它连着的别的方框，点一下走过去。',
     wingMeta:'{k} 个部分，{n} 个文件',wingAsk:'想看这个区里的部分怎么配合，对 AI 说：',wingSay:'给“{n}”这个区画一张图',
     wingRel:'这张图是从代码里量出来的：区里的部分谁用到谁。它们怎么配合，还没有画。',wingNone:'这个区还没有图。',
     codeH:'线上传的东西，代码里叫什么',colon:'：',
-    vPlan:'平面图',vRel:'关系图',vRoute:'主线',
-    capPlan:'项目分成哪几块。',capRel:'谁用到谁，从代码里量出来的。箭头指向被用到的一块。点一块，只看它的连线。',relTop:'多半在用别人',relBottom:'多半被别人用',capRoute:'一件事从头到尾怎么走。这是写下来的描述。',
+    vPlan:'改动落在哪',
+    capPlan:'全部的块。亮着的是有还没提交的改动的；点一块，看它怎么工作。',relTop:'多半在用别人',relBottom:'多半被别人用',capRoute:'一件事从头到尾怎么走。这是写下来的描述。',
     uses:'它用到',usedBy:'用到它的',noUses:'没量到它用别的块。',noUsedBy:'没量到别的块用它。',nFiles:'{n} 个文件里用到',
     inside:'里面有什么',outsideTag:'外来',outsideMore:'，另有 {n} 个外来文件',outsideLine:'不是这个项目自己写的：{w}',
     mutual:'互相用到',lone:'没量到连接的',upKey:'橙色虚线：两边互相用到，或者下面的反过来用上面的',
     loose:'虚线：代码里没量到这条连接（可能走网络，或是量不了的语言）',routeN:'主线 {n}',subMeta:'{n} 个文件，近 {d} 天改动 {r} 次',
-    noteRel:'“关系图”和“它用到”读的是 {l} 的引用语句，别的语言和走网络的连接量不到。',
+    noteRel:'图上的实线虚线和“它用到”读的是 {l} 的引用语句，别的语言和走网络的连接量不到。',
     note:'本页由 bearings 根据 {p} 和最近 {n} 次提交自动生成。流程图画的是清单里写下的描述；“常和它一起动”是统计出来的，不代表代码上一定有依赖。'
   },en:{
     stamp:'Generated {d}',sumA:'{n} parts in {g} wings.',sumOn:' The {k} lit parts have uncommitted changes.',sumOff:' Nothing is uncommitted right now.',sumUn:' {n} more changed files are not on the list.',sumUnOnly:' {n} uncommitted files are not on the list.',
@@ -447,19 +451,19 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     forCoders:'For people who read code',
     work:'Where each piece of work stepped',wide:'Across parts',all:'All',noWork:'No such work recently.',
     seeFiles:'See the files',more:'and {n} more',unmapped:'Unmapped',back:'Back to the overview',
-    vFrame:'Framework',capFrame:'How the whole project works. Pick a box to step inside it. This is a written description.',
+    vFrame:'How it works',capFrame:'How the whole project works. Pick a box to step inside it. This is a written description.',frameName:'the project diagram',follow:'Follow one thing through',
     ioH:'What goes in, what comes out',ioIn:'In',ioOut:'Out',ioBoth:'Both ways',ioOpen:'Dashed: the level above draws this line; the diagram in here does not show it yet.',ioFrom:'drawn on "{w}"',
     shelf:'Not on the path at run time; these support it',outKey:'Boxes off the tinted floor are what it connects to. Pick one to go there.',
     wingMeta:'{k} parts, {n} files',wingAsk:'To see how the parts of this wing work together, say to the AI:',wingSay:'Draw the diagram for the wing "{n}"',
     wingRel:'Measured from the code: which part of this wing uses which. How they work together has not been drawn yet.',wingNone:'No diagram for this wing yet.',
     codeH:'What the code calls what travels along the lines',colon:': ',
-    vPlan:'Floor plan',vRel:'Relations',vRoute:'Routes',
-    capPlan:'The parts of the project.',capRel:'Who uses whom, measured from the code. Arrows point at the part being used. Pick a part to see only its links.',relTop:'mostly uses others',relBottom:'mostly used by others',capRoute:'How one thing travels from start to end. This is a written description.',
+    vPlan:'Where work landed',
+    capPlan:'Every part. The lit ones have uncommitted changes; pick one to see how it works.',relTop:'mostly uses others',relBottom:'mostly used by others',capRoute:'How one thing travels from start to end. This is a written description.',
     uses:'It uses',usedBy:'Used by',noUses:'No use of other parts was measured.',noUsedBy:'No other part was measured using it.',nFiles:'used in {n} files',
     inside:'What is inside',outsideTag:'outside',outsideMore:', plus {n} files from outside',outsideLine:'Not written by this project: {w}',
     mutual:'Use each other',lone:'No links measured',upKey:'orange dashes: the two use each other, or a lower part leans on a higher one',
     loose:'Dashes: this link was not measured in the code (it may go over a network, or through a language that cannot be read)',routeN:'Route {n}',subMeta:'{n} files, {r} changes in {d} days',
-    noteRel:'"Relations" and "It uses" read the import statements of {l}; other languages and links over a network are not seen.',
+    noteRel:'Solid and dashed arrows and "It uses" read the import statements of {l}; other languages and links over a network are not seen.',
     note:'Generated by bearings from {p} and the last {n} commits. Flow diagrams draw what the parts list describes; "usually changes with" is a count, not proof of a code dependency.'
   }}[D.lang];
   function f(s,o){return s.replace(/\{(\w+)\}/g,function(_,k){return o[k];});}
@@ -770,32 +774,35 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     return '<div class="undernote"><b>'+T.mutual+'</b>'+m.slice(0,5).map(function(x){return '<span>'+esc(x[0])+' ⇄ '+esc(x[1])+'</span>';}).join('')+(m.length>5?'<span>'+f(T.more,{n:m.length-5})+'</span>':'')+'<span>'+T.upKey+'</span></div>';}
 
   // ---- three ways to look ----
-  var view=D.frame?'frame':'plan',selName=null,curRoute=0,curPart=null,innerView='plan',curWing=null,curInner=null;
+  // Two questions, two views. How it works: the diagram of the whole project, and under it the routes, each one
+  // thing followed from start to end. Where work landed: every part on one plan, the changed ones lit.
+  // Which part uses which is measured, and shows as solid or dashed arrows and on each part's own sheet.
+  var view=D.frame?'frame':'plan',selName=null,curRoute=D.frame?-1:0,curPart=null,curWing=null,curInner=null;
   var views=[['plan',T.vPlan,T.capPlan]];
-  if(D.frame)views.unshift(['frame',T.vFrame,T.capFrame]);
-  if(D.links.length)views.push(['rel',T.vRel,T.capRel]);
-  if(D.routes.length)views.push(['route',T.vRoute,T.capRoute]);
+  if(D.frame||D.routes.length)views.unshift(['frame',T.vFrame,D.frame?T.capFrame:T.capRoute]);
   function setView(v){view=v;views.forEach(function(x){$('view-'+x[0]).setAttribute('aria-pressed',String(x[0]===v));if(x[0]===v)$('vcap').textContent=x[2];});
     $('plan').hidden=v!=='plan';$('alt').hidden=v==='plan';drawAlt();}
   function drawAlt(){var box=$('alt');if(view==='plan'){box.innerHTML='';return;}
-    var avail=box.clientWidth-26,h;
-    if(view==='rel')h=relSvg(D.parts,D.links,selName,avail)+relNotes(D.parts,D.links);
-    else if(view==='frame'){ // the whole project as one box: where you are in it, and where uncommitted work landed
+    var avail=box.clientWidth-26,h='';
+    if(D.frame){ // the whole project as one box: where you are in it, and where uncommitted work landed
       var fo=linkOpt(null),plain=fo.cls;fo.frame=opens(D.frame)?{title:D.project}:null;
       fo.cls=function(n){var u=fo.door(n);return plain(n)+(u&&(u.wing!=null?u.wing===curWing:u.name===selName)?' sel':'');};
       fo.badge=function(n){var u=fo.door(n),k=0;if(!u)return '';
         D.pending.parts.forEach(function(x){if(x.part&&(u.wing!=null?wingOf[x.part]===u:x.part===u.name))k+=x.n;});return k||'';};
       h=flowSvg(D.frame,avail,fo);
-      if(/class="fe loose"/.test(h))h+='<div class="undernote">'+T.loose+'</div>';
-    }else{var r=D.routes[curRoute];h=flowSvg(r,avail,linkOpt(null));
-      if(/class="fe loose"/.test(h))h+='<div class="undernote">'+T.loose+'</div>';
-      if(D.routes.length>1)h='<div class="rchips" style="margin:0 0 14px">'+D.routes.map(function(x,i){return '<button type="button" data-route="'+i+'" aria-pressed="'+(i===curRoute)+'">'+esc(x.title||f(T.routeN,{n:i+1}))+'</button>';}).join('')+'</div>'+h;
-      else if(r.title)h='<h3 style="margin:0 0 12px">'+esc(r.title)+'</h3>'+h;}
+    }
+    if(D.routes.length){ // one thing followed through the project: pick it, and its path is drawn underneath
+      h+='<div class="follow'+(D.frame?' under':'')+'"><span class="iot">'+T.follow+'</span><div class="rchips">'+D.routes.map(function(x,i){
+        return '<button type="button" data-route="'+i+'" aria-pressed="'+(i===curRoute)+'">'+esc(x.title||f(T.routeN,{n:i+1}))+'</button>';}).join('')+'</div></div>';
+      if(curRoute>=0)h+='<div class="routebox">'+flowSvg(D.routes[curRoute],avail,linkOpt(null))+'</div>';
+    }
+    if(/class="fe loose"/.test(h))h+='<div class="undernote">'+T.loose+'</div>';
     box.innerHTML=h;wire(box);
-    Array.prototype.forEach.call(box.querySelectorAll('[data-route]'),function(b){b.addEventListener('click',function(){curRoute=+b.getAttribute('data-route');drawAlt();});});}
+    Array.prototype.forEach.call(box.querySelectorAll('[data-route]'),function(b){b.addEventListener('click',function(){var i=+b.getAttribute('data-route');
+      curRoute=D.frame&&curRoute===i?-1:i;drawAlt();});});}
   function drawInner(){var box=$('inner');if(box&&curInner){box.innerHTML=relSvg(curInner.units,curInner.links,null,box.clientWidth-26)+relNotes(curInner.units,curInner.links);wire(box);}}
   function unpick(){var had=selName!==null||curWing!==null;selName=null;curWing=null;if(had&&view!=='plan')drawAlt();}
-  if(views.length>1){$('viewbar').hidden=false;$('vcap').textContent=views[0][2];
+  if(views.length>1){$('viewbar').hidden=false;$('vcap').textContent=views.filter(function(x){return x[0]===view;})[0][2];
     views.forEach(function(v){var b=document.createElement('button');b.type='button';b.id='view-'+v[0];b.textContent=v[1];b.setAttribute('aria-pressed',String(v[0]===view));
       b.addEventListener('click',function(){setView(v[0]);});$('views').appendChild(b);});}
 
@@ -836,7 +843,6 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       var up=b.classList.contains('crumb')&&D.frame;home(); // the first crumb is the project: back to its diagram
       if(up){if(view!=='frame')setView('frame');$('viewbar').scrollIntoView({block:'start',behavior:'smooth'});}});});
     Array.prototype.forEach.call(c.querySelectorAll('[data-sub]'),function(b){b.addEventListener('click',function(){selectSub(curPart.name,curPart.subs[+b.getAttribute('data-sub')].name);});});
-    Array.prototype.forEach.call(c.querySelectorAll('[data-inner]'),function(b){b.addEventListener('click',function(){innerView=b.getAttribute('data-inner');selectPart(curPart.name);});});
     wire(c);
     Array.prototype.forEach.call(c.querySelectorAll('[data-win]'),function(b){b.addEventListener('click',function(){var k=+b.getAttribute('data-win');home(curWin===k?null:k);});});
     if(!quiet)c.scrollIntoView({block:'nearest',behavior:'smooth'});}
@@ -906,7 +912,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     function loose(x){return x.must&&x.met===false;}
     function chip(x){var t=x.to?byId(x.to):null,lab=x.labels.slice(0,2).join(T.sep)+(x.labels.length>2?' …':'');
       return (t?'<button type="button" class="pchip '+t.z+(loose(x)?' open':'')+'" data-to="'+esc(x.to)+'"':'<span class="pchip plain'+(loose(x)?' open':'')+'"')+
-        ' title="'+esc(f(T.ioFrom,{w:x.where||T.vFrame}))+'">'+(t?pic(t.icon):'')+'<span>'+esc(x.name)+'</span>'+(lab?'<span class="pl">'+esc(lab)+'</span>':'')+(t?'</button>':'</span>');}
+        ' title="'+esc(f(T.ioFrom,{w:x.where||T.frameName}))+'">'+(t?pic(t.icon):'')+'<span>'+esc(x.name)+'</span>'+(lab?'<span class="pl">'+esc(lab)+'</span>':'')+(t?'</button>':'</span>');}
     function row(dir,title){var l=ps.filter(function(x){return x.dir===dir;});if(!l.length)return '';
       l.sort(function(a,b){return (b.must?1:0)-(a.must?1:0);});
       return '<span class="iot">'+title+'</span><div class="pals">'+l.slice(0,10).map(chip).join('')+(l.length>10?'<span class="sub">'+f(T.more,{n:l.length-10})+'</span>':'')+'</div>';}
@@ -958,8 +964,11 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     (u.ports||[]).forEach(function(x){add((x.dir==='in'?x.name+' → '+u.name:u.name+(x.dir==='both'?' ⇄ ':' → ')+x.name)+(x.labels.length?T.colon+x.labels[0]:''),x.code);});
     if(u.flow)u.flow.edges.forEach(function(e){add(e.a+(e.both?' ⇄ ':' → ')+e.b+(e.label?T.colon+e.label:''),e.code);});
     return rows.length?'<div class="in"><b>'+T.codeH+'</b><div class="wires">'+rows.join('')+'</div></div>':'';}
-  function pathsBlock(u){var code=codeRows(u),paths=u.paths&&u.paths.length?'<div class="in tags">'+u.paths.map(function(x){return '<code>'+esc(x)+'</code>';}).join('')+'</div>':'';
-    return paths||code?'<div class="blk"><details><summary>'+T.forCoders+'</summary>'+paths+code+'</details></div>':'';}
+  function mutualRow(name,units,links){ // measured: the units this one and the code of which lean on each other
+    var m=mutuals(units,links).filter(function(x){return x[0]===name||x[1]===name;});
+    return m.length?'<div class="in"><b>'+T.mutual+'</b><span>'+m.map(function(x){return esc(x[0]===name?x[1]:x[0]);}).join(T.sep)+'</span></div>':'';}
+  function pathsBlock(u,more){var code=codeRows(u),paths=u.paths&&u.paths.length?'<div class="in tags">'+u.paths.map(function(x){return '<code>'+esc(x)+'</code>';}).join('')+'</div>':'';
+    return paths||code||more?'<div class="blk"><details><summary>'+T.forCoders+'</summary>'+paths+code+(more||'')+'</details></div>':'';}
   function marks(u){return (u.external?'<div class="out-line">'+ic('box')+'<span>'+esc(f(T.outsideLine,{w:u.external}))+'</span></div>':'')+
     (u.sensitive?'<div class="care-line">'+ic('lock')+'<span>'+esc(u.sensitive)+'</span></div>':'');}
   function selectPart(name){
@@ -972,11 +981,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     if(at.length)h+='<div class="nowby">'+at.map(function(w){return wb(w)+'<span>'+esc(winName(w))+'</span>';}).join('')+'<span class="sub">'+T.nowBy+'</span></div>';
     h+=portsBlock(p)+flowBlock(p,D.links,function(n){return byName[n];});
     if(p.subs.length){ // the rooms inside this room
-      var rel=innerView==='rel'&&p.inner.length;if(rel)curInner={units:p.subs,links:p.inner};
-      h+='<div class="blk"><div class="blkhead"><h3>'+T.inside+'</h3>'+(p.inner.length?'<div class="seg">'+[['plan',T.vPlan],['rel',T.vRel]].map(function(o){
-        return '<button type="button" data-inner="'+o[0]+'" aria-pressed="'+((o[0]==='rel')===!!rel)+'">'+o[1]+'</button>';}).join('')+'</div>':'')+'</div>';
-      if(rel)h+='<div class="canvas" id="inner"></div>';
-      else h+='<div class="inplan">'+p.subs.map(function(c,i){return '<button type="button" class="sroom'+(c.external?' ext':'')+(c.pending?' lit':'')+'" data-sub="'+i+'">'+pic(c.icon)+
+      h+='<div class="blk"><h3>'+T.inside+'</h3><div class="inplan">'+p.subs.map(function(c,i){return '<button type="button" class="sroom'+(c.external?' ext':'')+(c.pending?' lit':'')+'" data-sub="'+i+'">'+pic(c.icon)+
         '<span class="nm">'+esc(c.name)+'</span><span class="sm">'+c.files+(c.external?'<span class="tagx">'+T.outsideTag+'</span>':dots(c.recent))+'</span></button>';}).join('')+'</div>';
       h+='</div>';
     }
@@ -986,8 +991,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     if(p.together.length)h+='<div class="pals">'+p.together.map(function(c){var q=byName[c.name];
       return '<button type="button" class="pal '+q.z+'" data-go="'+esc(c.name)+'">'+pic(q.icon)+esc(c.name)+'<span class="pct">'+c.pct+'%</span></button>';}).join('')+'</div>';
     else h+='<p class="sub">'+T.noPals+'</p>';
-    h+='</div>'+pathsBlock(p)+'</div></div>';
-    setStage(h,p.z);drawFlow();drawInner();if(view==='rel'||view==='frame')drawAlt();
+    h+='</div>'+pathsBlock(p,mutualRow(p.name,D.parts,D.links))+'</div></div>';
+    setStage(h,p.z);drawFlow();drawInner();if(view==='frame')drawAlt();
   }
   // A wing opened: how its parts work together, what goes in and out of it, and the parts themselves.
   function selectWing(i){
@@ -1014,8 +1019,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     var h='<div class="band wingc">'+pic(c.icon)+'<div>'+trail(c)+'<h2>'+esc(c.name)+'</h2><span class="meta">'+f(T.subMeta,{n:c.files,d:D.recentDays,r:c.recent})+'</span></div><p class="what">'+rich(c.what)+'</p>'+backBtn()+'</div><div class="body">';
     h+=marks(c)+portsBlock(c)+flowBlock(c,p.inner,function(n){return p.subs.filter(function(x){return x.name===n;})[0];})+'<div class="cols3">';
     if(p.inner.length)h+=usesBlocks(c.name,p.inner,function(n){return p.subs.filter(function(x){return x.name===n;})[0];},function(u){return 'data-sub="'+p.subs.indexOf(u)+'"';});
-    h+=rulesBlock(c)+pathsBlock(c)+'</div></div>';
-    setStage(h,p.z);drawFlow();if(view==='rel'||view==='frame')drawAlt();
+    h+=rulesBlock(c)+pathsBlock(c,mutualRow(c.name,p.subs,p.inner))+'</div></div>';
+    setStage(h,p.z);drawFlow();if(view==='frame')drawAlt();
   }
   function selectWork(c,row){
     unselRows();setHash('');curFlow=null;curPart=null;curInner=null;row.classList.add('sel');var map={};
