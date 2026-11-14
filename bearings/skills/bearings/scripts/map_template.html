@@ -1173,6 +1173,9 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     if(prev){seenDays=Math.floor((Date.now()-prev)/86400000);
       for(var si=0;si<LATELY.length;si++){curSpan=si;if(LATELY[si].days>=Math.max(1,seenDays))break;}}
     localStorage.setItem(key,String(Date.now()));}catch(e){}
+  // a first-time reader, or a page that was published and left: open on a stretch that has something in it
+  function nothingIn(c){return !(c.added.length||c.removed.length||c.redrawn.length||c.tasks.length||c.commits);}
+  if(seenDays===null)while(curSpan<LATELY.length-1&&nothingIn(LATELY[curSpan]))curSpan++;
   function drawSince(){
     var c=LATELY[curSpan],h='',any=false;
     function row(title,inner){any=true;h+='<span class="iot">'+title+'</span><div class="pals">'+inner+'</div>';}
