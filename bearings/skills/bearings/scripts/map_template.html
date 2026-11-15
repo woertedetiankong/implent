@@ -600,6 +600,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     chDoc:'代码里自己的注释',chRan:'真实运行里的值',chRanH:'{d} 录的一次真实运行（主线“{r}”）',chMore:'还有 {n} 个函数没有列出。',
     fnNote:'笔记',fnNoteOpen:'看代码、记笔记',fnSrc:'这个函数的代码',fnSrcCut:'只带上了前 {n} 行。',fnNoSrc:'这一页没有带上这个函数的代码，到这里看：',
     fnMine:'我的笔记',fnPh:'在这里写你对这个函数的理解：每一段在做什么，哪里容易看错。也可以把 AI 的解释里有用的部分贴进来。',fnEmpty:'还没有笔记。',
+    fnSaving:'正在保存…',fnFail:'没存上，先留在这个浏览器里。重新说一次“看看项目”再打开这一页，就会存进去。',fnAuto:'一边写一边自动存进项目的 {f}，不用另外保存。',
     fnSaved:'已存进项目（{f}）',fnLocal:'只存在这个浏览器里，还没存进项目',fnCopy:'复制这条笔记',fnCopyAll:'复制还没存进项目的笔记（{n} 条）',fnCopied:'已复制',
     fnHow:'笔记一边写一边存在这个浏览器里。想存进项目、让别人也看到：点“复制”，把内容贴进 {f}，或者对 AI 说下面这句再贴上：',fnSaySave:'把这些函数笔记存进项目',
     fnAskAI:'想让 AI 先替你读一遍这个函数，对 AI 说：',fnSayAI:'给 `{n}` 写逐行笔记',
@@ -663,6 +664,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     chDoc:'The comment the code carries',chRan:'Values from a real run',chRanH:'One real run recorded {d} (route "{r}")',chMore:'{n} more functions are not listed.',
     fnNote:'Notes',fnNoteOpen:'Code and notes',fnSrc:'The code of this function',fnSrcCut:'Only its first {n} lines are here.',fnNoSrc:'The code of this function is not on this page. It is at',
     fnMine:'My notes',fnPh:'Write here what you make of this function: what each stretch does, where it is easy to misread. Or paste in the useful part of an AI\'s explanation.',fnEmpty:'No notes yet.',
+    fnSaving:'saving…',fnFail:'Not saved; kept in this browser for now. Ask for the project map again and reopen this page, and it will be saved.',fnAuto:'Saved into the project\'s {f} as you type; there is nothing else to do.',
     fnSaved:'kept in the project ({f})',fnLocal:'only in this browser, not in the project yet',fnCopy:'Copy this note',fnCopyAll:'Copy the notes not in the project yet ({n})',fnCopied:'Copied',
     fnHow:'A note is saved in this browser as you type. To keep it in the project, where others see it too: copy it and paste it into {f}, or say this to the AI and paste:',fnSaySave:'Save these function notes in the project',
     fnAskAI:'To have the AI read this function for you first, say to the AI:',fnSayAI:'Write line-by-line notes for `{n}`',
@@ -1109,9 +1111,25 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function inRepo(k){return (FNS[k]&&FNS[k].note)||'';}
   function localNote(k){try{return localStorage.getItem(noteSlot(k));}catch(e){return null;}}
   function noteOf(k){var l=localNote(k);return l!=null?l:inRepo(k);}
-  function keepNote(k,v){try{if(v===inRepo(k))localStorage.removeItem(noteSlot(k));else localStorage.setItem(noteSlot(k),v);}catch(e){}}
+  // Shown through the service on this machine (`web --open`), the page hands each note back and the service
+  // writes it into the project's notes file: the reader types, and it is kept. Opened as a plain file there is
+  // nobody to hand it to, so the note stays in this browser until the reader carries it over.
+  var SAVE=D.save||null,sendT=null,sending={};
+  function keepNote(k,v){try{if(v===inRepo(k))localStorage.removeItem(noteSlot(k));else localStorage.setItem(noteSlot(k),v);}catch(e){}
+    if(SAVE){sending[k]='busy';clearTimeout(sendT);sendT=setTimeout(function(){sendNote(k);},700);}}
+  function paintNote(k){var ed=$('note-edit'),st=$('note-state');if(ed&&st&&ed.getAttribute('data-key')===k)st.innerHTML=noteState(k);}
+  function sendNote(k){var v=noteOf(k);if(!SAVE)return;if(v===inRepo(k)){delete sending[k];paintNote(k);return;}
+    sending[k]='busy';paintNote(k);
+    fetch('/note',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,text:v,token:SAVE.token})})
+      .then(function(r){return r.json();}).then(function(j){if(!j||!j.ok)throw 0;if(!FNS[k])FNS[k]={src:'',note:''};FNS[k].note=v;
+        if(noteOf(k)===v){try{localStorage.removeItem(noteSlot(k));}catch(e){}delete sending[k];paintNote(k);}else sendNote(k);}) // typed on meanwhile: once more
+      .catch(function(){sending[k]='fail';paintNote(k);});}
+  function flushNotes(){clearTimeout(sendT);Object.keys(sending).forEach(function(k){if(sending[k]==='busy')sendNote(k);});}
+  if(SAVE){setInterval(function(){fetch('/ping').catch(function(){});},240000);window.addEventListener('pagehide',flushNotes);}
   function unsaved(){return Object.keys(FNS).filter(function(k){var l=localNote(k);return l!=null&&l.trim()!==inRepo(k).trim();});}
-  Object.keys(FNS).forEach(function(k){var l=localNote(k);if(l!=null&&l.trim()===inRepo(k).trim())keepNote(k,inRepo(k));}); // carried over since: no longer a draft
+  Object.keys(FNS).forEach(function(k){var l=localNote(k);if(l==null)return;
+    if(l.trim()===inRepo(k).trim()){try{localStorage.removeItem(noteSlot(k));}catch(e){}} // carried over since: no longer a draft
+    else if(SAVE)sendNote(k);}); // could not be handed over last time: once more
   function noteFile(keys){return keys.map(function(k){return '## '+k+'\n\n'+noteOf(k).trim()+'\n';}).join('\n');}
   function copyText(text,btn){function done(){var was=btn.textContent;btn.textContent=T.fnCopied;setTimeout(function(){btn.textContent=was;},1400);}
     function byHand(){var a=document.createElement('textarea');a.value=text;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(a);}
@@ -1126,7 +1144,10 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       var m=/^\s*(?:[-*]|\d+[.)])\s+(.*)$/.exec(line),h=/^\s*#{1,6}\s+(.*)$/.exec(line);
       if(m){endP();list.push(m[1]);}else if(h){endP();endL();out.push('<p><b>'+inl(h[1])+'</b></p>');}else if(!line.trim()){endP();endL();}else{endL();para.push(line);}});
     if(code!=null)out.push('<pre class="csig">'+esc(code.join('\n'))+'</pre>');endP();endL();return out.join('');}
-  function noteState(k){var v=noteOf(k).trim();return !v?'':(v===inRepo(k).trim()?'<span class="nstate">'+f(T.fnSaved,{f:'<code>'+esc(D.notesFile)+'</code>'})+'</span>':'<span class="nstate local">'+T.fnLocal+'</span>');}
+  function noteState(k){var v=noteOf(k).trim();
+    if(SAVE&&sending[k]==='busy')return '<span class="nstate">'+T.fnSaving+'</span>';
+    if(SAVE&&sending[k]==='fail')return '<span class="nstate local">'+T.fnFail+'</span>';
+    return !v?'':(v===inRepo(k).trim()?'<span class="nstate">'+f(T.fnSaved,{f:'<code>'+esc(D.notesFile)+'</code>'})+'</span>':'<span class="nstate local">'+T.fnLocal+'</span>');}
   function fnPage(c,ci,i){var s=c.steps[i],u=s.unit?byId(s.unit):null,F=FNS[s.key]||{src:'',note:'',line:s.line},no=fnNo(c),on=[];
     c.steps.forEach(function(x,k){if(x.kind==='fn'&&shown(ci,x))on.push(k);});
     var at=on.indexOf(i),prev=at>0?on[at-1]:null,next=at>=0&&at<on.length-1?on[at+1]:null,loc=s.file?esc(s.file)+(s.line?':'+s.line:''):'';
@@ -1145,8 +1166,9 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       '<div class="blk"><h3>'+T.fnMine+' <span id="note-state">'+noteState(s.key)+'</span></h3>'+
         '<textarea class="nedit" id="note-edit" data-key="'+esc(s.key)+'" placeholder="'+esc(T.fnPh)+'">'+esc(noteOf(s.key))+'</textarea>'+
         '<div class="nview" id="note-view">'+(noteOf(s.key).trim()?md(noteOf(s.key)):'<span class="sub">'+T.fnEmpty+'</span>')+'</div>'+
-        '<div class="nbtns"><button type="button" data-ncopy="'+esc(s.key)+'">'+T.fnCopy+'</button><button type="button" data-ncopyall id="note-all"'+(n?'':' hidden')+'>'+f(T.fnCopyAll,{n:n})+'</button></div>'+
-        '<div class="ask">'+f(T.fnHow,{f:'<code>'+esc(D.notesFile)+'</code>'})+'<span class="say">'+esc(T.fnSaySave)+'</span></div>'+
+        (SAVE?'<div class="fkey">'+f(T.fnAuto,{f:'<code>'+esc(D.notesFile)+'</code>'})+'</div>'
+          :'<div class="nbtns"><button type="button" data-ncopy="'+esc(s.key)+'">'+T.fnCopy+'</button><button type="button" data-ncopyall id="note-all"'+(n?'':' hidden')+'>'+f(T.fnCopyAll,{n:n})+'</button></div>'+
+           '<div class="ask">'+f(T.fnHow,{f:'<code>'+esc(D.notesFile)+'</code>'})+'<span class="say">'+esc(T.fnSaySave)+'</span></div>')+
         '<div class="ask">'+T.fnAskAI+'<span class="say">'+esc(f(T.fnSayAI,{n:s.name}))+'</span></div>'+
       '</div></div></div>';}
   // One card a function, in the colour of the part its file belongs to. A fork is a row of cases to pick from.
@@ -1193,12 +1215,12 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     box.innerHTML='<div class="cv"><div class="cvlist">'+CHAINS.map(function(x,i){
       return '<button type="button" class="cvpick" data-chain="'+i+'" aria-pressed="'+(i===curChain)+'"><span class="cvn">'+esc(chainName(i))+'</span><span class="cvm">'+f(T.chMeta1,{n:x.n})+(x.forks?T.sep+f(T.chForks,{n:x.forks}):'')+
         '<span class="tpics">'+x.units.map(byId).filter(function(u){return u;}).slice(0,6).map(function(u){return '<span class="pic '+u.z+'">'+ic(u.icon)+'</span>';}).join('')+'</span></span></button>';}).join('')+
-      (unsaved().length?'<button type="button" class="cvpick" data-ncopyall><span class="cvn">'+f(T.fnCopyAll,{n:unsaved().length})+'</span><span class="cvm">'+T.fnLocal+'</span></button>':'')+
+      (!SAVE&&unsaved().length?'<button type="button" class="cvpick" data-ncopyall><span class="cvn">'+f(T.fnCopyAll,{n:unsaved().length})+'</span><span class="cvm">'+T.fnLocal+'</span></button>':'')+
       '</div><div class="cvmain">'+(curFn!=null&&c.steps[curFn]&&c.steps[curFn].kind==='fn'?fnPage(c,ci,curFn):chainHead(c,ci)+chainTree(c,ci)+chainCards(c,ci))+'</div></div>';
     wire(box);
-    Array.prototype.forEach.call(box.querySelectorAll('[data-fnopen]'),function(b){function go(){curFn=+b.getAttribute('data-fnopen');setHash('c'+ci+'n'+curFn);drawCalls();$('viewbar').scrollIntoView({block:'start'});}
+    Array.prototype.forEach.call(box.querySelectorAll('[data-fnopen]'),function(b){function go(){flushNotes();curFn=+b.getAttribute('data-fnopen');setHash('c'+ci+'n'+curFn);drawCalls();$('viewbar').scrollIntoView({block:'start'});}
       b.addEventListener('click',go);if(b.tagName!=='BUTTON')b.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}});});
-    Array.prototype.forEach.call(box.querySelectorAll('[data-fnback]'),function(b){b.addEventListener('click',function(){var i=+b.getAttribute('data-fnback');curFn=null;setHash('c'+ci);drawCalls();jump(i);});});
+    Array.prototype.forEach.call(box.querySelectorAll('[data-fnback]'),function(b){b.addEventListener('click',function(){var i=+b.getAttribute('data-fnback');flushNotes();curFn=null;setHash('c'+ci);drawCalls();jump(i);});});
     Array.prototype.forEach.call(box.querySelectorAll('[data-ncopy]'),function(b){b.addEventListener('click',function(){copyText(noteFile([b.getAttribute('data-ncopy')]),b);});});
     Array.prototype.forEach.call(box.querySelectorAll('[data-ncopyall]'),function(b){b.addEventListener('click',function(){copyText(noteFile(unsaved()),b.querySelector('.cvn')||b);});});
     var ed=$('note-edit');if(ed)ed.addEventListener('input',function(){var k=ed.getAttribute('data-key');keepNote(k,ed.value);
@@ -1207,7 +1229,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     function reveal(i){var m=picked[ci]=picked[ci]||{},s=c.steps[i]; // pick every case that leads to this line
       s.cases.concat(s.kind==='case'?[i]:[]).forEach(function(a){m[c.steps[a].group]=a;});}
     function jump(i){var card=$('cstep-'+i);if(!card)return;card.scrollIntoView({block:'center',behavior:'smooth'});card.classList.add('flash');setTimeout(function(){card.classList.remove('flash');},1200);}
-    Array.prototype.forEach.call(box.querySelectorAll('[data-chain]'),function(b){b.addEventListener('click',function(){curChain=+b.getAttribute('data-chain');curFn=null;setHash('c'+curChain);drawCalls();});});
+    Array.prototype.forEach.call(box.querySelectorAll('[data-chain]'),function(b){b.addEventListener('click',function(){flushNotes();curChain=+b.getAttribute('data-chain');curFn=null;setHash('c'+curChain);drawCalls();});});
     Array.prototype.forEach.call(box.querySelectorAll('[data-ccase]'),function(b){b.addEventListener('click',function(){var y=window.scrollY;reveal(+b.getAttribute('data-ccase'));drawCalls();window.scrollTo(0,y);});});
     Array.prototype.forEach.call(box.querySelectorAll('[data-cstep]'),function(b){b.addEventListener('click',function(){var i=+b.getAttribute('data-cstep');
       if(!shown(ci,c.steps[i])){reveal(i);drawCalls();}jump(i);});});}

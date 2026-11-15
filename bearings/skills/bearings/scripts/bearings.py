@@ -10,7 +10,8 @@ it never tells anyone what to change or leave alone.
                                            which parts the uncommitted work (or one past commit) touched
   bearings.py links [--json]               which part uses which, measured from import statements
   bearings.py doctor [--json]              check the list against the code; it reports and stops nothing
-  bearings.py web [--out FILE] [--open]    write the project map as one HTML page
+  bearings.py web [--out FILE] [--open]    write the project map as one HTML page; --open shows it through a
+                                           service on this machine, so notes typed on it are kept in the project
   bearings.py tasks [--json]               the tasks in progress, from the implementation-journal skill's
                                            records: the lines written there for people, and the parts touched
   bearings.py windows [--json]             every Claude Code and Codex window at work in this project: working,
@@ -27,9 +28,12 @@ Uncommitted work is split by window: which Claude Code or Codex session edited e
 read from the session records those tools keep on this machine (--no-windows skips that).
 The map also counts the uncommitted work in the repository's other worktrees.
 
-Read-only towards the project: it writes the map page, under the git dir unless --out says otherwise,
-and beside it a dated copy of the parts list whenever the list has changed, so that "what changed lately"
-can be measured for a list nobody has committed. Python 3 standard library only.
+Read-only towards the project, with one exception. It writes the map page, under the git dir unless --out
+says otherwise, and beside it a dated copy of the parts list whenever the list has changed, so that "what
+changed lately" can be measured for a list nobody has committed. The exception: `web --open` shows the page
+through a small service on this machine, and a note a reader types on a function's page is written into
+calls-notes.md beside the call chains. The service listens on this machine only, writes that one file only,
+and stops by itself when no page has asked anything of it for half an hour. Python 3 standard library only.
 """
 import argparse
 import ast
@@ -37,13 +41,19 @@ import collections
 import datetime
 import difflib
 import glob
+import hmac
+import http.server
 import json
 import mmap
 import os
 import posixpath
 import re
+import secrets
 import subprocess
 import sys
+import threading
+import time
+import urllib.request
 import webbrowser
 
 PARTS_FILES = ("docs/parts.md", "PARTS.md", ".bearings/parts.md", ".claude/parts.md")
@@ -2799,7 +2809,8 @@ def load_chains(root, files, parts, routes, top, wiring, runs=(), calls_file="",
     units = [u for p in parts for u in [p] + p.children]
     folder = os.path.dirname(calls_file) if calls_file else os.path.dirname(os.path.join(root, listed or "x"))
     notes_file = os.path.join(folder, NOTES_FILE)
-    book = {"fns": {}, "notes": 0, "notes_file": os.path.relpath(notes_file, root).replace(os.sep, "/"), "lost": []}
+    book = {"fns": {}, "notes": 0, "notes_file": os.path.relpath(notes_file, root).replace(os.sep, "/"), "lost": [],
+            "heads": {}}   # function -> the headings its note stands under, as written
     written = [(c, os.path.relpath(calls_file, root).replace(os.sep, "/"), None)
                for c in (read_calls(slurp(calls_file)) if calls_file else [])]
     written += [(c, listed, None) for c in top.get("chains", [])]
@@ -2828,6 +2839,7 @@ def load_chains(root, files, parts, routes, top, wiring, runs=(), calls_file="",
             book["lost"].append({"fn": name, "why": state})
         else:
             noted[fn_key(fn)] = (noted[fn_key(fn)] + "\n\n" if fn_key(fn) in noted else "") + body
+            book["heads"].setdefault(fn_key(fn), []).append(name)
     budget = SRC_TOTAL
     for chain in out:
         for s in chain["steps"]:
@@ -3718,6 +3730,26 @@ def cmd_windows(root, parts, t, args):
 
 
 def cmd_web(root, parts, t, args):
+    """Writes the map page. With --open it is shown through a small service on this machine, so that what a
+    reader writes on the page (a note on a function) goes straight into the project's files; the page as a
+    plain file is written too, and is what opens when the service cannot start."""
+    page, _ = web_page(root, parts, t, args)
+    out = args.out or state_path(root)
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+    with open(out, "w", encoding="utf-8") as fh:
+        fh.write(page)
+    print(os.path.abspath(out))
+    if not args.open:
+        return
+    url = None if (args.out or args.fragment or args.no_serve) else ensure_server(root, args)
+    if url:
+        print(url)
+    webbrowser.open(url or "file://" + os.path.abspath(out))
+
+
+def web_page(root, parts, t, args, save=None):
+    """The map page as text, and the book of the functions on its call chains. `save` is set when the page
+    is being served: it then holds what the page needs to hand a note back."""
     lang = language(parts)
     files = zlist(git(root, "ls-files", "-z"))
     n, _ = tally(files, parts)
@@ -3843,7 +3875,7 @@ def cmd_web(root, parts, t, args):
             "wings": [{"name": w.name, "what": w.what, "icon": w.icon, "flow": w.flow, "ports": ports(w),
                        "explain": w.explain,
                        "parts": [parts.index(p) for p in w.parts]} for w in args.top["wings"]],
-            "tasks": out_tasks, "tasksOld": tasks_old}
+            "tasks": out_tasks, "tasksOld": tasks_old, "save": save}
     here = os.path.dirname(os.path.abspath(__file__))
     page = open(os.path.join(here, "map_template.html"), encoding="utf-8").read()
     # Every "<" in the data is written as \u003c. A commit subject holding both "<!--" and "<script" would
@@ -3854,13 +3886,228 @@ def cmd_web(root, parts, t, args):
         page = ('<!doctype html>\n<html lang="%s">\n<head>\n<meta charset="utf-8">\n'
                 '<meta name="viewport" content="width=device-width, initial-scale=1">\n</head>\n<body style="margin:0">\n'
                 % ("zh-CN" if lang == "zh" else "en")) + page + "\n</body>\n</html>\n"
-    out = args.out or state_path(root)
-    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
-    with open(out, "w", encoding="utf-8") as fh:
-        fh.write(page)
-    print(os.path.abspath(out))
-    if args.open:
-        webbrowser.open("file://" + os.path.abspath(out))
+    return page, book
+
+
+# The page, served -----------------------------------------------------------------
+# The map is a snapshot: one file, rebuilt whole. A reader's notes are the one thing written on the page
+# that has to end up in the project. So `web --open` shows the page through a small service on this machine:
+# it builds the page afresh each time it is loaded, and takes a note back and writes it into the notes file.
+# It listens on this machine only, writes that one file only, and stops by itself when no page has asked
+# anything of it for a while.
+
+SERVE_IDLE = 1800     # seconds without a request before the service stops; an open page asks every few minutes
+NOTE_MAX = 400000     # bytes of one note handed back
+
+
+def write_note(path, heads, key, text, zh=True):
+    """Puts a reader's note on one function into the notes file: in place of the note that function has
+    there (under `## key`, or under any of the headings in `heads`), or at the end when it has none. An
+    empty note removes it. The rest of the file is left as it is. Returns the note as it now stands."""
+    fenced, kept = False, []
+    for line in text.replace("\r\n", "\n").replace("\r", "\n").strip("\n").split("\n"):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        # a `##` line would begin another function's note: inside a note it is set one level deeper
+        kept.append("#" + line if not fenced and re.match(r"^##\s", line) else line.rstrip())
+    text = "\n".join(kept).strip("\n")
+    old = slurp(path) if os.path.isfile(path) else ""
+    if not old and not text.strip():
+        return ""
+    lines = old.split("\n") if old else ["# 函数笔记" if zh else "# Function notes", ""]
+    names, out, skip, placed, fenced = {key} | set(heads), [], False, False, False
+    for line in lines:
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        head = None if fenced else re.match(r"^##\s+(.+?)\s*$", line)
+        if head:
+            name = re.sub(r"\s*\(.*\)\s*$", "", head.group(1).strip().strip("`").strip())
+            skip = name in names
+            if skip:
+                if not placed and text.strip():
+                    out += ["## " + key, "", text, ""]
+                placed = True
+                continue
+        if not skip:
+            out.append(line)
+    if not placed and text.strip():
+        while out and not out[-1].strip():
+            out.pop()
+        out += ["", "## " + key, "", text, ""]
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(out).rstrip("\n") + "\n")
+    os.replace(tmp, path)
+    return text
+
+
+def serve_file(root):
+    return os.path.join(os.path.dirname(state_path(root)), "serve.json")
+
+
+def serve_flags(args):
+    return [f for f, on in (("--no-links", args.no_links), ("--no-windows", args.no_windows),
+                            ("--no-source", args.no_source)) if on]
+
+
+def serve_port(root):
+    """A port that stays the same for one project, so the page keeps its address from one day to the next."""
+    return 20000 + sum((i + 1) * b for i, b in enumerate(os.path.abspath(root).encode())) % 20000
+
+
+def serve_asks(root, args):
+    """What a running service has to answer to be the one for this project, as this script would start it."""
+    return {"root": os.path.abspath(root), "stamp": os.path.getmtime(os.path.abspath(__file__)),
+            "flags": serve_flags(args) + [args.file or "", args.tasks, args.runs, args.calls_file or ""]}
+
+
+def ensure_server(root, args):
+    """The address of the service for this project: the one already running, or one started now. None when
+    it cannot be started (no leave to listen, say); the page is then opened as a plain file."""
+    def answer(port, path="/ping"):
+        try:
+            with urllib.request.urlopen("http://127.0.0.1:%d%s" % (port, path), timeout=2) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except Exception:
+            return None
+
+    def running():
+        try:
+            info = json.loads(slurp(serve_file(root)) or "{}")
+        except ValueError:
+            return None
+        return info if isinstance(info.get("port"), int) else None
+    want, info = serve_asks(root, args), running()
+    if info:
+        got = answer(info["port"])
+        if got and all(got.get(k) == want[k] for k in want):
+            return "http://127.0.0.1:%d/" % info["port"]
+        if got and got.get("root") == want["root"]:   # an older one, or one started another way: it makes room
+            answer(info["port"], "/quit?token=" + str(info.get("token", "")))
+            for _ in range(15):   # until it has let go of the port, so the page keeps its address
+                time.sleep(0.2)
+                if answer(info["port"]) is None:
+                    break
+    cmd = [sys.executable, os.path.abspath(__file__)] + (["--file", args.file] if args.file else []) + \
+        ["--tasks", args.tasks, "--runs", args.runs] + (["--calls-file", args.calls_file] if args.calls_file else []) + \
+        ["serve"] + serve_flags(args)
+    os.makedirs(os.path.dirname(serve_file(root)), exist_ok=True)
+    detach = {"creationflags": 0x00000008 | 0x00000200} if os.name == "nt" else {"start_new_session": True}
+    try:
+        with open(os.path.join(os.path.dirname(serve_file(root)), "serve.log"), "ab") as log:
+            subprocess.Popen(cmd, cwd=root, stdin=subprocess.DEVNULL, stdout=log, stderr=log, **detach)
+    except OSError:
+        return None
+    for _ in range(30):
+        time.sleep(0.2)
+        info = running()
+        got = answer(info["port"]) if info else None
+        if got and got.get("root") == want["root"]:
+            return "http://127.0.0.1:%d/" % info["port"]
+    return None
+
+
+def cmd_serve(root, parts, t, args):
+    """The service behind `web --open`. Not meant to be run by hand."""
+    token = secrets.token_urlsafe(18)
+    state = {"last": time.time(), "heads": {}, "keys": set(), "notes": "", "zh": True}
+    lock = threading.Lock()
+    asks = serve_asks(root, args)
+
+    def render():
+        with lock:
+            leaf.__defaults__[0].clear()        # what was worked out for the list as it was does not hold for the list as it is
+            line_count.__defaults__[0].clear()
+            now = argparse.Namespace(**vars(args))
+            now_parts, now.list_path, now.routes, now.top = load_parts(root, args.file)
+            if not now_parts:
+                return "<!doctype html><meta charset=utf-8><p>" + TEXT["zh"]["no_parts"].format(files=" / ".join(PARTS_FILES))
+            now.calls_path, now.calls_home = calls_path(root, now.list_path, args.calls_file)
+            now.fragment, now.out = False, None
+            page, book = web_page(root, now_parts, TEXT[language(now_parts)], now, save={"token": token})
+            state.update(heads=book["heads"], keys=set(book["fns"]), notes=os.path.join(root, book["notes_file"]),
+                         zh=language(now_parts) == "zh")
+            return page
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def reply(self, code, body, kind="application/json; charset=utf-8"):
+            body = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode("utf-8")
+            self.send_response(code)
+            self.send_header("Content-Type", kind)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def here(self):   # asked for by this machine's own name: another site cannot have the browser ask in its stead
+            return (self.headers.get("Host") or "") in ("127.0.0.1:%d" % port, "localhost:%d" % port)
+
+        def do_GET(self):
+            state["last"] = time.time()
+            path, _, query = self.path.partition("?")
+            if not self.here():
+                return self.reply(403, {"ok": False})
+            if path == "/":
+                try:
+                    return self.reply(200, render().encode("utf-8"), "text/html; charset=utf-8")
+                except SystemExit as e:   # git said no, the list is gone: say so on the page
+                    return self.reply(500, ("<!doctype html><meta charset=utf-8><pre>%s</pre>" % e).encode("utf-8"),
+                                      "text/html; charset=utf-8")
+            if path == "/ping":
+                return self.reply(200, dict(asks, ok=True))
+            if path == "/quit" and hmac.compare_digest(query, "token=" + token):
+                self.reply(200, {"ok": True})
+                threading.Thread(target=server.shutdown, daemon=True).start()
+                return
+            self.reply(404, {"ok": False})
+
+        def do_POST(self):
+            state["last"] = time.time()
+            try:
+                size = int(self.headers.get("Content-Length") or 0)
+                if not self.here() or self.path != "/note" or not 0 < size <= NOTE_MAX:
+                    return self.reply(403, {"ok": False})
+                ask = json.loads(self.rfile.read(size).decode("utf-8"))
+                key, text = ask.get("key"), ask.get("text")
+                if not hmac.compare_digest(str(ask.get("token", "")), token) or key not in state["keys"] \
+                        or not isinstance(text, str):
+                    return self.reply(403, {"ok": False})
+                with lock:
+                    kept = write_note(state["notes"], state["heads"].get(key, []), key, text, state["zh"])
+                    state["heads"][key] = [key]
+                self.reply(200, {"ok": True, "text": kept})
+            except (ValueError, OSError) as e:
+                self.reply(500, {"ok": False, "why": str(e)})
+
+    server, port = None, args.port or serve_port(root)
+    for port in range(port, port + 30):
+        try:
+            server = http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler)
+            break
+        except OSError:
+            continue
+    if server is None:
+        raise SystemExit("bearings: no free port to serve the page on")
+    with open(serve_file(root), "w", encoding="utf-8") as fh:
+        json.dump({"port": port, "token": token, "pid": os.getpid()}, fh)
+
+    def watch():
+        while time.time() - state["last"] < SERVE_IDLE:
+            time.sleep(20)
+        server.shutdown()
+    threading.Thread(target=watch, daemon=True).start()
+    try:
+        server.serve_forever()
+    finally:
+        try:
+            if json.loads(slurp(serve_file(root)) or "{}").get("pid") == os.getpid():
+                os.remove(serve_file(root))
+        except (ValueError, OSError):
+            pass
 
 
 LIST_FORMAT = """\
@@ -3918,6 +4165,8 @@ a reader's notes on functions (calls-notes.md beside calls.md). The chain gives 
 by line is for the reader to work out and keep. The page shows each function's source beside its note:
   ## path/file.py:function     or  ## function  /  ## Class.method  when the name is the only one
   anything                     the note, as Markdown, down to the next `##` heading
+  opened with `web --open`, the page writes a note into this file as the reader types it; opened as a plain
+  file it keeps the note in the browser, with a button to copy it out
 
 a task's lines for people (the `## For People` section of its record, docs/tasks/<task>.md; in older
 projects docs/tasks/<task>/handoff.md):
@@ -3974,13 +4223,19 @@ def main():
     w.add_argument("--open", action="store_true", help="open it in the browser")
     w.add_argument("--fragment", action="store_true", help="omit the html/head/body wrapper")
     w.add_argument("--no-links", action="store_true", help="do not read the code to measure which part uses which")
+    w.add_argument("--no-serve", action="store_true",
+                   help="with --open: open the page as a plain file; notes written on it then stay in the browser")
     w.add_argument("--no-source", action="store_true",
                    help="leave the source of the functions on the call chains out of the page (for a page that will be shared)")
     k = sub.add_parser("links", help="which part uses which, measured from import statements")
     k.add_argument("--json", action="store_true")
     d = sub.add_parser("doctor", help="check the list against the code: stale paths, misspelt boxes, aged diagrams")
     d.add_argument("--json", action="store_true")
-    for cmd in (c, w):
+    sv = sub.add_parser("serve", help=argparse.SUPPRESS)   # the service behind `web --open`
+    sv.add_argument("--port", type=int, default=0)
+    sv.add_argument("--no-links", action="store_true")
+    sv.add_argument("--no-source", action="store_true")
+    for cmd in (c, w, sv):
         cmd.add_argument("--no-windows", action="store_true",
                          help="do not read Claude Code and Codex session records to tell windows apart")
     args = ap.parse_args()
@@ -3993,7 +4248,8 @@ def main():
     t = TEXT[language(parts)]
     args.calls_path, args.calls_home = calls_path(root, args.list_path, args.calls_file)
     {"parts": cmd_parts, "check": cmd_check, "web": cmd_web, "links": cmd_links, "doctor": cmd_doctor,
-     "tasks": cmd_tasks, "windows": cmd_windows, "runs": cmd_runs, "calls": cmd_calls}[args.cmd](root, parts, t, args)
+     "tasks": cmd_tasks, "windows": cmd_windows, "runs": cmd_runs, "calls": cmd_calls,
+     "serve": cmd_serve}[args.cmd](root, parts, t, args)
 
 
 if __name__ == "__main__":
