@@ -188,6 +188,7 @@ PosSpeedLoopCtrl | 位置环每个周期跑一次：读位置，跑当前的运�
 - For a function you write by hand: every parameter that carries data or changes what the function does, the return value when there is one, and the state the function reads or leaves behind for a later step. A reader should be able to follow one piece of data from the top of the chain to the bottom by these lines alone. Keep each to a clause.
 - *What it is*: its meaning, with the unit, the range or an example where that matters ("目标位置，单位是编码器计数", "消息种类，voice、text 或 hangup"). Not its type: the page shows the type from the code.
 - *Where it comes from / where it goes*: the function that produced it or will use it, the caller, a setting, the outside world. This is what joins the functions into a chain, so do not leave it out for the values that travel.
+- A thing that is only handed on (a context pointer every function takes, say) is written once, where it enters the chain. Do not repeat it under each function it passes through.
 - The page lists every parameter the code gives the function. One you say nothing about is shown as not explained, and the check-up lists a function with parameters of which none is written.
 
 **Where the chain forks.** The same journey often goes one way or another: which bus the command came over, which encoder is fitted, which control mode is active, which kind of message arrived. Do not write one chain for each. Write the chain once, and fork it where the code does:
