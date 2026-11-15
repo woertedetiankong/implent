@@ -18,7 +18,7 @@ it never tells anyone what to change or leave alone.
                                            and committed, and where two windows collide
   bearings.py runs [--json]                the recorded runs under docs/runs/: one real run of a route, step by
                                            step, with the file and line and the values that went in and came out
-  bearings.py calls [--json]               the call chains written on the list, each function checked against the
+  bearings.py calls [--json]               the call chains (docs/calls.md), each function checked against the
                                            code: where it is, its parameters, whether the one above really calls it
   bearings.py calls --from NAME [--depth N]
                                            which functions NAME calls, and those in turn, measured from the code
@@ -57,7 +57,24 @@ CALLS_OPEN_RE = re.compile(r"^\s*```\s*calls\b[ \t]*(.*?)\s*$", re.I)  # a title
 CALL_IO_RE = re.compile(r"^\s*(?:[-*]\s+)?(进|入|出|in|out)(?:\s*[:：]\s*|\s+)(\S.*)$", re.I)
 CALL_SPLIT_RE = re.compile(r"\s*(?:(?<![:：])[:：](?![:：])|\|)\s*")  # `name: what it is`; a C++ `::` is part of the name
 RETURN_WORDS = ("return", "returns", "返回", "返回值")
-CHAIN_STEPS = 60   # functions of one chain handed to the page
+CALL_NAME_RE = re.compile(r"^[A-Za-z_$~][\w$.:~<>/\\-]*$")   # what a function is written as: a name, `Class.method`, `path/file:name`
+# The call chains have a file of their own, beside the parts list: they describe the code one level closer
+# than the diagrams do, and are read apart from them.
+CALLS_FILES = ("calls.md", "CALLS.md")
+# A chain gives the frame of the calls. What a function does line by line is the reader's to work out, and
+# to keep: one note a function, in a file beside the chains. The script only reads it.
+NOTES_FILE = "calls-notes.md"
+SRC_LINES = 400      # lines of one function's source handed to the page
+SRC_TOTAL = 1500000  # characters of source handed to the page in all
+CHAIN_STEPS = 400  # lines of one chain handed to the page: its functions, and the branches and cases among them
+# Which function calls which is something the script can read. So a chain need not write every function by
+# hand: `展开 2` under a function has the script fill in what that function calls, two levels down, as measured.
+CALL_EXPAND_RE = re.compile(r"^\s*(?:[-*]\s+)?(?:展开|expand)\s*[:：]?\s*(\d+)?\s*(?:层|levels?)?\s*$", re.I)
+EXPAND_LEVELS, EXPAND_NODES = 2, 60   # how far `展开` goes when it gives no number, and how many functions at most
+EXPAND_TINY = 8    # a function this short that calls nothing of the project's (a getter, a setter) is not filled in
+# A chain can fork: the same journey goes one way or another depending on something (which bus, which
+# encoder, which control mode). `分支 what varies` opens a fork, each `情况 name` under it is one way through.
+CALL_FORK_RE = re.compile(r"^\s*(?:[-*]\s+)?(分支|情况|branch|case)(?:\s*[:：]\s*|\s+)([^|\s].*)$", re.I)
 EXTERNAL_RE = re.compile(r"^\s*(?:外来|Vendored|Third-party)\s*[:：]\s*(.+)$", re.I)
 FLOW_EDGE_RE = re.compile(r"^\s*(.+?)\s*(<->|->)\s*(.+?)\s*(?:[:：]\s*(.*))?$")
 CODE_NAME_RE = re.compile(r"`([^`]+)`")
@@ -213,14 +230,24 @@ TEXT = {
         "doctor_calls_loose": "调用链里画了、代码里量不到的调用 {n} 处（上面那个函数的代码里没有提到下面这个；经过回调、事件或网络的属于正常）：",
         "doctor_calls_names": "调用链里写的参数或变量，在那个函数里找不到的 {n} 处：",
         "doctor_calls_names_row": "{on}：{fn}() 里没有 `{name}`",
-        "doctor_calls_off": "主线的调用链经过了主线图上没画的部分 {n} 处（图少画了一个方框，或者这一步不属于这条主线）：",
-        "doctor_calls_off_row": "{on}：{fn}() 在“{unit}”里",
-        "calls_none": "清单里还没有函数调用链（```calls 块）。",
-        "calls_head": "清单里的函数调用链 {n} 条：",
+        "doctor_calls_untold": "调用链里没有写它做什么的函数 {n} 个：",
+        "doctor_calls_bare": "调用链里有参数、却一个进出都没写的函数 {n} 个（写出重要的参数和变量：是什么、从哪来、到哪去）：",
+        "calls_none": "还没有函数调用链。它们写在 {file} 里。",
+        "calls_head": "函数调用链 {n} 条：",
+        "calls_untold": "还有这些参数没写是什么：{x}",
+        "calls_forks": "{n} 处分支", "calls_branch": "分支", "calls_case": "情况",
+        "calls_auto": "其中 {n} 个是展开量出来的", "calls_filled": "[展开量出来的]",
+        "calls_passed": "展开时略过了 {n} 个只有几行、不再调用别的函数的函数（多半是取值和设值）。",
+        "calls_noted": "[有笔记]", "calls_notes": "读者的函数笔记 {n} 条，在 {file}。",
+        "calls_note_lost": "笔记“{fn}”对应的函数在代码里找不到了",
+        "doctor_notes_lost": "函数笔记对应的函数在代码里找不到了 {n} 条（函数改过名或删掉了；笔记是读者的，改标题，不要删）：",
+        "calls_draft": "上面是量出来的调用框架：补上每个函数的一句话、每个进出的东西是什么和从哪来到哪去，删掉不值得列的，再在代码分叉的地方加分支。经回调、函数指针、事件的调用量不到，要自己读代码补。",
+        "doctor_calls_forks": "只有一种情况的分支 {n} 处（分支至少要有两种走法；只有一种就直接写函数）：",
+        "calls_in_list": "有 {n} 条还写在部分清单里。调用链现在有自己的文件，把它们挪到 {file}。",
         "calls_steps": "{n} 个函数，经过 {k} 个部分",
         "calls_flag_lost": "代码里找不到这个函数", "calls_flag_many": "有好几个同名函数，分不清是哪一个",
         "calls_flag_text": "这种语言不读，只按名字找到了位置",
-        "calls_flag_loose": "上面那个函数的代码里没有提到它", "calls_flag_off": "在“{u}”里，主线图上没有这一块",
+        "calls_flag_loose": "上面那个函数的代码里没有提到它",
         "calls_flag_name": "函数里找不到这个名字",
         "calls_many": "有好几个函数叫 {fn}，写成 `类.方法` 或 `文件路径:函数` 来指明：",
         "calls_lost": "代码里找不到函数 {fn}。能读的语言：Python、JavaScript/TypeScript、Go、C/C++。",
@@ -341,14 +368,24 @@ TEXT = {
         "doctor_calls_loose": "{n} calls drawn in a call chain that the code does not show (the function above never mentions the one below; fine through a callback, an event or a network):",
         "doctor_calls_names": "{n} parameters or variables written in a call chain that the function does not have:",
         "doctor_calls_names_row": "{on}: {fn}() has no `{name}`",
-        "doctor_calls_off": "{n} steps of a route's call chain in a part the route does not draw (the route lacks a box, or the step is not part of this route):",
-        "doctor_calls_off_row": "{on}: {fn}() is in \"{unit}\"",
-        "calls_none": "The list has no call chains yet (```calls blocks).",
-        "calls_head": "{n} call chains on the list:",
+        "doctor_calls_untold": "{n} functions on a call chain with no sentence saying what they do:",
+        "doctor_calls_bare": "{n} functions on a call chain that take parameters, with nothing written going in or coming out (name the important parameters and variables: what each is, where it comes from, where it goes):",
+        "calls_none": "No call chains yet. They are kept in {file}.",
+        "calls_head": "{n} call chains:",
+        "calls_untold": "parameters it does not explain: {x}",
+        "calls_forks": "{n} branches", "calls_branch": "branch", "calls_case": "case",
+        "calls_auto": "{n} of them filled in from the code", "calls_filled": "[filled in from the code]",
+        "calls_passed": "{n} functions of a few lines that call nothing further (getters and setters, mostly) were left out when filling in.",
+        "calls_noted": "[has a note]", "calls_notes": "{n} function notes kept by readers, in {file}.",
+        "calls_note_lost": "the note \"{fn}\" is on a function the code no longer has",
+        "doctor_notes_lost": "{n} function notes on a function the code no longer has (renamed or removed; the notes are a reader's: change the heading, do not delete):",
+        "calls_draft": "Above is the frame of the calls as measured: add each function's sentence, say what each thing going in or out is and where it comes from or goes, drop what is not worth listing, and fork it where the code forks. Calls through a callback, a function pointer or an event are not seen; read the code for those.",
+        "doctor_calls_forks": "{n} branches with a single case (a branch has at least two ways through; with one, write the functions plainly):",
+        "calls_in_list": "{n} are still written inside the parts list. Call chains have a file of their own now: move them to {file}.",
         "calls_steps": "{n} functions across {k} parts",
         "calls_flag_lost": "the code has no such function", "calls_flag_many": "several functions answer to this name",
         "calls_flag_text": "a language that is not read: found by name only",
-        "calls_flag_loose": "the function above never mentions it", "calls_flag_off": "in \"{u}\", which the route does not draw",
+        "calls_flag_loose": "the function above never mentions it",
         "calls_flag_name": "the function has no such name",
         "calls_many": "Several functions are called {fn}; write `Class.method` or `path/file:function` to say which:",
         "calls_lost": "No function {fn} in the code. Languages it can read: Python, JavaScript/TypeScript, Go, C/C++.",
@@ -454,29 +491,112 @@ def flow_line(flow, line):
 
 def calls_line(chain, line, stack):
     """One line of a call chain. `function | what it does` names a function; one set in under another is
-    called by it. Under a function, `进 name: what it is` (or `in`) is something important that goes into
-    it and `出 name: ...` (`out`) something that comes out: a parameter, a variable, a field, the return value."""
+    called by it. Under a function, `进 name: what it is | where it comes from` (or `in`) is something that
+    goes into it and `出 name: what it is | where it goes` (`out`) something that comes out: a parameter, a
+    variable, a field, the return value. Any other line under a function is more of its explanation."""
     if not line.strip():
         return
     line = line.expandtabs(4)
     io = CALL_IO_RE.match(line)
-    if io and chain["steps"]:
+    if io and chain["steps"] and chain["steps"][-1]["kind"] == "fn":
         bits = CALL_SPLIT_RE.split(io.group(2).strip(), 1)
         name = bits[0].strip().strip("`").strip()
+        rest = [x.strip() for x in (bits[1] if len(bits) > 1 else "").split("|")]
         if name:
             chain["steps"][-1]["outs" if io.group(1).lower() in ("出", "out") else "ins"].append(
-                {"name": name, "what": bits[1].strip() if len(bits) > 1 else ""})
+                {"name": name, "what": rest[0], "via": " ".join(x for x in rest[1:] if x)})
         return
     indent = len(line) - len(line.lstrip())
+    grow = CALL_EXPAND_RE.match(line)
+    if grow:   # the functions called from here on are filled in from the code
+        while stack and stack[-1] >= indent:
+            stack.pop()
+        chain["steps"].append({"kind": "expand", "fn": "", "what": "", "note": "", "more": [], "depth": min(len(stack), 60),
+                               "levels": max(1, min(5, int(grow.group(1) or EXPAND_LEVELS))), "ins": [], "outs": []})
+        return
+    fork = CALL_FORK_RE.match(line)
+    fields = [x.strip() for x in re.sub(r"^\s*[-*]\s+", "", fork.group(2) if fork else line).strip().split("|")]
+    if fork:   # `分支 what varies | a note` and, under it, `情况 name | when it applies`
+        kind, name = "branch" if fork.group(1).lower() in ("分支", "branch") else "case", ""
+    else:
+        kind = "fn"
+        name = re.sub(r"\s*\(.*\)\s*$", "", fields[0].strip("`").strip()).strip("`").strip()  # `f()` and `f(a, b)` are f
+        if not CALL_NAME_RE.match(name):
+            if chain["steps"]:   # a sentence, not a function: it belongs to the line above
+                chain["steps"][-1]["more"].append(line.strip())
+            return
     while stack and stack[-1] >= indent:
         stack.pop()
-    fields = [x.strip() for x in line.strip().lstrip("-*").split("|")]
-    name = re.sub(r"\s*\(.*\)\s*$", "", fields[0].strip("`").strip()).strip("`").strip()  # `f()` and `f(a, b)` are f
-    if not name:
-        return
-    chain["steps"].append({"fn": name, "what": " ".join(x for x in fields[1:] if x), "depth": min(len(stack), 6),
-                           "ins": [], "outs": []})
+    chain["steps"].append({"kind": kind, "fn": name, "what": " ".join(x for x in (fields if fork else fields[1:]) if x)
+                           if kind == "fn" else fields[0].rstrip(":："), "note": " ".join(x for x in fields[1:] if x) if fork else "",
+                           "more": [], "depth": min(len(stack), 60), "ins": [], "outs": []})
     stack.append(indent)
+
+
+def read_calls(text):
+    """The call chains of a file of their own: [chain]. A heading names a chain, the plain lines under it say
+    what the chain is about, and a ```calls block holds its functions. A block can also carry its title on
+    the fence. A heading with no block under it (the file's own title, say) names nothing."""
+    chains, chain, stack, title, intro, fenced = [], None, [], "", [], False
+    for line in text.split("\n"):
+        if chain is not None:
+            if line.strip().startswith("```"):
+                chain = None
+            else:
+                calls_line(chain, line, stack)
+            continue
+        if fenced:
+            fenced = not line.strip().startswith("```")
+            continue
+        called = CALLS_OPEN_RE.match(line)
+        if called:
+            chain, stack = {"title": called.group(1) or title, "intro": intro, "steps": []}, []
+            chains.append(chain)
+            intro = []   # a second block under the same heading starts with no words of its own
+            continue
+        if line.strip().startswith("```"):
+            fenced = True
+            continue
+        head = HEAD_RE.match(line)
+        if head:
+            title, intro = head.group(2).strip().strip("`"), []
+        elif line.strip() and not line.lstrip().startswith(("<!--", "|", ">")):
+            intro.append(re.sub(r"^\s*[-*]\s+", "", line).strip())
+    return [c for c in chains if c["steps"]]
+
+
+def read_notes(text):
+    """The notes of a notes file: [(the function its heading names, the note)]. A `##` heading names a
+    function, as a chain would (`name`, `Class.method`, `path/file:name`); everything down to the next such
+    heading is the note, kept as written."""
+    notes, name, body, fenced = [], None, [], False
+    for line in text.split("\n"):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        head = None if fenced else re.match(r"^##\s+(.+?)\s*$", line)
+        if head:
+            if name is not None:
+                notes.append((name, "\n".join(body).strip("\n")))
+            name, body = head.group(1).strip().strip("`").strip(), []
+            name = re.sub(r"\s*\(.*\)\s*$", "", name)
+        elif name is not None:
+            body.append(line.rstrip())
+    if name is not None:
+        notes.append((name, "\n".join(body).strip("\n")))
+    return [(n, b) for n, b in notes if b.strip()]
+
+
+def calls_path(root, list_path, explicit=None):
+    """Where the call chains are kept: beside the parts list. Returns (the file to read, or "" when there is
+    none yet; where one would be written, relative to the repo)."""
+    folder = os.path.dirname(os.path.abspath(list_path))
+    want = os.path.join(root, explicit) if explicit and not os.path.isabs(explicit) else explicit
+    cands = [want] if want else [os.path.join(folder, name) for name in CALLS_FILES]
+    home = os.path.relpath(cands[0], root).replace(os.sep, "/")
+    for path in cands:
+        if os.path.isfile(path):
+            return path, os.path.relpath(path, root).replace(os.sep, "/")
+    return "", home
 
 
 def literal_len(pattern):
@@ -558,7 +678,7 @@ def read_list(text):
             continue
         called = CALLS_OPEN_RE.match(line)
         if called:
-            chain, stack = {"title": called.group(1), "steps": []}, []
+            chain, stack = {"title": called.group(1), "intro": [], "steps": []}, []
             (cur.calls if cur is not None else chains).append(chain)
             continue
         opened = FLOW_OPEN_RE.match(line)
@@ -1726,7 +1846,7 @@ def cmd_parts(root, parts, t, args):
                    "files": n[p][0], "paths": [x[0] for x in p.patterns]}
             if p.children or p.parent or routes:  # lists in the newer form also say what is still undrawn
                 out["flow"] = bool(p.flow and p.flow["nodes"])
-                out["explained"], out["call_chains"] = bool(p.explain), len(p.calls)
+                out["explained"] = bool(p.explain)
             if n[p][1]:
                 out["outside"] = n[p][1]
             if p.external:
@@ -2099,6 +2219,7 @@ JS_DEFS = (
 JS_AFTER_RE = re.compile(r"\s*(?::\s*([^;{}=()]+?))?\s*(?:(=>)\s*(\{)?|(\{))")  # `: Type`, then `=>` or a body
 PAIRS = {"{": re.compile(r"[{}]"), "(": re.compile(r"[()]")}
 SIG_TEXT = 220     # characters of one signature
+DOC_TEXT = 480     # characters of the comment the code itself carries on a function
 TREE_NODES = 80    # functions printed by `calls --from`
 
 
@@ -2121,6 +2242,21 @@ def close_of(code, at, limit=600000):
         if depth == 0:
             return m.end()
     return -1
+
+
+def lead_comment(text, start):
+    """The comment written right above a definition, as one stretch of plain text."""
+    head = text[:start].rstrip()
+    if head.endswith("*/"):
+        at = head.rfind("/*")
+        lines = [re.sub(r"^\s*[*!]+ ?", "", x) for x in head[at + 2:-2].split("\n")] if at >= 0 else []
+    else:
+        lines = []
+        for x in reversed(head.split("\n")[-40:]):
+            if not x.strip().startswith("//"):
+                break
+            lines.insert(0, x.strip().lstrip("/!").strip())
+    return " ".join(" ".join(lines).split())[:DOC_TEXT]
 
 
 def split_params(text):
@@ -2182,7 +2318,7 @@ def regex_function(kind, text, code, lines, name, qual, start, opened, closed, b
             "sig": " ".join(text[start:body_at].split()).rstrip("{ ")[:SIG_TEXT], "params": params,
             "returns": " ".join(x for x in returns.split() if x not in STORAGE_WORDS),
             "calls": calls_in(body, name), "refs": set(IDENT_RE.findall(body)),
-            "words": set(IDENT_RE.findall(text[start:end]))}
+            "words": set(IDENT_RE.findall(text[start:end])), "doc": lead_comment(text, start)}
 
 
 def line_starts(text):
@@ -2219,6 +2355,12 @@ def py_functions(text):
         except Exception:
             return ""
 
+    def said(node):
+        try:
+            return " ".join((ast.get_docstring(node) or "").split())[:DOC_TEXT]
+        except Exception:
+            return ""
+
     def one(node, prefix, in_class):
         a = node.args
         args = list(getattr(a, "posonlyargs", [])) + list(a.args) + ([a.vararg] if a.vararg else []) + \
@@ -2249,7 +2391,7 @@ def py_functions(text):
             "(" + (show(a) or ", ".join(x.arg for x in args)) + ")" + (" -> " + show(node.returns) if node.returns else "")
         return {"name": node.name, "qual": prefix + node.name, "line": node.lineno, "end": end,
                 "sig": " ".join(head.split())[:SIG_TEXT], "params": params, "returns": show(node.returns),
-                "calls": ordered, "refs": refs,
+                "calls": ordered, "refs": refs, "doc": said(node),
                 "words": set(IDENT_RE.findall("\n".join(lines[node.lineno - 1:end])))}
 
     def a_class(node, prefix, inside):
@@ -2266,7 +2408,7 @@ def py_functions(text):
                                      for p in (made[0]["params"] if made else fields)) if made or fields else ""))[:SIG_TEXT],
                 "params": made[0]["params"] if made else fields, "returns": "",
                 "calls": made[0]["calls"] if made else [], "refs": made[0]["refs"] if made else set(),
-                "words": set(IDENT_RE.findall("\n".join(lines[node.lineno - 1:end]))),
+                "words": set(IDENT_RE.findall("\n".join(lines[node.lineno - 1:end]))), "doc": said(node),
                 "bases": [x for x in (re.sub(r"\[.*", "", show(b)).split(".")[-1] for b in node.bases) if x]}
 
     def walk(node, prefix, in_class):
@@ -2387,7 +2529,7 @@ def js_functions(text):
         out.append({"name": name, "qual": name, "line": bisect_line(lines, head), "end": bisect_line(lines, end - 1),
                     "sig": " ".join(text[head:at - 1].split())[:SIG_TEXT], "params": made[0]["params"] if made else [],
                     "returns": "", "calls": made[0]["calls"] if made else [], "refs": made[0]["refs"] if made else set(),
-                    "words": set(IDENT_RE.findall(text[head:end])),
+                    "words": set(IDENT_RE.findall(text[head:end])), "doc": lead_comment(text, head),
                     "bases": re.findall(r"\bextends[ \t]+([A-Za-z_$][\w$]*)", text[head:at])})
     return out
 
@@ -2491,7 +2633,7 @@ class Code:
             if m:
                 return {"name": bare, "qual": bare, "file": f, "line": text.count("\n", 0, m.start()) + 1,
                         "end": 0, "sig": " ".join(m.group(0).split())[:SIG_TEXT], "params": [], "returns": "",
-                        "calls": [], "refs": None, "words": None}
+                        "calls": [], "refs": None, "words": None, "doc": ""}
         return None
 
     def callees(self, fn):
@@ -2500,7 +2642,8 @@ class Code:
         `self`, to the same class; otherwise only a name that one function in the project answers to."""
         got, unsure = [], []
         for name, how in fn["calls"]:
-            cands = self.defined(name)
+            mine = FN_KIND.get(posixpath.splitext(fn["file"])[1])
+            cands = [c for c in self.defined(name) if FN_KIND.get(posixpath.splitext(c["file"])[1]) == mine]
             if how == "name" and fn["file"].endswith(".py"):
                 cands = [c for c in cands if "." not in c["qual"]]   # a plain call reaches a function or a class, not a method
             if not cands:
@@ -2527,6 +2670,11 @@ def one_line(fn, limit=96):
     return "%s(%s%s)" % (fn["qual"], ", ".join(names[:6]), ", …" if len(names) > 6 else "")
 
 
+def fn_key(fn):
+    """What a function goes by wherever one of its own is kept (its note, its source on the page)."""
+    return fn["file"] + ":" + fn["qual"]
+
+
 def fn_unit(fn, parts):
     return leaf(fn["file"], parts) if fn else None
 
@@ -2537,7 +2685,7 @@ def io_rows(rows, fn, way):
     out = []
     for row in rows[:RUN_VALUES]:
         name = row["name"]
-        new = {"name": name, "what": row["what"], "kind": "", "type": "", "lost": False}
+        new = {"name": name, "what": row["what"], "via": row.get("via", ""), "kind": "", "type": "", "lost": False}
         if name.lower() in RETURN_WORDS:
             new.update(kind="return", type=(fn or {}).get("returns", ""))
         elif fn and fn["words"] is not None:
@@ -2551,13 +2699,56 @@ def io_rows(rows, fn, way):
     return out
 
 
-def read_chain(chain, code, parts, wiring, unit=None, route=None, seen=None):
-    """One call chain as written, with what the code says about each of its functions."""
-    steps, above, units = [], [], []
-    on_route = [wiring.end(n, None, "route") for n in route["nodes"]] if route else []
-    for s in chain["steps"][:CHAIN_STEPS]:
+def read_chain(chain, code, parts, wiring, unit=None, seen=None):
+    """One call chain as written, with what the code says about each of its functions. The lines of a chain
+    are its functions and, where it forks, a branch with its cases. Every line says where it hangs: `up` is
+    the line it stands under, `d` how many functions deep it is (a branch and a case add no depth: what a
+    case holds is called by the function the branch stands under), `cases` the cases it lies inside, and,
+    for a case, `group`, the first of the cases it is an alternative to."""
+    steps, above, units, passed = [], [], [], [0]
+    last_child = {}   # the line a line stands under -> the last line written under it so far
+    queue, at_q = list(chain["steps"]), 0
+    while at_q < len(queue) and len(steps) < CHAIN_STEPS:
+        s, at = queue[at_q], len(steps)
+        at_q += 1
         above = above[:s["depth"]]
-        caller = above[-1] if len(above) == s["depth"] and above else None
+        while len(above) < s["depth"]:   # set in by more than one level: it still hangs on the line above
+            above.append(above[-1] if above else {"at": -1, "fn": None, "d": -1, "cases": [], "kind": "fn"})
+        parent = above[-1] if above else None
+        up = parent["at"] if parent else -1
+        caller = parent["fn"] if parent else None   # the nearest function above; a branch or a case passes it on
+        d = (parent["d"] + (1 if parent["kind"] == "fn" else 0)) if parent else 0
+        cases = (parent["cases"] + ([parent["at"]] if parent["kind"] == "case" else [])) if parent else []
+        if s["kind"] == "expand":
+            # what the function above calls, read from the code, takes its place in the chain from here on
+            add, had = [], {fn_key(caller)} if caller and caller.get("qual") else set()
+
+            def grow(fn, depth, level):
+                for g in code.callees(fn)[0]:
+                    if len(add) >= EXPAND_NODES:
+                        return
+                    if g["end"] - g["line"] < EXPAND_TINY and not code.callees(g)[0]:
+                        passed[0] += 1   # a few lines that call nothing further: left out, and counted
+                        continue
+                    add.append({"kind": "fn", "fn": g["file"] + ":" + g["qual"], "what": "", "note": "", "more": [],
+                                "depth": depth, "ins": [], "outs": [], "auto": True})
+                    if fn_key(g) not in had and level < s["levels"]:
+                        had.add(fn_key(g))
+                        grow(g, depth + 1, level + 1)
+            if had:
+                grow(caller, s["depth"], 1)
+            queue[at_q:at_q] = add
+            continue
+        row = {"kind": s["kind"], "fn": s["fn"], "what": s["what"], "note": s.get("note", ""), "more": s.get("more", []),
+               "up": up, "d": max(0, d), "cases": cases, "auto": bool(s.get("auto"))}
+        if s["kind"] != "fn":
+            if s["kind"] == "case":
+                before = last_child.get(up)
+                row["group"] = steps[before]["group"] if before is not None and steps[before]["kind"] == "case" else at
+            last_child[up] = at
+            steps.append(row)
+            above.append({"at": at, "fn": caller, "d": row["d"], "cases": cases, "kind": s["kind"]})
+            continue
         state, fn, cands = code.lookup(s["fn"], near=caller["file"] if caller else "", unit=unit)
         home = fn_unit(fn, parts)
         if home is not None and home not in units:
@@ -2567,28 +2758,54 @@ def read_chain(chain, code, parts, wiring, unit=None, route=None, seen=None):
             called = fn["name"] in caller["refs"] or (fn["name"] in ("__init__", "constructor") and
                                                       fn["qual"].split(".")[-2:-1] and fn["qual"].split(".")[-2] in caller["refs"])
         ran = (seen or {}).get((fn["file"], fn["name"])) if fn else None
-        steps.append({"fn": s["fn"], "name": fn["qual"] if fn else s["fn"], "what": s["what"], "depth": s["depth"],
-                      "state": state, "file": fn["file"] if fn else "", "line": fn["line"] if fn else 0,
-                      "sig": fn["sig"] if fn else "", "line1": one_line(fn) if fn else "",
-                      "returns": fn["returns"] if fn else "",
-                      "unit": wiring.ids.get(home, "") if home is not None else "",
-                      "unitName": unit_label(home) if home is not None else "",
-                      "loose": called is False,
-                      "off": bool(route) and home is not None and not any(related(e, home) for e in on_route),
-                      "cands": ["%s:%d %s" % (c["file"], c["line"], c["qual"]) for c in cands[:4]],
-                      "ins": io_rows(s["ins"], fn, "ins"), "outs": io_rows(s["outs"], fn, "outs"), "ran": ran})
-        above.append(fn or {"file": "", "refs": None})
-    return {"title": chain["title"], "steps": steps, "units": len(units),
-            "more": max(0, len(chain["steps"]) - CHAIN_STEPS)}
+        ins, outs = io_rows(s["ins"], fn, "ins"), io_rows(s["outs"], fn, "outs")
+        told = {(IDENT_RE.findall(v["name"]) or [""])[0] for v in ins + outs}
+        if row["auto"] and fn:
+            row["fn"] = fn["qual"]
+        row.update({"name": fn["qual"] if fn else s["fn"], "key": fn_key(fn) if fn else "",
+                    "state": state, "file": fn["file"] if fn else "", "line": fn["line"] if fn else 0,
+                    "sig": fn["sig"] if fn else "", "line1": one_line(fn) if fn else "",
+                    "returns": fn["returns"] if fn else "", "doc": fn["doc"] if fn else "",
+                    # every parameter the code gives the function, and whether the chain says what it is
+                    "params": [{"name": p["name"], "type": p["type"], "told": p["name"].lstrip(".*&") in told}
+                               for p in (fn["params"] if fn else [])],
+                    "unit": wiring.ids.get(home, "") if home is not None else "",
+                    "unitName": unit_label(home) if home is not None else "",
+                    "loose": called is False, "caller": caller.get("written", "") if caller else "",
+                    "cands": ["%s:%d %s" % (c["file"], c["line"], c["qual"]) for c in cands[:4]],
+                    "ins": ins, "outs": outs, "ran": ran})
+        last_child[up] = at
+        steps.append(row)
+        above.append({"at": at, "fn": dict(fn or {"file": "", "refs": None}, written=s["fn"]), "d": row["d"],
+                      "cases": cases, "kind": "fn"})
+    return {"title": chain["title"], "intro": chain.get("intro", []), "steps": steps,
+            "n": sum(1 for x in steps if x["kind"] == "fn"), "auto": sum(1 for x in steps if x["auto"]),
+            "passed": passed[0],
+            "forks": len({x["group"] for x in steps if x["kind"] == "case"}),
+            "units": [wiring.ids[u] for u in units if u in wiring.ids],
+            "more": max(0, len(queue) - at_q)}
 
 
-def load_chains(root, files, parts, routes, top, wiring, runs=()):
-    """Every call chain on the list, measured: {"units": {unit: [chain]}, "routes": [chain or None, in the
-    routes' order], "more": [titled chains that belong to no route]}. Nothing is read when there are none."""
+def load_chains(root, files, parts, routes, top, wiring, runs=(), calls_file="", listed="", source=True):
+    """Every call chain, measured, and the book of the functions on them: ([chain], book). First the chains
+    in the calls file, in its order. Then any that are still written inside the parts list, which is where
+    they stood before they had a file of their own: those under no part, then each part's and each room's,
+    which go by the unit's name when they carry no title. Nothing of the code is read when there are none.
+
+    The book is {"fns": {key: {file, line, src, cut, note}}, "notes": how many notes the notes file holds,
+    "notes_file": where it is or would be, "lost": the notes whose function the code does not have}. `src`
+    is the function's own lines, for the page where a reader keeps notes on it; `note` is the note the
+    notes file holds for it."""
     units = [u for p in parts for u in [p] + p.children]
-    out = {"units": {}, "routes": [None] * len(routes), "more": []}
-    if not top.get("chains") and not any(u.calls for u in units):
-        return out
+    folder = os.path.dirname(calls_file) if calls_file else os.path.dirname(os.path.join(root, listed or "x"))
+    notes_file = os.path.join(folder, NOTES_FILE)
+    book = {"fns": {}, "notes": 0, "notes_file": os.path.relpath(notes_file, root).replace(os.sep, "/"), "lost": []}
+    written = [(c, os.path.relpath(calls_file, root).replace(os.sep, "/"), None)
+               for c in (read_calls(slurp(calls_file)) if calls_file else [])]
+    written += [(c, listed, None) for c in top.get("chains", [])]
+    written += [(c, listed, u) for u in units for c in u.calls]
+    if not written:
+        return [], book
     code = Code(root, files, parts)
     seen = {}   # (file, function) -> what the latest recorded run noted at that function
     for run in filter(None, runs):
@@ -2596,44 +2813,68 @@ def load_chains(root, files, parts, routes, top, wiring, runs=()):
             key = (s["file"], s["fn"].split(".")[-1].replace("()", ""))
             if s["file"] and s["fn"] and key not in seen and (s["ins"] or s["outs"]):
                 seen[key] = {"route": run["route"], "recorded": run["recorded"], "ins": s["ins"], "outs": s["outs"]}
-    for u in units:
-        if u.calls:
-            out["units"][u] = [read_chain(c, code, parts, wiring, unit=u, seen=seen) for c in u.calls]
-    titles = [r["title"] for r in routes]
-    for c in top.get("chains", []):
-        if c["title"] in titles:
-            at = titles.index(c["title"])
-            out["routes"][at] = read_chain(c, code, parts, wiring, route=routes[at], seen=seen)
+    out = []
+    for c, where, u in written:
+        chain = read_chain(c, code, parts, wiring, unit=u, seen=seen)
+        chain["title"] = (unit_label(u) + ("：" + c["title"] if c["title"] else "")) if u is not None else c["title"]
+        chain["file"], chain["in_list"] = where, where == listed and bool(listed)
+        out.append(chain)
+    # the notes a reader keeps, each found by the function its heading names
+    noted = {}
+    for name, body in (read_notes(slurp(notes_file)) if os.path.isfile(notes_file) else []):
+        book["notes"] += 1
+        state, fn, _ = code.lookup(name)
+        if fn is None:
+            book["lost"].append({"fn": name, "why": state})
         else:
-            out["more"].append(read_chain(c, code, parts, wiring, seen=seen))
-    return out
+            noted[fn_key(fn)] = (noted[fn_key(fn)] + "\n\n" if fn_key(fn) in noted else "") + body
+    budget = SRC_TOTAL
+    for chain in out:
+        for s in chain["steps"]:
+            if s["kind"] != "fn" or not s["key"] or s["key"] in book["fns"]:
+                continue
+            lines, cut = [], False
+            if source and budget > 0:
+                text = read(root, s["file"]).split("\n")
+                state, fn, _ = code.lookup(s["key"])
+                end = fn["end"] if fn and fn["end"] >= s["line"] else s["line"] + 39   # found by name only: a screenful
+                lines = text[s["line"] - 1:end]
+                cut = len(lines) > SRC_LINES
+                lines = [x.rstrip()[:400] for x in lines[:SRC_LINES]]
+                budget -= sum(len(x) + 1 for x in lines)
+            book["fns"][s["key"]] = {"file": s["file"], "line": s["line"], "src": "\n".join(lines), "cut": cut,
+                                     "note": noted.get(s["key"], "")}
+    for key, body in noted.items():   # a note on a function that no chain names is still the reader's: kept, not shown
+        book["fns"].setdefault(key, {"file": key.split(":")[0], "line": 0, "src": "", "cut": False, "note": body,
+                                     "off": True})
+    return out, book
 
 
-def chain_rows(chains, t):
-    """Every chain with the name of what it belongs to: [(where, chain)]."""
-    rows = [(unit_label(u), c) for u, cs in chains["units"].items() for c in cs]
-    rows += [(t["route"] + " " + c["title"], c) for c in chains["routes"] if c]
-    rows += [(c["title"] or "?", c) for c in chains["more"]]
-    return rows
-
-
-def chain_problems(chains, t):
-    """Where a call chain and the code do not agree."""
-    out = {"lost": [], "many": [], "loose": [], "names": [], "off": []}
-    for where, c in chain_rows(chains, t):
-        above = []
+def chain_problems(chains):
+    """Where a call chain and the code do not agree, and where a chain says too little to be read: a function
+    with no sentence, a function the code gives parameters to of which the chain names none, and a branch
+    with fewer than two ways through."""
+    out = {"lost": [], "many": [], "loose": [], "names": [], "untold": [], "bare": [], "forks": []}
+    for c in chains:
+        where = c["title"] or "?"
+        ways = collections.Counter(s["group"] for s in c["steps"] if s["kind"] == "case")
+        out["forks"] += [{"on": where, "branch": c["steps"][g]["what"]} for g, n in ways.items() if n < 2]
         for s in c["steps"]:
-            above = above[:s["depth"]]
+            if s["kind"] != "fn":
+                continue
             if s["state"] == "lost":
                 out["lost"].append({"on": where, "fn": s["fn"]})
             elif s["state"] == "many":
                 out["many"].append({"on": where, "fn": s["fn"], "candidates": s["cands"]})
-            if s["loose"] and above:
-                out["loose"].append({"on": where, "caller": above[-1], "fn": s["fn"]})
-            if s["off"]:
-                out["off"].append({"on": where, "fn": s["fn"], "unit": s["unitName"]})
+            if s["loose"]:
+                out["loose"].append({"on": where, "caller": s["caller"], "fn": s["fn"]})
             out["names"] += [{"on": where, "fn": s["fn"], "name": v["name"]} for v in s["ins"] + s["outs"] if v["lost"]]
-            above.append(s["fn"])
+            if s["auto"]:
+                continue
+            if not s["what"]:
+                out["untold"].append({"on": where, "fn": s["fn"]})
+            if s["state"] == "ok" and s["params"] and not s["ins"] and not s["outs"]:
+                out["bare"].append({"on": where, "fn": s["fn"]})
     return out
 
 
@@ -2656,7 +2897,7 @@ def cmd_calls(root, parts, t, args):
             home = fn_unit(fn, parts)
             again = (fn["file"], fn["qual"]) in shown
             row = {"depth": depth, "fn": fn["qual"], "file": fn["file"], "line": fn["line"], "sig": fn["sig"],
-                   "line1": one_line(fn),
+                   "line1": one_line(fn), "params": [p["name"] for p in fn["params"]],
                    "unit": unit_label(home) if home is not None else "", "again": again, "unsure": []}
             rows.append(row)
             if again or depth >= args.depth or len(rows) >= TREE_NODES:
@@ -2669,6 +2910,19 @@ def cmd_calls(root, parts, t, args):
         walk(fn, 0)
         if args.json:
             print(json.dumps({"from": args.start, "depth": args.depth, "calls": rows}, ensure_ascii=False, indent=2))
+            return
+        if args.draft:   # the frame of a chain, as measured: the sentences and the meanings are left to write
+            print("```calls")
+            for r in rows:
+                several = len(code.defined(r["fn"].split(".")[-1], r["fn"])) > 1
+                print("%s%s | " % ("  " * r["depth"], (r["file"] + ":" if several else "") + r["fn"]))
+                for name in r["params"]:
+                    print("%s  %s %s: " % ("  " * r["depth"], t["run_in"], name))
+            print("```")
+            unsure = sorted({x for r in rows for x in r["unsure"]})
+            if unsure:
+                print(t["calls_unsure"].format(x=("、" if zh else ", ").join(unsure[:30])))
+            print(t["calls_draft"])
             return
         print(t["calls_tree"].format(fn=fn["qual"], d=args.depth))
         for r in rows:
@@ -2683,37 +2937,67 @@ def cmd_calls(root, parts, t, args):
         return
     wiring = Wiring(parts, args.routes, args.top)
     runs = load_runs(root, args.runs, args.routes, parts, args.top)[0]
-    chains = load_chains(root, files, parts, args.routes, args.top, wiring, runs)
-    rows = chain_rows(chains, t)
+    listed = os.path.relpath(args.list_path, root).replace(os.sep, "/")
+    chains, book = load_chains(root, files, parts, args.routes, args.top, wiring, runs, args.calls_path, listed,
+                               source=False)
     if args.json:
-        print(json.dumps({"chains": [dict(c, on=where) for where, c in rows], "problems": chain_problems(chains, t)},
-                         ensure_ascii=False, indent=2))
+        print(json.dumps({"file": args.calls_home, "chains": chains, "problems": chain_problems(chains),
+                          "notes_file": book["notes_file"], "notes": {k: v["note"] for k, v in book["fns"].items() if v["note"]},
+                          "notes_lost": book["lost"]}, ensure_ascii=False, indent=2))
         return
-    if not rows:
-        print(t["calls_none"])
+    if not chains:
+        print(t["calls_none"].format(file=args.calls_home))
         return
-    print(t["calls_head"].format(n=len(rows)))
-    for where, c in rows:
-        own = "" if not c["title"] or where.endswith(c["title"]) else "  " + c["title"]
-        print("  %s%s  [%s]" % (where, own, t["calls_steps"].format(n=len(c["steps"]), k=c["units"])))
-        for k, s in enumerate(c["steps"], 1):
+    print(t["calls_head"].format(n=len(chains)))
+    for c in chains:
+        print("  %s  [%s%s%s%s%s]" % (c["title"] or "?", t["calls_steps"].format(n=c["n"], k=len(c["units"])),
+                                      t["sep"] + t["calls_auto"].format(n=c["auto"]) if c["auto"] else "",
+                                      t["sep"] + t["calls_forks"].format(n=c["forks"]) if c["forks"] else "", t["sep"], c["file"]))
+        for line in c["intro"]:
+            print("    " + line)
+        k = 0
+        for s in c["steps"]:
+            pad_ = "      " + "    " * (s["d"] + len(s["cases"]))
+            if s["kind"] != "fn":
+                print("%s%s %s%s" % (pad_ if s["kind"] == "branch" else pad_ + "  ", t["calls_" + s["kind"]], s["what"],
+                                     ("：" if zh else ": ") + s["note"] if s["note"] else ""))
+                for line in s["more"]:
+                    print(pad_ + "     " + line)
+                continue
+            k += 1
+            pad_ += "    " if s["cases"] else ""
             flags = [t["calls_flag_" + s["state"]]] if s["state"] != "ok" else []
             flags += [t["calls_flag_loose"]] if s["loose"] else []
-            flags += [t["calls_flag_off"].format(u=s["unitName"])] if s["off"] else []
             at = "%s:%d" % (s["file"], s["line"]) if s["file"] else ""
-            pad_ = "      " + "    " * s["depth"]
-            print("%s%d. %s  %s%s%s" % (pad_, k, s["line1"] or s["name"] + "()", at,
-                                        "  [%s]" % s["unitName"] if s["unitName"] else "",
-                                        "  ! " + t["sep"].join(flags) if flags else ""))
-            if s["what"]:
-                print(pad_ + "   " + s["what"])
-            for way, values in ((t["run_in"], s["ins"]), (t["run_out"], s["outs"])):
+            if s["auto"]:   # filled in from the code: one line, nothing was written about it
+                print("%s%d. %s  %s%s  %s" % (pad_, k, s["line1"], at, "  [%s]" % s["unitName"] if s["unitName"] else "",
+                                             t["calls_filled"]))
+                continue
+            print("%s%d. %s  %s%s%s%s" % (pad_, k, s["line1"] or s["name"] + "()", at,
+                                          "  [%s]" % s["unitName"] if s["unitName"] else "",
+                                          "  " + t["calls_noted"] if book["fns"].get(s["key"], {}).get("note") else "",
+                                          "  ! " + t["sep"].join(flags) if flags else ""))
+            for line in ([s["what"]] if s["what"] else []) + s["more"]:
+                print(pad_ + "   " + line)
+            for way, arrow, values in ((t["run_in"], "←", s["ins"]), (t["run_out"], "→", s["outs"])):
                 for v in values:
-                    print("%s   %s  %s%s%s%s" % (pad_, way, v["name"], " (%s)" % v["type"] if v["type"] else "",
-                                                 ("：" if zh else ": ") + v["what"] if v["what"] else "",
-                                                 "  ! " + t["calls_flag_name"] if v["lost"] else ""))
+                    print("%s   %s  %s%s%s%s%s" % (pad_, way, v["name"], " (%s)" % v["type"] if v["type"] else "",
+                                                   ("：" if zh else ": ") + v["what"] if v["what"] else "",
+                                                   "  %s %s" % (arrow, v["via"]) if v["via"] else "",
+                                                   "  ! " + t["calls_flag_name"] if v["lost"] else ""))
+            untold = [p["name"] for p in s["params"] if not p["told"]]
+            if untold and (s["ins"] or s["outs"]):
+                print(pad_ + "   " + t["calls_untold"].format(x=("、" if zh else ", ").join(untold)))
             for cand in s["cands"]:
                 print(pad_ + "   ? " + cand)
+        if c["passed"]:
+            print("      " + t["calls_passed"].format(n=c["passed"]))
+    if any(c["in_list"] for c in chains):
+        print(t["calls_in_list"].format(n=sum(1 for c in chains if c["in_list"]), file=args.calls_home))
+    if book["notes"]:
+        print(t["calls_notes"].format(n=book["notes"], file=book["notes_file"]))
+    for x in book["lost"]:
+        print("  ! " + t["calls_note_lost"].format(fn=x["fn"]))
 
 
 def cmd_check(root, parts, t, args):
@@ -3230,7 +3514,9 @@ def cmd_doctor(root, parts, t, args):
     runs, runs_loose = load_runs(root, args.runs, args.routes, parts, args.top)
     ran = run_problems(runs, runs_loose)
     plain = [unit_label(u) for u in list(args.top["wings"]) + units if not u.explain and not (isinstance(u, Part) and u.outside)]
-    chained = chain_problems(load_chains(root, files, parts, args.routes, args.top, wiring, runs), t)
+    chains, book = load_chains(root, files, parts, args.routes, args.top, wiring, runs, args.calls_path, listed,
+                               source=False)
+    chained = dict(chain_problems(chains), notes_lost=book["lost"])
     if args.json:
         print(json.dumps({"list": listed, "dead_paths": [{"unit": u, "path": p} for u, p in dead],
                           "unmapped": len(unmapped), "near_names": near, "wrong_level": level, "unbacked": loose,
@@ -3306,7 +3592,10 @@ def cmd_doctor(root, parts, t, args):
                                      for x in chained["many"]])
     section(t["doctor_calls_loose"], ["%s%s%s() → %s()" % (x["on"], colon, x["caller"], x["fn"]) for x in chained["loose"]])
     section(t["doctor_calls_names"], [t["doctor_calls_names_row"].format(**x) for x in chained["names"]])
-    section(t["doctor_calls_off"], [t["doctor_calls_off_row"].format(**x) for x in chained["off"]])
+    section(t["doctor_calls_untold"], ["%s%s%s()" % (x["on"], colon, x["fn"]) for x in chained["untold"]])
+    section(t["doctor_calls_bare"], ["%s%s%s()" % (x["on"], colon, x["fn"]) for x in chained["bare"]])
+    section(t["doctor_calls_forks"], [x["on"] + colon + x["branch"] for x in chained["forks"]])
+    section(t["doctor_notes_lost"], [x["fn"] for x in chained["notes_lost"]])
     if not found:
         print("  " + t["doctor_ok"])
     if bare:
@@ -3456,11 +3745,13 @@ def cmd_web(root, parts, t, args):
                 for x in wiring.ports(u)]
 
     runs = load_runs(root, args.runs, args.routes, parts, args.top)[0]
-    chains = load_chains(root, files, parts, args.routes, args.top, wiring, runs)
+    listed = os.path.relpath(args.list_path, root).replace(os.sep, "/")
+    chains, book = load_chains(root, files, parts, args.routes, args.top, wiring, runs, args.calls_path, listed,
+                               source=not args.no_source)
 
     def card(u):
         """What the page shows for a part or a sub-part."""
-        return {"explain": u.explain, "calls": chains["units"].get(u, []), "ports": ports(u), "drawn": age[u][0] if u in age else "", "since": age[u][1] if u in age else 0, "name": u.name, "icon": u.icon, "flow": u.flow, "what": u.what, "sensitive": u.sensitive,
+        return {"explain": u.explain, "ports": ports(u), "drawn": age[u][0] if u in age else "", "since": age[u][1] if u in age else 0, "name": u.name, "icon": u.icon, "flow": u.flow, "what": u.what, "sensitive": u.sensitive,
                 "rules": u.rules, "paths": [x[0] for x in u.patterns], "external": u.external,
                 "files": n[u][1] if u.outside else n[u][0], "outside": 0 if u.outside else n[u][1]}
 
@@ -3531,8 +3822,7 @@ def cmd_web(root, parts, t, args):
         "shared": [{"file": r["file"], "who": r["keys"]} for r in rows if len(r["who"]) > 1][:8],
     }
 
-    listed = os.path.relpath(args.list_path, root).replace(os.sep, "/")
-    records = tuple(x for x in (os.path.relpath(args.list_path, root).replace(os.sep, "/"),
+    records = tuple(x for x in (listed, args.calls_home,
                                 (tasks[0]["rel"] + "/") if tasks and tasks[0]["rel"] else "") if x)
     lately = [changes(root, args.list_path, parts, args.routes, args.top, wiring, commits, tasks, days, records)
               for days in SPANS]
@@ -3545,9 +3835,10 @@ def cmd_web(root, parts, t, args):
             "links": lifted(links, "top"), "measured": langs, "routes": args.routes,
             # the latest recorded run of each route, in the routes' order; null where none was recorded
             "runs": runs,
-            # the call chain of each route, in the routes' order (null where none is written), then the
-            # chains that carry a title no route has; what the project is, in a few sentences
-            "chains": chains["routes"], "chainsMore": chains["more"], "explain": args.top["explain"],
+            # the call chains, a view of their own; where they are kept; what the project is, in a few sentences
+            "chains": chains, "callsFile": args.calls_home, "explain": args.top["explain"],
+            # the functions on the chains: their own lines and the note the reader keeps on each
+            "fns": {k: v for k, v in book["fns"].items() if not v.get("off")}, "notesFile": book["notes_file"],
             "frame": args.top["frame"],
             "wings": [{"name": w.name, "what": w.what, "icon": w.icon, "flow": w.flow, "ports": ports(w),
                        "explain": w.explain,
@@ -3598,18 +3889,35 @@ the parts list (docs/parts.md, PARTS.md or .bearings/parts.md), every keyword it
     Name | note       with no arrow: a box that is not on the path at run time; the note says whom it serves
     a box named exactly like a wing, part or room is a door to it
   under a `# Wing` heading, before its first part: one plain line on what the wing is for, and 图标：/ Icon:
-  ```calls          a call chain: the functions that do the work, in the order they are called
-                      inside a part or a room    how that unit does its work (a title may follow, as below)
-  ```calls Title    outside every part: the chain behind the route of that title
+
+the call chains (calls.md beside the parts list: docs/calls.md, or CALLS.md, or .bearings/calls.md). They are kept
+apart from the parts list and its diagrams, and the page shows them in a view of their own:
+  ## Title                  one chain: something the code does, from where it enters to where it ends
+  plain lines               what the chain is about: what sets it off, where it ends, how often it runs
+  ```calls                  its functions, in the order they are called
     function | what it does       a function, named as the code names it; `Class.method` or
                                   `path/file.py:function` when several share the name
+      more sentences              any further line under a function says more about it: when it is called,
+                                  what it decides, what it leaves behind, what happens when it fails
       function | what it does     set in under another: called by it
-      进 name: what it is     or  in name: ...     something important that goes into the function above:
-                                                   a parameter, a variable or a field it reads
-      出 name: what it is     or  out name: ...    something that comes out: what it returns (`出 返回: ...`,
-                                                   `out return: ...`), a variable or field it sets
-    where each function is, its parameters and whether the one above calls it are read from the code
-    (Python, JavaScript/TypeScript, Go, C/C++); `bearings.py calls --from NAME` prints what NAME calls
+      进 name: what it is | where it comes from     or  in name: ...     something that goes into the function
+                                  above: a parameter, a variable or a field it reads
+      出 name: what it is | where it goes           or  out name: ...    something that comes out: what it returns
+                                  (`出 返回: ...`, `out return: ...`), a variable or a field it sets
+      分支 what varies | note     or  branch ...     the chain forks here: which bus, which encoder, which mode
+        情况 name | when it applies   or  case ...   one way through the fork; the functions it calls are set in
+                                  under it. What every case shares is written once, above and below the fork
+      展开 2        or  expand 2             under a function: the script fills in what that function calls, two
+                                  levels down, as it reads it from the code. Nothing has to be written for those
+  where each function is, its signature, its parameters and their types, the comment the code carries on it and
+  whether the function above calls it are read from the code (Python, JavaScript/TypeScript, Go, C/C++);
+  `bearings.py calls --from NAME` prints what NAME calls, and with --draft prints it as the frame of a block to
+  fill in. A ```calls block inside the parts list is still read.
+
+a reader's notes on functions (calls-notes.md beside calls.md). The chain gives the frame; what a function does line
+by line is for the reader to work out and keep. The page shows each function's source beside its note:
+  ## path/file.py:function     or  ## function  /  ## Class.method  when the name is the only one
+  anything                     the note, as Markdown, down to the next `##` heading
 
 a task's lines for people (the `## For People` section of its record, docs/tasks/<task>.md; in older
 projects docs/tasks/<task>/handoff.md):
@@ -3635,15 +3943,19 @@ def main():
     ap.add_argument("--file", help="parts list, relative to the repo root (default: docs/parts.md)")
     ap.add_argument("--tasks", default=TASKS_DIR, metavar="DIR",
                     help="folder of task dossiers kept by the implementation-journal skill (default: docs/tasks)")
+    ap.add_argument("--calls-file", metavar="FILE",
+                    help="the file of call chains, relative to the repo root (default: calls.md beside the parts list)")
     ap.add_argument("--runs", default=RUNS_DIR, metavar="DIR",
                     help="folder of recorded runs, one JSON file each (default: docs/runs)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("runs", help="the recorded runs: one real run of a route, step by step, with file, line and values")
     r.add_argument("--json", action="store_true")
-    f = sub.add_parser("calls", help="the call chains on the list checked against the code; --from NAME: what NAME calls")
+    f = sub.add_parser("calls", help="the call chains (docs/calls.md) checked against the code; --from NAME: what NAME calls")
     f.add_argument("--from", dest="start", metavar="NAME", help="a function (`name`, `Class.method` or `path/file:name`): "
                    "print what it calls, and those in turn, measured from the code")
     f.add_argument("--depth", type=int, default=3, help="how many levels down --from follows (default 3)")
+    f.add_argument("--draft", action="store_true",
+                   help="with --from: print the measured calls as the frame of a ```calls block, to fill in")
     f.add_argument("--json", action="store_true")
     j = sub.add_parser("tasks", help="the tasks in progress and finished lately: what the agent wrote for people, and the parts touched")
     j.add_argument("--json", action="store_true")
@@ -3662,6 +3974,8 @@ def main():
     w.add_argument("--open", action="store_true", help="open it in the browser")
     w.add_argument("--fragment", action="store_true", help="omit the html/head/body wrapper")
     w.add_argument("--no-links", action="store_true", help="do not read the code to measure which part uses which")
+    w.add_argument("--no-source", action="store_true",
+                   help="leave the source of the functions on the call chains out of the page (for a page that will be shared)")
     k = sub.add_parser("links", help="which part uses which, measured from import statements")
     k.add_argument("--json", action="store_true")
     d = sub.add_parser("doctor", help="check the list against the code: stale paths, misspelt boxes, aged diagrams")
@@ -3677,6 +3991,7 @@ def main():
         raise SystemExit(TEXT["zh"]["no_parts"].format(files=" / ".join(PARTS_FILES)) + "\n"
                          + TEXT["en"]["no_parts"].format(files=" / ".join(PARTS_FILES)))
     t = TEXT[language(parts)]
+    args.calls_path, args.calls_home = calls_path(root, args.list_path, args.calls_file)
     {"parts": cmd_parts, "check": cmd_check, "web": cmd_web, "links": cmd_links, "doctor": cmd_doctor,
      "tasks": cmd_tasks, "windows": cmd_windows, "runs": cmd_runs, "calls": cmd_calls}[args.cmd](root, parts, t, args)
 

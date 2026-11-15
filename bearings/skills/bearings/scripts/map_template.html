@@ -197,13 +197,47 @@ svg.rel{display:block;margin:0 auto}
 .lead[hidden]{display:none}
 .explain{display:flex;flex-direction:column;gap:7px;max-width:46em}
 .explain p{font-size:15.5px;line-height:1.7}
-/* a call chain: the functions that do the work, in the order they are called. One called by another is set in
-   under it, on a rail. What each is for is written; where it is and what it takes are read from the code. */
-.chains{display:flex;flex-direction:column;gap:12px}
-.chainbox{margin-top:14px}
-.chainbox>.ask{margin-top:2px}
-.chain{--ind:26px;background:var(--sheet);border:1.5px solid var(--hair);border-radius:12px;padding:13px 14px;display:flex;flex-direction:column;gap:11px}
-@media (max-width:640px){.chain{--ind:12px}}
+/* The call chains have a view of their own, apart from the diagrams: the diagrams tell the idea, this tells
+   the code. On the left every chain; on the right the one picked: what it is about, its functions at a glance,
+   then a card for each function. One called by another is set in under it, on a rail. What a function is for
+   is written; where it is, its signature and its parameters are read from the code. */
+.cv{display:grid;grid-template-columns:minmax(0,240px) minmax(0,1fr);gap:16px;align-items:start;padding:2px 4px}
+.cvlist{display:flex;flex-direction:column;gap:6px;min-width:0}
+@media (max-width:860px){.cv{grid-template-columns:minmax(0,1fr)} .cvlist{flex-direction:row;flex-wrap:wrap} .cvpick{flex:1 1 200px}}
+.cvpick{display:flex;flex-direction:column;gap:3px;text-align:left;border:1.5px solid var(--hair);background:var(--sheet);border-radius:10px;padding:8px 11px;cursor:pointer;min-width:0}
+.cvpick:hover{border-color:var(--ink)}
+.cvpick[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 4px 0 0 var(--ink)}
+.cvn{font-weight:700;font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+.cvm{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:12.5px;color:var(--muted)}
+.cvm .pic{width:16px;height:16px;font-size:11px;border-radius:4px}
+.cvm .tpics{gap:2px}
+.cvmain{--ind:26px;display:flex;flex-direction:column;gap:14px;min-width:0}
+@media (max-width:640px){.cvmain{--ind:12px}}
+.cvhead{display:flex;flex-direction:column;gap:8px;min-width:0}
+.cvhead h3{font-size:22px;font-weight:900;line-height:1.25;color:var(--ink);margin:0;overflow-wrap:anywhere}
+.cvhead p{font-size:15.5px;line-height:1.7;max-width:46em}
+.cvhead .pals{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.cvtree{border:1.5px solid var(--hair);border-radius:10px;background:var(--sheet);padding:9px 6px 7px;display:flex;flex-direction:column;min-width:0}
+.cvtree>.iot{padding:0 8px 4px}
+.cvtree button{display:grid;grid-template-columns:1.6em 9px minmax(0,auto) minmax(0,1fr);gap:8px;align-items:baseline;border:0;background:none;text-align:left;
+  padding:4px 8px 4px calc(8px + var(--d)*20px);cursor:pointer;border-radius:6px;min-width:0}
+.cvtree button:hover{background:var(--paper)}
+.cvtree .rk{font-family:var(--f-num);font-size:14px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.cvtree .dot{width:9px;height:9px;border-radius:3px;background:var(--z);align-self:center}
+.cvtree code{font-weight:700;font-size:13px;background:none;border:0;padding:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cvtree .cvw{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cvtree .off{opacity:.42}
+.cvfork{display:flex;gap:7px;align-items:center;font-size:12.5px;font-weight:700;color:var(--muted);padding:5px 8px 2px calc(8px + var(--d)*20px)}
+.cvfork .ic{font-size:14px}
+.cvtree .cvcase{grid-template-columns:1.6em 9px minmax(0,auto) minmax(0,1fr)}
+.cvtree .cvcase b{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cvtree .dia{width:8px;height:8px;transform:rotate(45deg);border:1.5px solid var(--ink);align-self:center}
+.cvtree .cvcase:not(.off) .dia{background:var(--ink)}
+.cfork{position:relative;border:1.5px dashed var(--ink);border-radius:10px;padding:10px 13px 11px;display:flex;flex-direction:column;gap:8px;background:var(--paper);min-width:0}
+.cforkh{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:14.5px}
+.cforkh .ic{font-size:17px}
+.cforkh>span{color:var(--muted);font-size:13.5px}
+.cfork .rchips{margin-top:0}
 .csteps{display:flex;flex-direction:column}
 .crow{padding-left:calc(var(--d)*var(--ind));padding-top:8px;background-repeat:no-repeat}
 .crow:first-child{padding-top:0}
@@ -216,13 +250,45 @@ svg.rel{display:block;margin:0 auto}
 .cunit{font-size:13px;padding:2px 9px 2px 3px}
 .cunit .pic{width:20px;height:20px;font-size:13px;border-radius:5px}
 .cwhat{font-size:15px;line-height:1.55;max-width:46em}
-.cio{display:grid;grid-template-columns:auto minmax(0,max-content) minmax(0,1fr);gap:5px 10px;align-items:baseline;font-size:13.5px}
-.cd{font-size:11.5px;font-weight:700;border-radius:5px;padding:0 8px;line-height:19px;white-space:nowrap;box-shadow:inset 0 0 0 1.5px var(--z);color:var(--z)}
+.cwhat.auto{color:var(--muted)} .cwhat.auto .tagx{margin-left:10px}
+.cmore{display:flex;flex-direction:column;gap:5px;max-width:46em;font-size:14.5px;line-height:1.65}
+.cloc{font-size:12.5px;user-select:all;-webkit-user-select:all;cursor:text;margin-left:auto}
+.cstep.flash{outline:3px solid var(--ink);outline-offset:2px}
+/* what goes into a function and what comes out: its name and type, what it is, where it comes from or goes */
+.ios{display:flex;flex-direction:column;border:1.5px solid var(--hair);border-radius:8px;overflow:hidden}
+.iorow{display:grid;grid-template-columns:40px minmax(0,27%) minmax(0,1fr) minmax(0,30%);gap:3px 12px;align-items:baseline;padding:7px 10px;border-top:1px solid var(--hair);font-size:13.5px;line-height:1.55}
+.iorow:first-child{border-top:0}
+.iorow.h{font-size:12px;font-weight:700;color:var(--muted);background:var(--paper)}
+.iorow .via{color:var(--muted);min-width:0;overflow-wrap:anywhere}
+.iorow.dim .cw{color:var(--muted)}
+@media (max-width:640px){.iorow{grid-template-columns:40px minmax(0,1fr)} .iorow.h{display:none} .iorow .cw,.iorow .via{grid-column:2}}
+.cd{font-size:11.5px;font-weight:700;border-radius:5px;padding:0 8px;line-height:19px;white-space:nowrap;box-shadow:inset 0 0 0 1.5px var(--z);color:var(--z);justify-self:start}
 .cd.out{background:var(--z);color:var(--on)}
+.iorow.dim .cd{box-shadow:inset 0 0 0 1.5px var(--hair);background:none;color:var(--muted)}
 .cn{min-width:0;overflow-wrap:anywhere}
 .cn .ct{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);margin-left:6px}
-.cw{min-width:0}
+.cw{min-width:0;overflow-wrap:anywhere}
 .cw i{font-style:normal;font-weight:600;color:var(--warn);margin-left:8px}
+.csig.open{cursor:pointer} .csig.open:hover{border-color:var(--ink)}
+.nbtn,.nbtns button,.fnnav button{display:inline-flex;gap:6px;align-items:center;border:1.5px solid var(--ink);background:var(--sheet);border-radius:999px;padding:2px 12px;font-size:12.5px;font-weight:600;cursor:pointer;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nbtns button[hidden]{display:none}
+.nbtn.has::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--z);flex:none}
+.fnp{display:flex;flex-direction:column;gap:12px;min-width:0}
+.fnnav,.nbtns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fnnav button{font-size:13px;padding:3px 13px}
+.fnh{margin:0;line-height:1.2} .fnh code{font-size:20px;font-weight:700;background:none;border:0;padding:0;color:var(--ink)}
+.fngrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:1000px){.fngrid{grid-template-columns:minmax(0,1fr)}}
+.src{margin:0;border:1.5px solid var(--hair);border-radius:10px;background:var(--sheet);padding:8px 0;overflow:auto;max-height:680px;font-family:var(--f-mono);font-size:12.5px;line-height:1.65}
+.src .l{display:block;white-space:pre;padding-right:14px;min-height:1.65em}
+.src .l::before{counter-increment:l;content:counter(l);display:inline-block;width:3.4em;margin-right:12px;padding-right:9px;text-align:right;color:var(--muted);border-right:1px solid var(--hair);user-select:none;-webkit-user-select:none}
+.nedit{width:100%;min-height:200px;resize:vertical;border:1.5px solid var(--ink);border-radius:10px;background:var(--sheet);color:var(--ink);padding:10px 12px;font-family:var(--f-text);font-size:14px;line-height:1.6}
+.nview{border:1.5px dashed var(--hair);border-radius:10px;padding:10px 12px;font-size:14.5px;line-height:1.65;display:flex;flex-direction:column;gap:7px;min-width:0;overflow-wrap:anywhere;background:var(--sheet)}
+.nview ul{margin:0;padding-left:1.3em} .nview pre{margin:0;overflow-x:auto;white-space:pre}
+.nstate{font-size:12px;font-weight:600;color:var(--muted);margin-left:8px} .nstate.local{color:var(--warn)}
+.chref{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--ink);background:var(--sheet);border-radius:999px;padding:3px 13px;font-size:13.5px;font-weight:600;cursor:pointer}
+.chref .pct{font-family:var(--f-num);font-size:14.5px;color:var(--muted)}
 .cstep details summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted)}
 .cstep details .rc{font-size:11.5px;font-weight:700;margin-left:9px;padding:0 8px;border-radius:9px;background:var(--ink);color:var(--paper)}
 .cstep details>div{display:flex;flex-direction:column;gap:8px;margin-top:8px}
@@ -484,7 +550,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     note:'M6 3h9l4 4v14H6zM15 3v4h4M9 12h7M9 16h5',
     box:'M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8',
     lock:'M6 11h12v9H6zM9 11V8a3 3 0 0 1 6 0v3',
-    sign:'M12 4l9 15H3zM12 10v4M12 16.5v.5'
+    sign:'M12 4l9 15H3zM12 10v4M12 16.5v.5',
+    fork:'M6 3v6a6 6 0 0 0 6 6h6M6 9v12M15 12l3 3-3 3'
   };
   function ic(name){return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="'+(ICONS[name]||ICONS.box)+'"/></svg>';}
   function pic(name){return '<span class="pic">'+ic(name)+'</span>';}
@@ -523,12 +590,21 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     runWhere:'代码位置',runDir:'方向',runName:'名字',runCol:'这次运行的实际值',runIn:'进',runOut:'出',runNone:'这一步没有记下数据。',runEmpty:'这份记录里没有步骤。',
     runCap:'上面的数值是量出来的：来自一次真实运行。它说明这一次是这样走的，不说明每一次都这样走。',runFile:'记录在 {f}',runEarlier:'另有 {n} 份更早的记录',runDropped:'还有 {n} 步没有记下（同一个函数被调用了太多次）。',
     exH:'说明',exAsk:'这一块还没有说明。想要一段大白话的解释，对 AI 说：',exSay:'给“{n}”写一段说明',
-    chH:'函数调用链',chMeta:'{n} 个函数，经过 {k} 块',chMeta1:'{n} 个函数',chIn:'进',chOut:'出',chReturn:'返回值',
-    chCap:'从上往下是调用的先后；缩进的一步，是被它上面那一步调用的。函数在哪、有哪些参数是从代码里量出来的，每一步的说明是写下来的。',
+    vCalls:'函数调用',capCalls:'代码里的函数怎么一个调一个。这一页和框架图是分开的两件事：框架图讲思路，这里讲代码。',
+    chH:'函数调用链',chMeta1:'{n} 个函数',chN:'调用链 {n}',chIn:'进',chOut:'出',chReturn:'返回值',chParts:'经过',chTree:'这条链上的函数',chForks:'{n} 处分支',chFork:'分支：',chAuto:'展开量出来的',chPassed:'展开时略过了 {n} 个只有几行、不再调用别的函数的函数（多半是取值和设值）。',chAutoNone:'这个函数是脚本顺着调用关系从代码里量出来的，调用链里没有给它写说明。',chWays:'{n} 种情况，选一种看',chNoStep:'这种情况下这里不调用别的函数。',
+    chForkCap:'分支的地方，几种情况共用上面和下面的函数，只有中间不同；选一种情况，就只显示它走的那一段。',
+    chCap:'从上往下是调用的先后；缩进的一步，是被它上面那一步调用的。函数在哪、它的写法和参数类型是从代码里量出来的；每个函数的那一句话、每个进出的东西是什么，是写下来的。函数里面一行一行在做什么，点“看代码、记笔记”自己读、自己记。',chFile:'这条调用链写在 {f} 里。',
+    ioDir:'方向',ioName:'名字和类型',ioWhat:'是什么',ioVia:'从哪来 / 到哪去',chUntold:'调用链里还没有写它是什么',
     chLost:'代码里找不到这个函数了（可能改过名）',chMany:'有好几个同名的函数，分不清是哪一个',chText:'这种语言读不了，只按名字找到了它的位置。',
-    chLoose:'上面那个函数的代码里没有提到它（可能经过回调、事件或网络）',chOff:'这一步在“{u}”里，主线图上没有这个方框。',chNoName:'函数里找不到这个名字',
-    chCode:'代码位置和完整写法',chRan:'有实测值',chRanH:'真实运行里的值（{d}，主线“{r}”）',chMore:'还有 {n} 个函数没有列出。',
-    chAsk:'想看这一块里的函数是怎么一个调一个的、传进传出了什么，对 AI 说：',chAskRoute:'这条主线还没有函数调用链。想看每一步是哪个函数、传进传出了什么，对 AI 说：',chSay:'给“{n}”画函数调用链',
+    chLoose:'上面那个函数的代码里没有提到它（可能经过回调、事件或网络）',chNoName:'函数里找不到这个名字',
+    chDoc:'代码里自己的注释',chRan:'真实运行里的值',chRanH:'{d} 录的一次真实运行（主线“{r}”）',chMore:'还有 {n} 个函数没有列出。',
+    fnNote:'笔记',fnNoteOpen:'看代码、记笔记',fnSrc:'这个函数的代码',fnSrcCut:'只带上了前 {n} 行。',fnNoSrc:'这一页没有带上这个函数的代码，到这里看：',
+    fnMine:'我的笔记',fnPh:'在这里写你对这个函数的理解：每一段在做什么，哪里容易看错。也可以把 AI 的解释里有用的部分贴进来。',fnEmpty:'还没有笔记。',
+    fnSaved:'已存进项目（{f}）',fnLocal:'只存在这个浏览器里，还没存进项目',fnCopy:'复制这条笔记',fnCopyAll:'复制还没存进项目的笔记（{n} 条）',fnCopied:'已复制',
+    fnHow:'笔记一边写一边存在这个浏览器里。想存进项目、让别人也看到：点“复制”，把内容贴进 {f}，或者对 AI 说下面这句再贴上：',fnSaySave:'把这些函数笔记存进项目',
+    fnAskAI:'想让 AI 先替你读一遍这个函数，对 AI 说：',fnSayAI:'给 `{n}` 写逐行笔记',
+    chNone:'这个项目还没有函数调用链。',chAskAny:'想看代码里的函数怎么一个调一个、每个函数进出了什么，对 AI 说：',chSayAny:'给这个项目画函数调用链',
+    chThrough:'经过这一块的函数调用链',chAsk:'还没有经过这一块的函数调用链。想看这一块里的函数怎么调用、进出了什么，对 AI 说：',chSay:'给“{n}”画函数调用链',
     ioH:'进来什么，出去什么',ioIn:'进来',ioOut:'出去',ioBoth:'来回',ioOpen:'虚线的：上一层的图画了这条线，这里面的图还没有接上。',ioFrom:'画在“{w}”上',
     shelf:'不在运行的路上，在旁边支撑',outKey:'色块外面的，是它连着的别的方框，点一下走过去。',
     wingMeta:'{k} 个部分，{n} 个文件',wingAsk:'想看这个区里的部分怎么配合，对 AI 说：',wingSay:'给“{n}”这个区画一张图',
@@ -577,12 +653,21 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     runWhere:'In the code',runDir:'Way',runName:'Name',runCol:'The value in this run',runIn:'in',runOut:'out',runNone:'Nothing was noted for this step.',runEmpty:'This record holds no steps.',
     runCap:'The values above are measured: they come from one real run. They show how it went this once, not how it goes every time.',runFile:'Kept in {f}',runEarlier:'{n} earlier records',runDropped:'{n} more steps were not noted (one function was called too many times).',
     exH:'In plain words',exAsk:'Nobody has explained this one yet. For a few plain sentences, say to the AI:',exSay:'Write an explanation for "{n}"',
-    chH:'Call chain',chMeta:'{n} functions across {k} parts',chMeta1:'{n} functions',chIn:'in',chOut:'out',chReturn:'returns',
-    chCap:'Top to bottom is the order of the calls; a step set in under another is called by it. Where each function is and what it takes are read from the code; what each step is for is written.',
+    vCalls:'Function calls',capCalls:'Which function calls which in the code. This page is kept apart from the diagrams: they tell the idea, this tells the code.',
+    chH:'Call chain',chMeta1:'{n} functions',chN:'Chain {n}',chIn:'in',chOut:'out',chReturn:'returns',chParts:'Passes through',chTree:'The functions on this chain',chForks:'{n} branches',chFork:'Branch: ',chAuto:'filled in from the code',chPassed:'{n} functions of a few lines that call nothing further (getters and setters, mostly) were left out when filling in.',chAutoNone:'The script found this function by following the calls in the code; the chain says nothing about it.',chWays:'{n} cases; pick one to follow',chNoStep:'In this case nothing more is called here.',
+    chForkCap:'At a branch the cases share the functions above and below it and differ only in between; pick a case and only its stretch is shown.',
+    chCap:'Top to bottom is the order of the calls; a step set in under another is called by it. Where a function is, how it is written and the types of its parameters are read from the code; the sentence on each function and what each thing going in or out is, is written. What a function does line by line is yours to read and note: open "Code and notes".',chFile:'This chain is written in {f}.',
+    ioDir:'Way',ioName:'Name and type',ioWhat:'What it is',ioVia:'Where from / where to',chUntold:'the chain does not say what this is yet',
     chLost:'The code no longer has this function (renamed, perhaps)',chMany:'Several functions answer to this name; no telling which',chText:'A language that cannot be read: only its place was found, by name.',
-    chLoose:'The function above never mentions it (it may go through a callback, an event or a network)',chOff:'This step is in "{u}", which the route does not draw.',chNoName:'the function has no such name',
-    chCode:'Place in the code, and how it is written',chRan:'measured',chRanH:'Values from a real run ({d}, route "{r}")',chMore:'{n} more functions are not listed.',
-    chAsk:'To see which function calls which in here, and what goes in and out, say to the AI:',chAskRoute:'This route has no call chain yet. To see which function does each step and what goes in and out, say to the AI:',chSay:'Draw the call chain for "{n}"',
+    chLoose:'The function above never mentions it (it may go through a callback, an event or a network)',chNoName:'the function has no such name',
+    chDoc:'The comment the code carries',chRan:'Values from a real run',chRanH:'One real run recorded {d} (route "{r}")',chMore:'{n} more functions are not listed.',
+    fnNote:'Notes',fnNoteOpen:'Code and notes',fnSrc:'The code of this function',fnSrcCut:'Only its first {n} lines are here.',fnNoSrc:'The code of this function is not on this page. It is at',
+    fnMine:'My notes',fnPh:'Write here what you make of this function: what each stretch does, where it is easy to misread. Or paste in the useful part of an AI\'s explanation.',fnEmpty:'No notes yet.',
+    fnSaved:'kept in the project ({f})',fnLocal:'only in this browser, not in the project yet',fnCopy:'Copy this note',fnCopyAll:'Copy the notes not in the project yet ({n})',fnCopied:'Copied',
+    fnHow:'A note is saved in this browser as you type. To keep it in the project, where others see it too: copy it and paste it into {f}, or say this to the AI and paste:',fnSaySave:'Save these function notes in the project',
+    fnAskAI:'To have the AI read this function for you first, say to the AI:',fnSayAI:'Write line-by-line notes for `{n}`',
+    chNone:'This project has no call chains yet.',chAskAny:'To see which function calls which, and what goes into each and comes out, say to the AI:',chSayAny:'Draw the call chains of this project',
+    chThrough:'Call chains that pass through here',chAsk:'No call chain passes through here yet. To see which function calls which in here, and what goes in and out, say to the AI:',chSay:'Draw the call chain for "{n}"',
     ioH:'What goes in, what comes out',ioIn:'In',ioOut:'Out',ioBoth:'Both ways',ioOpen:'Dashed: the level above draws this line; the diagram in here does not show it yet.',ioFrom:'drawn on "{w}"',
     shelf:'Not on the path at run time; these support it',outKey:'Boxes off the tinted floor are what it connects to. Pick one to go there.',
     wingMeta:'{k} parts, {n} files',wingAsk:'To see how the parts of this wing work together, say to the AI:',wingSay:'Draw the diagram for the wing "{n}"',
@@ -914,8 +999,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   // thing followed from start to end. Where work landed: every part on one plan, the changed ones lit.
   // Which part uses which is measured, and shows as solid or dashed arrows and on each part's own sheet.
   var view=D.frame?'frame':'plan',selName=null,curRoute=D.frame?-1:0,curPart=null,curWing=null,curInner=null;
-  var views=[['plan',T.vPlan,T.capPlan]];
-  if(D.frame||D.routes.length||(D.chainsMore||[]).length)views.unshift(['frame',T.vFrame,D.frame?T.capFrame:T.capRoute]);
+  var views=[['calls',T.vCalls,T.capCalls],['plan',T.vPlan,T.capPlan]];
+  if(D.frame||D.routes.length)views.unshift(['frame',T.vFrame,D.frame?T.capFrame:T.capRoute]);
   // ---- one real run of a route ----
   // A route is written; a run of it is measured. The latest recorded run sits under the route: its steps in the
   // order they began, and for the one picked, the file and line and the values that went in and came out. On the
@@ -924,9 +1009,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   var RUNS=D.runs||[],curStep=0;
   // Under the diagram of the whole project the routes start folded. One that has a recorded run starts open:
   // what was measured should not wait behind a click the reader does not know to make.
-  // The same goes for one whose call chain is written.
-  if(D.frame&&!RUNS.some(function(r,i){if(r){curRoute=i;return true;}return false;}))
-    (D.chains||[]).some(function(c,i){if(c){curRoute=i;return true;}return false;});
+  if(D.frame)RUNS.some(function(r,i){if(r){curRoute=i;return true;}return false;});
   function msText(x){if(x==null)return '';if(x<0.005)return '&lt;0.01 ms';return x>=1000?(x/1000).toFixed(2)+' s':(x<1?x.toFixed(2):x<100?x.toFixed(1):x.toFixed(0))+' ms';}
   function runOpt(run){var o=linkOpt(null);if(!run)return o;
     var at=Object.create(null),plain=o.cls;run.steps.forEach(function(s,i){(at[s.box]=at[s.box]||[]).push(i+1);});
@@ -974,43 +1057,164 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function explainBlock(u){
     if(u.explain&&u.explain.length)return '<div class="blk"><h3>'+T.exH+'</h3><div class="explain">'+u.explain.map(function(x){return '<p>'+rich(x)+'</p>';}).join('')+'</div></div>';
     return u.external?'':'<div class="ask">'+T.exAsk+'<span class="say">'+esc(f(T.exSay,{n:u.name}))+'</span></div>';}
-  // One chain. Each function is a card in the colour of the part its file belongs to; a card for a function in
-  // another part than the sheet's own carries that part's name, and a click on it goes there.
-  function chainHtml(c,selfId){
-    var h='<div class="chain"><div class="runhead"><span class="runtag">'+T.chH+'</span>'+(c.title?'<b>'+esc(c.title)+'</b>':'')+
-      '<span>'+f(c.units>1?T.chMeta:T.chMeta1,{n:c.steps.length,k:c.units})+'</span></div><div class="csteps">';
+  // ---- the call chains: a view of their own ----
+  var CHAINS=D.chains||[],curChain=0;
+  function chainName(i){return CHAINS[i].title||f(T.chN,{n:i+1});}
+  function unitIds(u){return u.wing!=null?u.parts.map(function(k){return 'p'+k;}):[u.parent?'p'+D.parts.indexOf(byName[u.parent])+'.'+byName[u.parent].subs.indexOf(u):'p'+D.parts.indexOf(u)];}
+  function stepsIn(c,ids){return c.steps.filter(function(s){var at=s.unit||'';return ids.some(function(id){return at===id||at.indexOf(id+'.')===0;});}).length;}
+  // On a unit's sheet: which chains have a function in it. A click goes over to that chain.
+  function chainRefs(u){var ids=unitIds(u),l=[];CHAINS.forEach(function(c,i){var n=stepsIn(c,ids);if(n)l.push([i,n]);});
+    if(!l.length)return u.external?'':'<div class="ask">'+T.chAsk+'<span class="say">'+esc(f(T.chSay,{n:u.name}))+'</span></div>';
+    return '<div class="blk"><h3>'+T.chThrough+'</h3><div class="pals">'+l.slice(0,10).map(function(x){
+      return '<button type="button" class="chref" data-chain="'+x[0]+'">'+esc(chainName(x[0]))+'<span class="pct" title="'+esc(f(T.chMeta1,{n:x[1]}))+'">'+x[1]+'</span></button>';}).join('')+
+      (l.length>10?'<span class="sub">'+f(T.more,{n:l.length-10})+'</span>':'')+'</div></div>';}
+  function openChain(i){curChain=i;curFn=null;if(view!=='calls')setView('calls');else drawAlt();setHash('c'+i);$('viewbar').scrollIntoView({block:'start',behavior:'smooth'});}
+  function chainHead(c,i){var us=c.units.map(byId).filter(function(u){return u;});
+    return '<div class="cvhead"><h3>'+esc(chainName(i))+'</h3>'+(c.intro||[]).map(function(x){return '<p>'+rich(x)+'</p>';}).join('')+
+      '<div class="pals"><span class="iot" style="padding-top:0">'+f(T.chMeta1,{n:c.n})+(c.forks?T.sep+f(T.chForks,{n:c.forks}):'')+(us.length?T.sep+T.chParts:'')+'</span>'+
+      c.units.map(function(id){var u=byId(id);return u?'<button type="button" class="pchip cunit '+u.z+'" data-to="'+esc(id)+'">'+pic(u.icon)+'<span>'+esc(u.name)+'</span></button>':'';}).join('')+'</div></div>';}
+  // A chain can fork: the journey goes one way or another depending on something (which bus, which encoder,
+  // which control mode). What is shared is written once; at a fork the reader picks a case and follows that
+  // way through. Which case is picked at each fork of each chain:
+  var picked={};
+  function pickOf(ci,g){var m=picked[ci]||{};return m[g]!=null?m[g]:g;}
+  function shown(ci,s){var c=CHAINS[ci];return s.cases.every(function(a){return pickOf(ci,c.steps[a].group)===a;});}
+  function fnNo(c){var no={},k=0;c.steps.forEach(function(s,i){if(s.kind==='fn')no[i]=++k;});return no;}
+  // The whole chain at a glance: one line a function, set in as the calls are, with every fork and every case.
+  // What lies on a case that is not picked is dimmed; a click on it picks the cases that lead there.
+  function chainTree(c,ci){var no=fnNo(c);
+    return '<div class="cvtree"><span class="iot">'+T.chTree+'</span>'+c.steps.map(function(s,i){
+      var pad=s.d+s.cases.length,off=!shown(ci,s)||(s.kind==='case'&&pickOf(ci,s.group)!==i);
+      if(s.kind==='branch')return '<div class="cvfork'+(shown(ci,s)?'':' off')+'" style="--d:'+pad+'">'+ic('fork')+'<span>'+T.chFork+esc(s.what)+'</span></div>';
+      if(s.kind==='case')return '<button type="button" class="cvcase'+(off?' off':'')+'" data-ccase="'+i+'" style="--d:'+pad+'"><span class="rk"></span><i class="dia"></i><b>'+esc(s.what)+'</b><span class="cvw">'+esc(s.note)+'</span></button>';
+      var u=s.unit?byId(s.unit):null;
+      return '<button type="button" class="'+(u?u.z:'zx')+(off?' off':'')+'" data-cstep="'+i+'" style="--d:'+pad+'"><span class="rk">'+no[i]+'</span><i class="dot"></i><code>'+esc(s.name)+'()</code><span class="cvw">'+esc(s.what||s.doc||'')+'</span></button>';}).join('')+'</div>';}
+  // What goes into a function and what comes out. Every parameter the code gives the function is listed; one
+  // the chain says nothing about is listed dimmed.
+  function ioTable(s){
+    function row(way,v,dim){var ret=v.kind==='return';
+      return '<div class="iorow'+(dim?' dim':'')+'"><span class="cd '+way+'">'+(way==='in'?T.chIn:T.chOut)+'</span><span class="cn">'+(ret?esc(T.chReturn):'<code>'+esc(v.name)+'</code>')+(v.type?'<span class="ct">'+esc(v.type)+'</span>':'')+
+        '</span><span class="cw">'+(dim?(s.auto?'':T.chUntold):rich(v.what))+(v.lost?'<i>'+T.chNoName+'</i>':'')+'</span><span class="via">'+(v.via?(way==='in'?'← ':'→ ')+rich(v.via):'')+'</span></div>';}
+    var silent=(s.params||[]).filter(function(p){return !p.told;}),noRet=s.returns&&!/^(void|None|undefined)$/.test(s.returns)&&!s.outs.some(function(v){return v.kind==='return';});
+    var rows=s.ins.map(function(v){return row('in',v);}).concat(silent.map(function(p){return row('in',{name:p.name,type:p.type},true);}),
+      s.outs.map(function(v){return row('out',v);}),noRet&&s.state==='ok'?[row('out',{kind:'return',type:s.returns},true)]:[]);
+    return rows.length?'<div class="ios"><div class="iorow h"><span>'+T.ioDir+'</span><span>'+T.ioName+'</span><span>'+T.ioWhat+'</span><span>'+T.ioVia+'</span></div>'+rows.join('')+'</div>':'';}
+  // ---- a function's own page: its lines, and the notes a reader keeps on it ----
+  // The chain gives the frame of the calls. What a function does line by line is the reader's to work out, with
+  // the code in front of them, or with an AI's explanation of which they keep what is worth keeping. A note is
+  // saved in this browser as it is typed. The notes the project keeps come from a file beside the chains; a
+  // note that differs from that file is marked as not in the project yet, with a way to carry it over.
+  var FNS=D.fns||{},curFn=null;
+  function noteSlot(k){return 'bearings-note:'+D.project+':'+k;}
+  function inRepo(k){return (FNS[k]&&FNS[k].note)||'';}
+  function localNote(k){try{return localStorage.getItem(noteSlot(k));}catch(e){return null;}}
+  function noteOf(k){var l=localNote(k);return l!=null?l:inRepo(k);}
+  function keepNote(k,v){try{if(v===inRepo(k))localStorage.removeItem(noteSlot(k));else localStorage.setItem(noteSlot(k),v);}catch(e){}}
+  function unsaved(){return Object.keys(FNS).filter(function(k){var l=localNote(k);return l!=null&&l.trim()!==inRepo(k).trim();});}
+  Object.keys(FNS).forEach(function(k){var l=localNote(k);if(l!=null&&l.trim()===inRepo(k).trim())keepNote(k,inRepo(k));}); // carried over since: no longer a draft
+  function noteFile(keys){return keys.map(function(k){return '## '+k+'\n\n'+noteOf(k).trim()+'\n';}).join('\n');}
+  function copyText(text,btn){function done(){var was=btn.textContent;btn.textContent=T.fnCopied;setTimeout(function(){btn.textContent=was;},1400);}
+    function byHand(){var a=document.createElement('textarea');a.value=text;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(a);}
+    try{navigator.clipboard.writeText(text).then(done,byHand);}catch(e){byHand();}}
+  function md(t){var out=[],para=[],list=[],code=null; // a note is Markdown: paragraphs, lists, code, a little emphasis
+    function inl(x){return esc(x).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');}
+    function endP(){if(para.length){out.push('<p>'+para.map(inl).join('<br>')+'</p>');para=[];}}
+    function endL(){if(list.length){out.push('<ul>'+list.map(function(x){return '<li>'+inl(x)+'</li>';}).join('')+'</ul>');list=[];}}
+    String(t).split('\n').forEach(function(line){
+      if(/^\s*```/.test(line)){if(code==null){endP();endL();code=[];}else{out.push('<pre class="csig">'+esc(code.join('\n'))+'</pre>');code=null;}return;}
+      if(code!=null){code.push(line);return;}
+      var m=/^\s*(?:[-*]|\d+[.)])\s+(.*)$/.exec(line),h=/^\s*#{1,6}\s+(.*)$/.exec(line);
+      if(m){endP();list.push(m[1]);}else if(h){endP();endL();out.push('<p><b>'+inl(h[1])+'</b></p>');}else if(!line.trim()){endP();endL();}else{endL();para.push(line);}});
+    if(code!=null)out.push('<pre class="csig">'+esc(code.join('\n'))+'</pre>');endP();endL();return out.join('');}
+  function noteState(k){var v=noteOf(k).trim();return !v?'':(v===inRepo(k).trim()?'<span class="nstate">'+f(T.fnSaved,{f:'<code>'+esc(D.notesFile)+'</code>'})+'</span>':'<span class="nstate local">'+T.fnLocal+'</span>');}
+  function fnPage(c,ci,i){var s=c.steps[i],u=s.unit?byId(s.unit):null,F=FNS[s.key]||{src:'',note:'',line:s.line},no=fnNo(c),on=[];
+    c.steps.forEach(function(x,k){if(x.kind==='fn'&&shown(ci,x))on.push(k);});
+    var at=on.indexOf(i),prev=at>0?on[at-1]:null,next=at>=0&&at<on.length-1?on[at+1]:null,loc=s.file?esc(s.file)+(s.line?':'+s.line:''):'';
+    var lines=F.src?F.src.split('\n'):[],n=unsaved().length;
+    return '<div class="fnp '+(u?u.z:'zx')+'"><div class="fnnav"><button type="button" data-fnback="'+i+'">← '+esc(chainName(ci))+'</button>'+
+      (prev!=null?'<button type="button" data-fnopen="'+prev+'">‹ '+no[prev]+' '+esc(c.steps[prev].name)+'()</button>':'')+
+      (next!=null?'<button type="button" data-fnopen="'+next+'">'+no[next]+' '+esc(c.steps[next].name)+'() ›</button>':'')+'</div>'+
+      '<div class="ctop"><span class="rk">'+no[i]+'</span><h3 class="fnh"><code>'+esc(s.name)+'()</code></h3>'+
+      (u?'<button type="button" class="pchip cunit '+u.z+'" data-to="'+esc(s.unit)+'">'+pic(u.icon)+'<span>'+esc(u.name)+'</span></button>':'')+(loc?'<code class="cloc">'+loc+'</code>':'')+'</div>'+
+      (s.what?'<p class="cwhat">'+rich(s.what)+'</p>':s.auto?'<p class="cwhat auto">'+T.chAutoNone+'<span class="tagx">'+T.chAuto+'</span></p>':'')+(s.more&&s.more.length?'<div class="cmore">'+s.more.map(function(x){return '<p>'+rich(x)+'</p>';}).join('')+'</div>':'')+
+      (s.sig?'<code class="csig">'+esc(s.sig)+'</code>':'')+ioTable(s)+
+      (s.doc?'<div class="blk"><h3>'+T.chDoc+'</h3><p class="cmore">'+esc(s.doc)+'</p></div>':'')+
+      '<div class="fngrid"><div class="blk"><h3>'+T.fnSrc+'</h3>'+
+        (lines.length?'<pre class="src" style="counter-reset:l '+((F.line||1)-1)+'">'+lines.map(function(x){return '<span class="l">'+esc(x)+'</span>';}).join('')+'</pre>'+(F.cut?'<div class="fkey">'+f(T.fnSrcCut,{n:lines.length})+'</div>':'')
+          :'<div class="empty">'+T.fnNoSrc+(loc?' <code>'+loc+'</code>':'')+'</div>')+'</div>'+
+      '<div class="blk"><h3>'+T.fnMine+' <span id="note-state">'+noteState(s.key)+'</span></h3>'+
+        '<textarea class="nedit" id="note-edit" data-key="'+esc(s.key)+'" placeholder="'+esc(T.fnPh)+'">'+esc(noteOf(s.key))+'</textarea>'+
+        '<div class="nview" id="note-view">'+(noteOf(s.key).trim()?md(noteOf(s.key)):'<span class="sub">'+T.fnEmpty+'</span>')+'</div>'+
+        '<div class="nbtns"><button type="button" data-ncopy="'+esc(s.key)+'">'+T.fnCopy+'</button><button type="button" data-ncopyall id="note-all"'+(n?'':' hidden')+'>'+f(T.fnCopyAll,{n:n})+'</button></div>'+
+        '<div class="ask">'+f(T.fnHow,{f:'<code>'+esc(D.notesFile)+'</code>'})+'<span class="say">'+esc(T.fnSaySave)+'</span></div>'+
+        '<div class="ask">'+T.fnAskAI+'<span class="say">'+esc(f(T.fnSayAI,{n:s.name}))+'</span></div>'+
+      '</div></div></div>';}
+  // One card a function, in the colour of the part its file belongs to. A fork is a row of cases to pick from.
+  function chainCards(c,ci){
+    var h='<div class="csteps">',no=fnNo(c);
+    function rails(d){var at=[];for(var k=0;k<d;k++)at.push('calc('+k+'*var(--ind) + 11px) 0');
+      return at.length?'background-image:'+at.map(function(){return 'linear-gradient(var(--muted),var(--muted))';}).join(',')+';background-position:'+at.join(',')+';background-size:1.5px 100%;':'';}
     c.steps.forEach(function(s,i){
-      var u=s.unit?byId(s.unit):null,at=[];
-      for(var k=0;k<s.depth;k++)at.push('calc('+k+'*var(--ind) + 11px) 0');
-      var rail=at.length?'background-image:'+at.map(function(){return 'linear-gradient(var(--muted),var(--muted))';}).join(',')+';background-position:'+at.join(',')+';background-size:1.5px 100%;':'';
-      function io(way,list){return list.map(function(v){var ret=v.kind==='return';
-        return '<span class="cd '+way+'">'+(way==='in'?T.chIn:T.chOut)+'</span><span class="cn">'+(ret?esc(T.chReturn):'<code>'+esc(v.name)+'</code>')+(v.type?'<span class="ct">'+esc(v.type)+'</span>':'')+
-          '</span><span class="cw">'+rich(v.what)+(v.lost?'<i>'+T.chNoName+'</i>':'')+'</span>';}).join('');}
+      if(s.kind==='branch'||!shown(ci,s))return;
+      if(s.kind==='case'){ // the first case of a fork draws the fork: what varies, and the cases to pick from
+        if(s.group!==i)return;
+        var up=c.steps[s.up],lab=up&&up.kind==='branch'?up:null,sel=pickOf(ci,i),cur=c.steps[sel];
+        var ways=[];c.steps.forEach(function(x,k){if(x.kind==='case'&&x.group===i)ways.push(k);});
+        h+='<div class="crow'+(s.d?' sub':'')+'" style="--d:'+s.d+';'+rails(s.d)+'"><div class="cfork"><div class="cforkh">'+ic('fork')+'<b>'+T.chFork+esc(lab?lab.what:'')+'</b>'+(lab&&lab.note?'<span>'+rich(lab.note)+'</span>':'')+
+          '<span class="sub">'+f(T.chWays,{n:ways.length})+'</span></div>'+(lab&&lab.more.length?'<div class="cmore">'+lab.more.map(function(x){return '<p>'+rich(x)+'</p>';}).join('')+'</div>':'')+
+          '<div class="rchips">'+ways.map(function(k){return '<button type="button" data-ccase="'+k+'" aria-pressed="'+(k===sel)+'">'+esc(c.steps[k].what)+'</button>';}).join('')+'</div>'+
+          (cur.note||cur.more.length?'<div class="cmore">'+(cur.note?'<p>'+rich(cur.note)+'</p>':'')+cur.more.map(function(x){return '<p>'+rich(x)+'</p>';}).join('')+'</div>':'')+
+          (c.steps.some(function(x){return x.up===sel;})?'':'<div class="fkey">'+T.chNoStep+'</div>')+'</div></div>';
+        return;}
+      var u=s.unit?byId(s.unit):null;
       var warn=[];if(s.state==='lost')warn.push(T.chLost);if(s.state==='many')warn.push(T.chMany);if(s.loose)warn.push(T.chLoose);
-      var soft=[];if(s.state==='text')soft.push(T.chText);if(s.off)soft.push(f(T.chOff,{u:esc(s.unitName)}));
       var loc=s.file?esc(s.file)+(s.line?':'+s.line:''):'';
-      var ran=s.ran?'<div class="fkey">'+f(T.chRanH,{d:esc(s.ran.recorded||'?'),r:esc(s.ran.route)})+'</div><div class="rvals"><span class="h">'+T.runDir+'</span><span class="h">'+T.runName+'</span><span class="h">'+T.runCol+'</span>'+
-        s.ran.ins.map(function(v){return [T.runIn,v];}).concat(s.ran.outs.map(function(v){return [T.runOut,v];})).map(function(x){return '<span class="d">'+x[0]+'</span><span>'+esc(x[1].name)+'</span><span class="v">'+esc(x[1].value)+'</span>';}).join('')+'</div>':'';
-      h+='<div class="crow'+(s.depth?' sub':'')+(s.loose?' loose':'')+'" style="--d:'+s.depth+';'+rail+'"><div class="cstep '+(u?u.z:'zx')+'">'+
-        '<div class="ctop"><span class="rk">'+(i+1)+'</span>'+
-        (u&&s.unit!==selfId?'<button type="button" class="pchip cunit '+u.z+'" data-to="'+esc(s.unit)+'">'+pic(u.icon)+'<span>'+esc(u.name)+'</span></button>':'')+
-        '<code class="cfn">'+esc(s.name)+'()</code></div>'+
-        (s.what?'<p class="cwhat">'+rich(s.what)+'</p>':'')+
-        (s.ins.length||s.outs.length?'<div class="cio">'+io('in',s.ins)+io('out',s.outs)+'</div>':'')+
+      var ran=s.ran?'<details><summary>'+T.chRan+'</summary><div><div class="fkey">'+f(T.chRanH,{d:esc(s.ran.recorded||'?'),r:esc(s.ran.route)})+'</div><div class="rvals"><span class="h">'+T.runDir+'</span><span class="h">'+T.runName+'</span><span class="h">'+T.runCol+'</span>'+
+        s.ran.ins.map(function(v){return [T.runIn,v];}).concat(s.ran.outs.map(function(v){return [T.runOut,v];})).map(function(x){return '<span class="d">'+x[0]+'</span><span>'+esc(x[1].name)+'</span><span class="v">'+esc(x[1].value)+'</span>';}).join('')+'</div></div></details>':'';
+      h+='<div class="crow'+(s.d?' sub':'')+(s.loose?' loose':'')+'" style="--d:'+s.d+';'+rails(s.d)+'"><div class="cstep '+(u?u.z:'zx')+'" id="cstep-'+i+'">'+
+        '<div class="ctop"><span class="rk">'+no[i]+'</span><code class="cfn">'+esc(s.name)+'()</code>'+
+        (u?'<button type="button" class="pchip cunit '+u.z+'" data-to="'+esc(s.unit)+'">'+pic(u.icon)+'<span>'+esc(u.name)+'</span></button>':'')+
+        (loc?'<code class="cloc">'+loc+'</code>':'')+
+        (s.key?'<button type="button" class="nbtn'+(noteOf(s.key).trim()?' has':'')+'" data-fnopen="'+i+'">'+(noteOf(s.key).trim()?T.fnNote:T.fnNoteOpen)+'</button>':'')+'</div>'+
+        (s.what?'<p class="cwhat">'+rich(s.what)+'</p>':s.auto?'<p class="cwhat auto">'+(s.doc?esc(s.doc):T.chAutoNone)+'<span class="tagx">'+T.chAuto+'</span></p>':'')+
+        (s.more&&s.more.length?'<div class="cmore">'+s.more.map(function(x){return '<p>'+rich(x)+'</p>';}).join('')+'</div>':'')+
+        (s.sig?'<code class="csig'+(s.key?' open':'')+'"'+(s.key?' data-fnopen="'+i+'" role="button" tabindex="0" title="'+esc(T.fnNoteOpen)+'"':'')+'>'+esc(s.sig)+'</code>':'')+
+        ioTable(s)+
         (warn.length?'<div class="runwarn">'+warn.join(T.sep)+'</div>':'')+
         (s.cands&&s.cands.length?'<div class="rloc">'+s.cands.map(function(x){return '<code>'+esc(x)+'</code>';}).join('')+'</div>':'')+
-        (soft.length?'<div class="fkey">'+soft.join(' ')+'</div>':'')+
-        (loc||s.sig||ran?'<details><summary>'+T.chCode+(ran?'<span class="rc">'+T.chRan+'</span>':'')+'</summary><div>'+
-          (loc?'<div class="rloc"><code>'+loc+'</code></div>':'')+(s.sig?'<code class="csig">'+esc(s.sig)+'</code>':'')+ran+'</div></details>':'')+
+        (s.state==='text'?'<div class="fkey">'+T.chText+'</div>':'')+
+        (s.doc&&!s.auto?'<details><summary>'+T.chDoc+'</summary><div><p class="cmore">'+esc(s.doc)+'</p></div></details>':'')+ran+
         '</div></div>';});
-    return h+'</div>'+(c.more?'<div class="fkey">'+f(T.chMore,{n:c.more})+'</div>':'')+(selfId?'':'<div class="fkey">'+T.chCap+'</div>')+'</div>';}
-  function chainBlock(u,id){
-    if(u.calls&&u.calls.length)return '<div class="blk"><h3>'+T.chH+'</h3><div class="chains">'+u.calls.map(function(c){return chainHtml(c,id);}).join('')+'</div><div class="fkey">'+T.chCap+'</div></div>';
-    return u.external?'':'<div class="ask">'+T.chAsk+'<span class="say">'+esc(f(T.chSay,{n:u.name}))+'</span></div>';}
-  var CHAINS=D.chains||[],MORE=D.chainsMore||[];
+    return h+'</div>'+(c.more?'<div class="fkey">'+f(T.chMore,{n:c.more})+'</div>':'')+(c.passed?'<div class="fkey">'+f(T.chPassed,{n:c.passed})+'</div>':'')+'<div class="fkey">'+T.chCap+(c.forks?' '+T.chForkCap:'')+(c.file?' '+f(T.chFile,{f:'<code>'+esc(c.file)+'</code>'}):'')+'</div>';}
+  function drawCalls(){var box=$('alt');
+    if(!CHAINS.length){box.innerHTML='<div class="empty">'+T.chNone+'</div><div class="ask" style="margin-top:12px">'+T.chAskAny+'<span class="say">'+esc(T.chSayAny)+'</span></div>';return;}
+    if(curChain>=CHAINS.length)curChain=0;
+    var c=CHAINS[curChain],ci=curChain;
+    box.innerHTML='<div class="cv"><div class="cvlist">'+CHAINS.map(function(x,i){
+      return '<button type="button" class="cvpick" data-chain="'+i+'" aria-pressed="'+(i===curChain)+'"><span class="cvn">'+esc(chainName(i))+'</span><span class="cvm">'+f(T.chMeta1,{n:x.n})+(x.forks?T.sep+f(T.chForks,{n:x.forks}):'')+
+        '<span class="tpics">'+x.units.map(byId).filter(function(u){return u;}).slice(0,6).map(function(u){return '<span class="pic '+u.z+'">'+ic(u.icon)+'</span>';}).join('')+'</span></span></button>';}).join('')+
+      (unsaved().length?'<button type="button" class="cvpick" data-ncopyall><span class="cvn">'+f(T.fnCopyAll,{n:unsaved().length})+'</span><span class="cvm">'+T.fnLocal+'</span></button>':'')+
+      '</div><div class="cvmain">'+(curFn!=null&&c.steps[curFn]&&c.steps[curFn].kind==='fn'?fnPage(c,ci,curFn):chainHead(c,ci)+chainTree(c,ci)+chainCards(c,ci))+'</div></div>';
+    wire(box);
+    Array.prototype.forEach.call(box.querySelectorAll('[data-fnopen]'),function(b){function go(){curFn=+b.getAttribute('data-fnopen');setHash('c'+ci+'n'+curFn);drawCalls();$('viewbar').scrollIntoView({block:'start'});}
+      b.addEventListener('click',go);if(b.tagName!=='BUTTON')b.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}});});
+    Array.prototype.forEach.call(box.querySelectorAll('[data-fnback]'),function(b){b.addEventListener('click',function(){var i=+b.getAttribute('data-fnback');curFn=null;setHash('c'+ci);drawCalls();jump(i);});});
+    Array.prototype.forEach.call(box.querySelectorAll('[data-ncopy]'),function(b){b.addEventListener('click',function(){copyText(noteFile([b.getAttribute('data-ncopy')]),b);});});
+    Array.prototype.forEach.call(box.querySelectorAll('[data-ncopyall]'),function(b){b.addEventListener('click',function(){copyText(noteFile(unsaved()),b.querySelector('.cvn')||b);});});
+    var ed=$('note-edit');if(ed)ed.addEventListener('input',function(){var k=ed.getAttribute('data-key');keepNote(k,ed.value);
+      $('note-view').innerHTML=ed.value.trim()?md(ed.value):'<span class="sub">'+T.fnEmpty+'</span>';$('note-state').innerHTML=noteState(k);
+      var all=$('note-all'),n=unsaved().length;if(all){all.hidden=!n;all.textContent=f(T.fnCopyAll,{n:n});}});
+    function reveal(i){var m=picked[ci]=picked[ci]||{},s=c.steps[i]; // pick every case that leads to this line
+      s.cases.concat(s.kind==='case'?[i]:[]).forEach(function(a){m[c.steps[a].group]=a;});}
+    function jump(i){var card=$('cstep-'+i);if(!card)return;card.scrollIntoView({block:'center',behavior:'smooth'});card.classList.add('flash');setTimeout(function(){card.classList.remove('flash');},1200);}
+    Array.prototype.forEach.call(box.querySelectorAll('[data-chain]'),function(b){b.addEventListener('click',function(){curChain=+b.getAttribute('data-chain');curFn=null;setHash('c'+curChain);drawCalls();});});
+    Array.prototype.forEach.call(box.querySelectorAll('[data-ccase]'),function(b){b.addEventListener('click',function(){var y=window.scrollY;reveal(+b.getAttribute('data-ccase'));drawCalls();window.scrollTo(0,y);});});
+    Array.prototype.forEach.call(box.querySelectorAll('[data-cstep]'),function(b){b.addEventListener('click',function(){var i=+b.getAttribute('data-cstep');
+      if(!shown(ci,c.steps[i])){reveal(i);drawCalls();}jump(i);});});}
   function setView(v){view=v;views.forEach(function(x){$('view-'+x[0]).setAttribute('aria-pressed',String(x[0]===v));if(x[0]===v)$('vcap').textContent=x[2];});
     $('plan').hidden=v!=='plan';$('alt').hidden=v==='plan';drawAlt();}
   function drawAlt(){var box=$('alt');if(view==='plan'){box.innerHTML='';return;}
+    if(view==='calls'){drawCalls();return;}
     var avail=box.clientWidth-26,h='';
     if(D.frame){ // the whole project as one box: where you are in it, and where uncommitted work landed
       var fo=linkOpt(null),plain=fo.cls;fo.frame=opens(D.frame)?{title:D.project}:null;
@@ -1019,25 +1223,18 @@ details .tags{flex-direction:row;flex-wrap:wrap}
         Object.keys(landed).forEach(function(name){if(+landed[name]&&(u.wing!=null?wingOf[name]===u:name===u.name))k+=+landed[name];});return k||'';};
       h=flowSvg(D.frame,avail,fo);
     }
-    var R=D.routes.length;
-    if(R||MORE.length){ // one thing followed through the project: pick it, and its path is drawn underneath
+    if(D.routes.length){ // one thing followed through the project: pick it, and its path is drawn underneath
       h+='<div class="follow'+(D.frame?' under':'')+'"><span class="iot">'+T.follow+'</span><div class="rchips">'+D.routes.map(function(x,i){
-        return '<button type="button" data-route="'+i+'" aria-pressed="'+(i===curRoute)+'">'+esc(x.title||f(T.routeN,{n:i+1}))+(RUNS[i]?'<span class="rc">'+T.runChip+'</span>':'')+'</button>';}).join('')+
-        MORE.map(function(c,k){ // a call chain with a title of its own, belonging to no route
-          return '<button type="button" data-route="'+(R+k)+'" aria-pressed="'+(R+k===curRoute)+'">'+esc(c.title||T.chH)+'</button>';}).join('')+'</div></div>';
-      if(curRoute>=0&&curRoute<R)h+='<div class="routebox">'+flowSvg(D.routes[curRoute],avail,runOpt(RUNS[curRoute]))+'</div>';
+        return '<button type="button" data-route="'+i+'" aria-pressed="'+(i===curRoute)+'">'+esc(x.title||f(T.routeN,{n:i+1}))+(RUNS[i]?'<span class="rc">'+T.runChip+'</span>':'')+'</button>';}).join('')+'</div></div>';
+      if(curRoute>=0)h+='<div class="routebox">'+flowSvg(D.routes[curRoute],avail,runOpt(RUNS[curRoute]))+'</div>';
     }
     if(/class="fe loose"/.test(h))h+='<div class="undernote">'+T.loose+'</div>';
-    if(curRoute>=0&&curRoute<R){ // under the route: the functions that carry it, then one real run of it
-      var rn=D.routes[curRoute].title||f(T.routeN,{n:curRoute+1});
-      h+='<div class="chainbox">'+(CHAINS[curRoute]?chainHtml(CHAINS[curRoute],null):'<div class="ask">'+T.chAskRoute+'<span class="say">'+esc(f(T.chSay,{n:rn}))+'</span></div>')+'</div>';
-      h+='<div class="runbox" id="runbox"></div>';
-    }else if(curRoute>=R&&MORE[curRoute-R])h+='<div class="chainbox">'+chainHtml(MORE[curRoute-R],null)+'</div>';
+    if(D.routes.length&&curRoute>=0)h+='<div class="runbox" id="runbox"></div>';
     box.innerHTML=h;wire(box);drawRun();
     Array.prototype.forEach.call(box.querySelectorAll('[data-route]'),function(b){b.addEventListener('click',function(){var i=+b.getAttribute('data-route');
       curRoute=D.frame&&curRoute===i?-1:i;curStep=0;drawAlt();});});}
   function drawInner(){var box=$('inner');if(box&&curInner){box.innerHTML=relSvg(curInner.units,curInner.links,null,box.clientWidth-26)+relNotes(curInner.units,curInner.links);wire(box);}}
-  function unpick(){var had=selName!==null||curWing!==null;selName=null;curWing=null;if(had&&view!=='plan')drawAlt();}
+  function unpick(){var had=selName!==null||curWing!==null;selName=null;curWing=null;if(had&&view==='frame')drawAlt();}
   if(views.length>1){$('viewbar').hidden=false;$('vcap').textContent=views.filter(function(x){return x[0]===view;})[0][2];
     views.forEach(function(v){var b=document.createElement('button');b.type='button';b.id='view-'+v[0];b.textContent=v[1];b.setAttribute('aria-pressed',String(v[0]===view));
       b.addEventListener('click',function(){setView(v[0]);});$('views').appendChild(b);});}
@@ -1083,6 +1280,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       if(up){if(view!=='frame')setView('frame');$('viewbar').scrollIntoView({block:'start',behavior:'smooth'});}});});
     Array.prototype.forEach.call(c.querySelectorAll('[data-sub]'),function(b){b.addEventListener('click',function(){selectSub(curPart.name,curPart.subs[+b.getAttribute('data-sub')].name);});});
     wire(c);
+    Array.prototype.forEach.call(c.querySelectorAll('[data-chain]'),function(b){b.addEventListener('click',function(){openChain(+b.getAttribute('data-chain'));});});
     Array.prototype.forEach.call(c.querySelectorAll('[data-win]'),function(b){b.addEventListener('click',function(){var k=+b.getAttribute('data-win');home(curWin===k?null:k);});});
     if(!quiet)c.scrollIntoView({block:'nearest',behavior:'smooth'});}
   function unselRows(){Array.prototype.forEach.call(document.querySelectorAll('.trow.sel'),function(r){r.classList.remove('sel');});
@@ -1227,7 +1425,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     h+=marks(p);
     var at=winsOn(p.name,known);
     if(at.length)h+='<div class="nowby">'+at.map(function(w){return wb(w)+'<span>'+esc(winName(w))+'</span>';}).join('')+'<span class="sub">'+T.nowBy+'</span></div>';
-    h+=explainBlock(p)+portsBlock(p)+flowBlock(p,D.links,function(n){return byName[n];})+chainBlock(p,'p'+D.parts.indexOf(p));
+    h+=explainBlock(p)+portsBlock(p)+flowBlock(p,D.links,function(n){return byName[n];})+chainRefs(p);
     if(p.subs.length){ // the rooms inside this room
       h+='<div class="blk"><h3>'+T.inside+'</h3><div class="inplan">'+p.subs.map(function(c,i){return '<button type="button" class="sroom'+(c.external?' ext':'')+(c.pending?' lit':'')+'" data-sub="'+i+'">'+pic(c.icon)+
         '<span class="nm">'+esc(c.name)+'</span><span class="sm">'+c.files+(c.external?'<span class="tagx">'+T.outsideTag+'</span>':dots(c.recent))+'</span></button>';}).join('')+'</div>';
@@ -1257,16 +1455,15 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     h+='<div class="blk"><h3>'+T.inside+'</h3><div class="inplan">'+ps.map(function(p){
       var lit=D.pending.parts.some(function(x){return x.part===p.name;});
       return '<button type="button" class="sroom'+(p.external?' ext':'')+(lit?' lit':'')+'" data-go="'+esc(p.name)+'">'+pic(p.icon)+'<span class="nm">'+esc(p.name)+'</span><span class="sm">'+p.files+(p.external?'<span class="tagx">'+T.outsideTag+'</span>':dots(p.recent))+'</span></button>';}).join('')+'</div></div>';
-    h+=pathsBlock(w)+'</div>';
-    setStage(h,w.z);drawFlow();drawInner();if(view!=='plan')drawAlt();
+    h+=chainRefs(w)+pathsBlock(w)+'</div>';
+    setStage(h,w.z);drawFlow();drawInner();if(view==='frame')drawAlt();
   }
   function selectSub(pname,sname){
     var p=byName[pname],c=p&&p.subs.filter(function(x){return x.name===sname;})[0];if(!c){if(p)selectPart(pname);return;}
     unselRows();setHash('p'+D.parts.indexOf(p)+'.'+p.subs.indexOf(c));curPart=p;selName=pname;curInner=null;curWing=wingOf[pname]?wingOf[pname].wing:null;
     var map={};p.together.forEach(function(x){map[x.name]=x.pct+'%';});light(map,pname);
     var h='<div class="band wingc">'+pic(c.icon)+'<div>'+trail(c)+'<h2>'+esc(c.name)+'</h2><span class="meta">'+f(T.subMeta,{n:c.files,d:D.recentDays,r:c.recent})+'</span></div><p class="what">'+rich(c.what)+'</p>'+backBtn()+'</div><div class="body">';
-    h+=marks(c)+explainBlock(c)+portsBlock(c)+flowBlock(c,p.inner,function(n){return p.subs.filter(function(x){return x.name===n;})[0];})+
-      chainBlock(c,'p'+D.parts.indexOf(p)+'.'+p.subs.indexOf(c))+'<div class="cols3">';
+    h+=marks(c)+explainBlock(c)+portsBlock(c)+flowBlock(c,p.inner,function(n){return p.subs.filter(function(x){return x.name===n;})[0];})+chainRefs(c)+'<div class="cols3">';
     if(p.inner.length)h+=usesBlocks(c.name,p.inner,function(n){return p.subs.filter(function(x){return x.name===n;})[0];},function(u){return 'data-sub="'+p.subs.indexOf(u)+'"';});
     h+=rulesBlock(c)+pathsBlock(c,mutualRow(c.name,p.subs,p.inner))+'</div></div>';
     setStage(h,p.z);drawFlow();if(view==='frame')drawAlt();
@@ -1442,9 +1639,12 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   });
   drawWork();
   var m=/^#p(\d+)(?:\.(\d+))?$/.exec(location.hash||''),hp=m&&D.parts[+m[1]];
-  var mt=/^#t(\d+)$/.exec(location.hash||''),mw=/^#w(\d+)$/.exec(location.hash||'');
+  var mt=/^#t(\d+)$/.exec(location.hash||''),mw=/^#w(\d+)$/.exec(location.hash||''),mc=/^#c(\d+)(?:n(\d+))?$/.exec(location.hash||'');
+  if(mc&&CHAINS[+mc[1]]){curChain=+mc[1];view='calls';if(mc[2]!=null){var st=CHAINS[curChain].steps[+mc[2]];
+    if(st&&st.kind==='fn'){curFn=+mc[2];(picked[curChain]=picked[curChain]||{});st.cases.forEach(function(a){picked[curChain][CHAINS[curChain].steps[a].group]=a;});}}}
   if(view!=='plan')setView(view);
   if(hp&&m[2]&&hp.subs[+m[2]])selectSub(hp.name,hp.subs[+m[2]].name);else if(hp)selectPart(hp.name);else if(mw&&WINGS[+mw[1]])selectWing(+mw[1]);else if(mt&&TASKS[+mt[1]])selectTask(+mt[1]);else home();
+  if(view==='calls'&&mc)setHash('c'+curChain+(curFn!=null?'n'+curFn:''));
   quiet=false;
 })();
 </script>
