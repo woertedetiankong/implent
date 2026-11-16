@@ -1,6 +1,7 @@
 <title>__PROJECT__ 项目地图</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>/*__MATH_CSS__*/</style>
 <style>
 /* A building guide drawn on drafting paper. The plan is one building with ink walls: wings carry a signage band,
    rooms carry a pictogram. Picking a room opens its sheet below: a signage header and a flow diagram.
@@ -494,6 +495,57 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   .lane{grid-template-columns:30px minmax(0,1fr)} .lane .chips{grid-column:2}
 }
 @media (prefers-reduced-motion:reduce){ .fdot{display:none} }
+/* The calls view keeps its list of chains, and the search above it, in sight while the cards scroll by. */
+.alt.callsv{overflow:visible}
+.cvside{display:flex;flex-direction:column;gap:8px;min-width:0}
+@media (min-width:861px){.cvside{position:sticky;top:10px;max-height:calc(100vh - 20px)} .cvside .cvlist{overflow-y:auto;min-height:0;padding-right:2px}}
+@media (max-width:860px){.cvside .cvlist.hits{flex-direction:column;flex-wrap:nowrap;max-height:46vh;overflow-y:auto}}
+.cvq{display:flex;align-items:center;gap:7px;border:1.5px solid var(--ink);border-radius:10px;background:var(--sheet);padding:6px 10px;cursor:text}
+.cvq:focus-within{outline:2px solid var(--z0);outline-offset:1px}
+.cvq .ic{font-size:16px;color:var(--muted);flex:none}
+.cvq input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--ink);font-family:var(--f-text);font-size:14px;padding:0}
+.cvhit{display:flex;flex-direction:column;gap:1px;text-align:left;border:1.5px solid var(--hair);border-left:4px solid var(--z);background:var(--sheet);border-radius:8px;padding:6px 9px;cursor:pointer;min-width:0;flex:none}
+.cvhit:hover{border-color:var(--ink);border-left-color:var(--z)}
+.cvhit code{font-weight:700;font-size:13px;background:none;border:0;padding:0;overflow-wrap:anywhere}
+.cvhit span{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cvhit .w{color:var(--ink)}
+/* the sentence on a function, and the pen that lets a reader rewrite it */
+.cwrap{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline;min-width:0}
+.cwrap .cwhat{flex:0 1 auto;min-width:0}
+.wed{opacity:.75;font-size:12px;padding:1px 10px} .wed:hover,.wed:focus-visible{opacity:1} .wed .ic{font-size:13px}
+.wedit{width:100%;max-width:46em;min-height:58px;resize:vertical;border:1.5px solid var(--ink);border-radius:8px;background:var(--sheet);color:var(--ink);padding:7px 10px;font-family:var(--f-text);font-size:15px;line-height:1.55}
+.cwrap .nbtns{flex:1 1 100%}
+/* a reader's notes: beside the code, as tall as the code, scrolling in their own box */
+:root{--hl:#ffe9a3;--n-red:#c8321f;--n-orange:#b85c00;--n-green:#0a7a4e;--n-blue:#1e5bd8;--n-purple:#7046cc}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--hl:#5d4c12;--n-red:#ff8a78;--n-orange:#ffb066;--n-green:#55cba7;--n-blue:#78a2ff;--n-purple:#b299ff}}
+:root[data-theme="dark"]{--hl:#5d4c12;--n-red:#ff8a78;--n-orange:#ffb066;--n-green:#55cba7;--n-blue:#78a2ff;--n-purple:#b299ff}
+.npanel h3{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
+.npanel h3 .nbtn{margin-left:auto}
+.npanel[data-mode="read"] .when-edit,.npanel[data-mode="edit"] .when-read{display:none}
+.npanel[data-mode="read"] .nbar,.npanel[data-mode="read"] .nan,.npanel[data-mode="read"] .nedit,.npanel[data-mode="read"] .nhint{display:none}
+.nbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.nbar button{display:inline-flex;gap:6px;align-items:center;justify-content:center;min-width:30px;height:30px;padding:0 8px;border:1.5px solid var(--hair);border-radius:7px;background:var(--sheet);color:var(--ink);font-size:13.5px;font-weight:600;cursor:pointer}
+.nbar button:hover{border-color:var(--ink)}
+.nbar mark{background:var(--hl);color:inherit;border-radius:3px;padding:0 .3em}
+.nbar .sw{display:block;width:14px;height:14px;border-radius:50%;background:var(--c)}
+.nbar .ic{font-size:15px}
+.nan{display:flex;gap:6px;align-items:center} .nan[hidden]{display:none}
+.nan input{flex:1;min-width:0;border:1.5px solid var(--ink);border-radius:7px;background:var(--sheet);color:var(--ink);padding:5px 9px;font-family:var(--f-text);font-size:14px}
+.nan button{border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:7px;padding:4px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.nedit{height:240px;min-height:120px;max-height:70vh}
+.nview{max-height:680px;overflow:auto} .nview>*{flex:none;max-width:100%}
+.npanel[data-mode="edit"] .nview{max-height:380px}
+.nview ol{margin:0;padding-left:1.6em} .nview li>ul,.nview li>ol{margin-top:3px} .nview li+li{margin-top:2px}
+.nh{margin:5px 0 0;font-weight:700;line-height:1.35;color:var(--ink)} .nh1,.nh2{font-size:18px} .nh3{font-size:16.5px} .nh4{font-size:15.5px} .nh5,.nh6{font-size:14.5px}
+.nview blockquote{margin:0;padding:2px 0 2px 12px;border-left:3px solid var(--hair);color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.nview hr{border:0;border-top:1.5px solid var(--hair);width:100%;margin:3px 0}
+.ntab{overflow-x:auto} .ntab table{border-collapse:collapse;font-size:13.5px}
+.ntab th,.ntab td{border:1px solid var(--hair);padding:4px 9px;text-align:left;vertical-align:top} .ntab th{background:var(--paper);font-weight:700}
+.nview a{color:var(--z0)}
+.nview mark{background:var(--hl);color:inherit;border-radius:3px;padding:0 .15em}
+.nview mark.an{border-bottom:2px solid var(--warn);border-radius:3px 3px 0 0}
+.anc{display:inline-block;margin:0 3px;padding:0 7px;border-radius:9px;font-size:12px;font-weight:600;line-height:18px;color:var(--warn);box-shadow:inset 0 0 0 1.5px var(--warn);vertical-align:1px}
+.nmath{overflow-x:auto;padding:2px 0} code.tex{white-space:pre-wrap}
 </style>
 
 <div class="wrap">
@@ -525,10 +577,12 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   <p class="note" id="note"></p>
 </div>
 
+<script>/*__MATH_JS__*/</script>
 <script>
 (function(){
   var D=/*__DATA__*/null;
   var ICONS={
+    pen:'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
     mic:'M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6',
     speaker:'M5 9h3l5-4v14l-5-4H5zM16.5 9.5a4 4 0 0 1 0 5M19 7a8 8 0 0 1 0 10',
     phone:'M6 3h4l2 5-2.5 1.5a11 11 0 0 0 5 5L16 12l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2z',
@@ -600,6 +654,10 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     chDoc:'代码里自己的注释',chRan:'真实运行里的值',chRanH:'{d} 录的一次真实运行（主线“{r}”）',chMore:'还有 {n} 个函数没有列出。',
     fnNote:'笔记',fnNoteOpen:'看代码、记笔记',fnSrc:'这个函数的代码',fnSrcCut:'只带上了前 {n} 行。',fnNoSrc:'这一页没有带上这个函数的代码，到这里看：',
     fnMine:'我的笔记',fnPh:'在这里写你对这个函数的理解：每一段在做什么，哪里容易看错。也可以把 AI 的解释里有用的部分贴进来。',fnEmpty:'还没有笔记。',
+    chFind:'找函数：名字、说明、文件',chHits:'对得上的函数 {n} 个',chNoHit:'没有对得上的函数。换个词，或者少打几个字。',chHitMore:'还有 {n} 个没列出来，再多打几个字。',chHitAt:'第 {n} 步',
+    whEdit:'改这句话',whWrite:'写一句话',whSave:'存下',whCancel:'取消',whPh:'用一句话说这个函数在这里是干什么的',whFail:'没存上：这一页打开之后调用链文件改过了。刷新这一页再改。',whTip:'每个函数的那句话可以自己改：点它旁边的“改这句话”，或者在上面的目录里双击那一行；改完直接存进 {f}。',
+    fnEdit:'编辑',fnDone:'写好了',fmtB:'加粗',fmtHl:'标亮',fmtColor:'文字颜色',fmtAn:'批注',fmtAnPh:'给选中的字写一句批注，回车加上',fmtOk:'加上',fmtWord:'文字',
+    fnFmt:'这里写的是 Markdown；公式写在 $…$ 里，单独一行的写在 $$…$$ 里。从 AI 的回答里复制过来的标题、列表、表格、代码和公式都会保留。',
     fnSaving:'正在保存…',fnFail:'没存上，先留在这个浏览器里。重新说一次“看看项目”再打开这一页，就会存进去。',fnAuto:'一边写一边自动存进项目的 {f}，不用另外保存。',
     fnSaved:'已存进项目（{f}）',fnLocal:'只存在这个浏览器里，还没存进项目',fnCopy:'复制这条笔记',fnCopyAll:'复制还没存进项目的笔记（{n} 条）',fnCopied:'已复制',
     fnHow:'笔记一边写一边存在这个浏览器里。想存进项目、让别人也看到：点“复制”，把内容贴进 {f}，或者对 AI 说下面这句再贴上：',fnSaySave:'把这些函数笔记存进项目',
@@ -664,6 +722,10 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     chDoc:'The comment the code carries',chRan:'Values from a real run',chRanH:'One real run recorded {d} (route "{r}")',chMore:'{n} more functions are not listed.',
     fnNote:'Notes',fnNoteOpen:'Code and notes',fnSrc:'The code of this function',fnSrcCut:'Only its first {n} lines are here.',fnNoSrc:'The code of this function is not on this page. It is at',
     fnMine:'My notes',fnPh:'Write here what you make of this function: what each stretch does, where it is easy to misread. Or paste in the useful part of an AI\'s explanation.',fnEmpty:'No notes yet.',
+    chFind:'Find a function: name, sentence, file',chHits:'{n} functions match',chNoHit:'No function matches. Try another word, or fewer letters.',chHitMore:'{n} more are not listed; type a little more.',chHitAt:'step {n}',
+    whEdit:'Rewrite',whWrite:'Write a sentence',whSave:'Save',whCancel:'Cancel',whPh:'One sentence on what this function is there for at this point',whFail:'Not saved: the chains file has changed since this page was opened. Reload the page and try again.',whTip:'The sentence on each function is yours to rewrite: press "Rewrite" beside it, or double-click its line in the outline above. It is saved straight into {f}.',
+    fnEdit:'Edit',fnDone:'Done',fmtB:'Bold',fmtHl:'Highlight',fmtColor:'Text colour',fmtAn:'Remark',fmtAnPh:'A remark on the selected words; Enter adds it',fmtOk:'Add',fmtWord:'text',
+    fnFmt:'This is Markdown; a formula goes between $…$, or between $$…$$ on lines of its own. What you copy from an AI\'s answer keeps its headings, lists, tables, code and formulas.',
     fnSaving:'saving…',fnFail:'Not saved; kept in this browser for now. Ask for the project map again and reopen this page, and it will be saved.',fnAuto:'Saved into the project\'s {f} as you type; there is nothing else to do.',
     fnSaved:'kept in the project ({f})',fnLocal:'only in this browser, not in the project yet',fnCopy:'Copy this note',fnCopyAll:'Copy the notes not in the project yet ({n})',fnCopied:'Copied',
     fnHow:'A note is saved in this browser as you type. To keep it in the project, where others see it too: copy it and paste it into {f}, or say this to the AI and paste:',fnSaySave:'Save these function notes in the project',
@@ -688,8 +750,129 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function rich(s){return esc(s).replace(/`([^`]+)`/g,'<code>$1</code>');}
   function $(id){return document.getElementById(id);}
+  // ---- what a person wrote, as it reads: Markdown, formulas, and a reader's own marks ----
+  // A note is kept as Markdown, so it reads in any editor. On top of the usual, three things a reader marks
+  // by hand: ==lit up==, <font color="red">coloured</font>, and <mark title="a remark">words remarked on</mark>.
+  // Everything is escaped first; only these few forms are let back through.
+  var MATH=window.temml||null;
+  function tex(src,block){src=String(src).trim();if(!MATH)return '<code class="tex">'+esc(src)+'</code>';
+    try{return MATH.renderToString(src,{displayMode:!!block,throwOnError:false});}catch(e){return '<code class="tex">'+esc(src)+'</code>';}}
+  var INK={red:1,orange:1,green:1,blue:1,purple:1};
+  function ink(c){c=String(c).trim().toLowerCase();return INK[c]?'var(--n-'+c+')':(/^#[0-9a-f]{3}([0-9a-f]{3})?$/.test(c)?c:'');}
+  function inl(x){var keep=[];function hold(h){keep.push(h);return '\u0001'+(keep.length-1)+'\u0002';}
+    x=String(x).replace(/`([^`\n]+)`/g,function(_,c){return hold('<code>'+esc(c)+'</code>');})
+      .replace(/\$\$([^$]+?)\$\$/g,function(_,m){return hold(tex(m,true));})
+      .replace(/\\\[([\s\S]+?)\\\]/g,function(_,m){return hold(tex(m,true));})
+      .replace(/\\\(([\s\S]+?)\\\)/g,function(_,m){return hold(tex(m));})
+      .replace(/(^|[^\\$])\$([^\s$](?:[^$\n]*?[^\s$\\])?)\$(?!\d)/g,function(_,a,m){return a+hold(tex(m));})
+      .replace(/\\\$/g,'$');
+    x=esc(x)
+      .replace(/&lt;font color=(?:&quot;)?([#\w]+)(?:&quot;)?&gt;([\s\S]*?)&lt;\/font&gt;/gi,function(_,c,t){var k=ink(c);return k?'<span style="color:'+k+'">'+t+'</span>':t;})
+      .replace(/&lt;span style=&quot;color:\s*([#\w]+);?&quot;&gt;([\s\S]*?)&lt;\/span&gt;/gi,function(_,c,t){var k=ink(c);return k?'<span style="color:'+k+'">'+t+'</span>':t;})
+      .replace(/&lt;mark title=&quot;([\s\S]*?)&quot;&gt;([\s\S]*?)&lt;\/mark&gt;/gi,'<mark class="an">$2</mark><span class="anc">$1</span>')
+      .replace(/&lt;mark&gt;([\s\S]*?)&lt;\/mark&gt;/gi,'<mark>$1</mark>').replace(/==([^=\n]+)==/g,'<mark>$1</mark>')
+      .replace(/&lt;(\/?)(b|i|u|s|sub|sup|strong|em)&gt;/gi,'<$1$2>').replace(/&lt;br\s*\/?&gt;/gi,'<br>')
+      .replace(/\*\*([^*\n]+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*\w\\])\*(?=\S)([^*\n]+?)\*(?!\*)/g,'$1<em>$2</em>')
+      .replace(/~~([^~\n]+)~~/g,'<s>$1</s>')
+      .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+      .replace(/\n/g,'<br>');
+    return x.replace(/\u0001(\d+)\u0002/g,function(_,k){return keep[+k];});}
+  function md(t){var out=[],L=String(t).replace(/\r/g,'').split('\n'),i=0,para=[],items=[],m;
+    function endP(){if(para.length){out.push('<p>'+inl(para.join('\n'))+'</p>');para=[];}}
+    function endL(){if(!items.length)return;var h='',st=[];
+      items.forEach(function(it){while(st.length&&it.ind<st[st.length-1].ind)h+='</li></'+st.pop().tag+'>';
+        if(!st.length||it.ind>st[st.length-1].ind){var tag=it.n!=null?'ol':'ul';h+='<'+tag+(it.n!=null&&it.n!==1?' start="'+it.n+'"':'')+'>';st.push({ind:it.ind,tag:tag});}else h+='</li>';
+        h+='<li>'+inl(it.text);});
+      while(st.length)h+='</li></'+st.pop().tag+'>';out.push(h);items=[];}
+    function end(){endP();endL();}
+    function cells(r){return r.trim().replace(/^\|/,'').replace(/\|$/,'').replace(/\\\|/g,'\u0003').split('|').map(function(c){return c.replace(/\u0003/g,'|').trim();});}
+    while(i<L.length){var line=L[i];
+      if(/^\s*```/.test(line)){end();var code=[];i++;while(i<L.length&&!/^\s*```/.test(L[i]))code.push(L[i++]);i++;out.push('<pre class="csig">'+esc(code.join('\n'))+'</pre>');continue;}
+      if((m=/^\s*(\$\$|\\\[)(.*)$/.exec(line))){ // a formula on lines of its own
+        var close=m[1]==='$$'?'$$':'\\]',body=m[2],k=body.indexOf(close);
+        if(k>=0&&!body.slice(k+close.length).trim()){end();out.push('<div class="nmath">'+tex(body.slice(0,k),true)+'</div>');i++;continue;}
+        if(k<0){var buf=[body],j=i+1,found=false;
+          while(j<L.length){var q=L[j].indexOf(close);if(q>=0){buf.push(L[j].slice(0,q));found=true;break;}buf.push(L[j]);j++;}
+          if(found){end();out.push('<div class="nmath">'+tex(buf.join('\n'),true)+'</div>');i=j+1;continue;}}}
+      if((m=/^\s*(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line))){end();out.push('<h4 class="nh nh'+m[1].length+'">'+inl(m[2])+'</h4>');i++;continue;}
+      if(/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)){end();out.push('<hr>');i++;continue;}
+      if(/^\s*>/.test(line)){end();var quote=[];while(i<L.length&&/^\s*>/.test(L[i]))quote.push(L[i++].replace(/^\s*>\s?/,''));out.push('<blockquote>'+md(quote.join('\n'))+'</blockquote>');continue;}
+      if(/^\s*\|/.test(line)&&i+1<L.length&&/^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(L[i+1])){end();var head=cells(line),rows=[];i+=2;
+        while(i<L.length&&/^\s*\|/.test(L[i]))rows.push(cells(L[i++]));
+        out.push('<div class="ntab"><table><thead><tr>'+head.map(function(c){return '<th>'+inl(c)+'</th>';}).join('')+'</tr></thead><tbody>'+
+          rows.map(function(r){return '<tr>'+r.map(function(c){return '<td>'+inl(c)+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div>');continue;}
+      if((m=/^(\s*)(?:[-*+]|(\d+)[.)])\s+(.*)$/.exec(line))){endP();items.push({ind:m[1].replace(/\t/g,'    ').length,n:m[2]!=null?+m[2]:null,text:m[3]});i++;continue;}
+      if(!line.trim()){end();i++;continue;}
+      if(items.length&&/^\s{2,}\S/.test(line)){items[items.length-1].text+='\n'+line.trim();i++;continue;}
+      endL();para.push(line);i++;}
+    end();return out.join('');}
+  // What was copied from a page (an AI's answer, a document) comes with its form as HTML. Put into a note
+  // as plain text it loses its headings, lists and tables, and a formula turns into a jumble of letters. So
+  // it is turned into Markdown: the form stays, and a formula goes back to the TeX it was set from.
+  function richPaste(html){return /<(b|strong|em|i|h[1-6]|ul|ol|table|pre|code|blockquote|math|mark|a)\b/i.test(html)||/katex/.test(html);}
+  function h2m(html){var doc;try{doc=new DOMParser().parseFromString(html,'text/html');}catch(e){return '';}
+    var BLOCK=/^(p|div|section|article|main|header|footer|h[1-6]|ul|ol|li|pre|blockquote|table|hr|details|summary|figure|figcaption|dl|dt|dd)$/;
+    function cls(n){return n.getAttribute('class')||'';}
+    function texOf(el){var a=el.querySelector('annotation[encoding="application/x-tex"]');return a?a.textContent.trim():'';}
+    function isDisp(el){var tag=el.tagName.toLowerCase();return /\bkatex-display\b/.test(cls(el))||((tag==='math'||tag==='mjx-container')&&(el.getAttribute('display')==='block'||el.getAttribute('display')==='true'));}
+    function wrap(a,t){var m=/^(\s*)([\s\S]*?)(\s*)$/.exec(t);return m[2]?m[1]+a+m[2]+a+m[3]:t;}
+    function kids(n){return Array.prototype.map.call(n.childNodes,inline).join('');}
+    function inline(n){if(n.nodeType===3)return n.nodeValue.replace(/\s+/g,' ');if(n.nodeType!==1)return '';
+      var tag=n.tagName.toLowerCase(),st=(n.getAttribute('style')||'').toLowerCase();
+      if(/^(script|style|button|svg|head|meta|title|template|noscript)$/.test(tag))return '';
+      if(tag==='math'||tag==='mjx-container'||/\bkatex\b/.test(cls(n))){var t=texOf(n);return t?(isDisp(n)?'$$'+t+'$$':'$'+t+'$'):(n.textContent||'');}
+      if(tag==='br')return '\n';
+      if(tag==='img')return n.getAttribute('alt')||'';
+      if(tag==='code'||tag==='kbd'||tag==='tt')return n.textContent.trim()?'`'+n.textContent.replace(/`/g,"'")+'`':'';
+      var k=kids(n);
+      if(tag==='a'){var h=n.getAttribute('href')||'';if(/^https?:\/\//.test(h)&&k.trim())k='['+k.trim()+']('+h+')';}
+      if(tag==='del'||tag==='s'||tag==='strike')k=wrap('~~',k);
+      if(tag==='mark')k=wrap('==',k);
+      if(((tag==='i'||tag==='em')&&!/font-style:\s*normal/.test(st))||/font-style:\s*italic/.test(st))k=wrap('*',k);
+      if(((tag==='b'||tag==='strong')&&!/font-weight:\s*(normal|400)/.test(st))||/font-weight:\s*(bold|[6-9]00)/.test(st))k=wrap('**',k);
+      return k;}
+    function deep(c){return !/\bkatex\b/.test(cls(c))&&!!c.querySelector('p,div,h1,h2,h3,h4,h5,h6,ul,ol,pre,blockquote,table,hr,.katex-display');}
+    function list(el,ind){var n=el.tagName.toLowerCase()==='ol'?(+el.getAttribute('start')||1):null,rows=[],pad=new Array(ind+1).join(' ');
+      Array.prototype.forEach.call(el.children,function(li){if(li.tagName.toLowerCase()!=='li')return;var text='',subs=[];
+        Array.prototype.forEach.call(li.childNodes,function(c){var tg=c.nodeType===1?c.tagName.toLowerCase():'';
+          if(tg==='ul'||tg==='ol')subs.push(list(c,ind+(n!=null?3:2)));
+          else if(tg==='pre')text+=(text?'\n':'')+'`'+c.textContent.trim().replace(/\s*\n\s*/g,' ')+'`';
+          else if(tg==='p'||tg==='div')text+=(text?'\n':'')+kids(c);
+          else text+=inline(c);});
+        text=text.replace(/[ \t]*\n[ \t]*/g,'\n').trim().split('\n').join('\n'+pad+'   ');
+        rows.push(pad+(n!=null?(n++)+'. ':'- ')+text);subs.forEach(function(s){rows.push(s);});});
+      return rows.join('\n');}
+    function table(el){var rows=Array.prototype.map.call(el.querySelectorAll('tr'),function(tr){
+        return Array.prototype.map.call(tr.children,function(td){return kids(td).replace(/\s*\n\s*/g,' ').replace(/\|/g,'\\|').trim();});}).filter(function(r){return r.length;});
+      if(!rows.length)return '';var w=Math.max.apply(null,rows.map(function(r){return r.length;}));
+      function row(r){var c=r.slice();while(c.length<w)c.push('');return '| '+c.join(' | ')+' |';}
+      return [row(rows[0]),'|'+new Array(w+1).join(' --- |')].concat(rows.slice(1).map(row)).join('\n');}
+    function blocks(n){var out=[],run='';
+      function flush(){var t=run.replace(/[ \t]*\n[ \t]*/g,'\n').trim();if(t)out.push(t);run='';}
+      Array.prototype.forEach.call(n.childNodes,function(c){var el=c.nodeType===1,tag=el?c.tagName.toLowerCase():'',t;
+        if(el&&isDisp(c)){flush();t=texOf(c);out.push(t?'$$\n'+t+'\n$$':c.textContent.trim());return;}
+        if(!el||!(BLOCK.test(tag)||deep(c))){run+=inline(c);return;}
+        flush();
+        if(/^h[1-6]$/.test(tag)){t=kids(c).replace(/\*\*/g,'').replace(/\s+/g,' ').trim();if(t)out.push('###'+(tag>'h2'?'#':'')+(tag>'h3'?'#':'')+' '+t);} // `##` names a function in the notes file
+        else if(tag==='ul'||tag==='ol')out.push(list(c,0));
+        else if(tag==='pre'){var code=c.querySelector('code')||c,lang=/language-([\w+#-]+)/.exec(cls(code)+' '+cls(c));out.push('```'+(lang?lang[1]:'')+'\n'+code.textContent.replace(/\n+$/,'')+'\n```');}
+        else if(tag==='blockquote')out.push(blocks(c).join('\n\n').split('\n').map(function(x){return '> '+x;}).join('\n'));
+        else if(tag==='table')out.push(table(c));
+        else if(tag==='hr')out.push('---');
+        else out=out.concat(blocks(c));});
+      flush();return out;}
+    return blocks(doc.body).filter(Boolean).join('\n\n').replace(/ /g,' ').replace(/\n{3,}/g,'\n\n').trim();}
+  // Putting text into a field the way typing would, so that undo still works.
+  function put(ed,t,s,e){ed.focus();if(s!=null)ed.setSelectionRange(s,e);var ok=false;try{ok=document.execCommand('insertText',false,t);}catch(x){}
+    if(!ok){ed.setRangeText(t,ed.selectionStart,ed.selectionEnd,'end');ed.dispatchEvent(new Event('input',{bubbles:true}));}}
+  // A mark put around what is selected. Over several lines each line is marked by itself, after its list
+  // sign or heading sign, since a mark does not reach from one paragraph into the next.
+  function fmt(ed,a,b,ph){var s=ed.selectionStart,e=ed.selectionEnd,sel=ed.value.slice(s,e);
+    var t=sel?sel.split('\n').map(function(l){var m=/^(\s*(?:[-*+]\s+|\d+[.)]\s+|#{1,6}\s+|>\s?)?)(.*?)(\s*)$/.exec(l);return m[2]?m[1]+a+m[2]+b+m[3]:l;}).join('\n'):a+ph+b;
+    put(ed,t,s,e);if(!sel)ed.setSelectionRange(s+a.length,s+a.length+ph.length);}
   function dots(n){var lv=n<=0?0:Math.min(5,1+Math.floor(Math.log(n)/Math.LN2));var h='<span class="dots">';for(var i=0;i<5;i++)h+='<i'+(i<lv?' class="f"':'')+'></i>';return h+'</span>';}
 
+  var SAVE=D.save||null; // set when a service on this machine shows the page: what a reader writes can then be kept
   var groups=[],gi={};
   D.parts.forEach(function(p){var g=p.group||'';if(!(g in gi)){gi[g]=groups.length;groups.push({name:g,parts:[]});}p.z='z'+(gi[g]%6);groups[gi[g]].parts.push(p);});
   var byName={};D.parts.forEach(function(p){byName[p.name]=p;});
@@ -1070,6 +1253,56 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     return '<div class="blk"><h3>'+T.chThrough+'</h3><div class="pals">'+l.slice(0,10).map(function(x){
       return '<button type="button" class="chref" data-chain="'+x[0]+'">'+esc(chainName(x[0]))+'<span class="pct" title="'+esc(f(T.chMeta1,{n:x[1]}))+'">'+x[1]+'</span></button>';}).join('')+
       (l.length>10?'<span class="sub">'+f(T.more,{n:l.length-10})+'</span>':'')+'</div></div>';}
+  // Looking for one function among several hundred: every chain is searched at once, by the function's
+  // name, its sentence, its file and its signature. What matches is listed where the chains were; a click
+  // opens the chain it is on, at that function, with the cases picked that lead to it.
+  var curQ='';
+  function hits(q){var toks=q.toLowerCase().split(/\s+/).filter(Boolean),res=[];if(!toks.length)return res;
+    CHAINS.forEach(function(c,ci){var no=fnNo(c);c.steps.forEach(function(s,i){if(s.kind!=='fn')return;
+      var name=(s.name||'').toLowerCase(),hay=(name+' '+(s.what||'')+' '+(s.doc||'')+' '+(s.file||'')+' '+(s.sig||'')+' '+(s.more||[]).join(' ')).toLowerCase();
+      if(!toks.every(function(t){return hay.indexOf(t)>=0;}))return;
+      res.push({ci:ci,i:i,no:no[i],rank:name===toks[0]?0:name.indexOf(toks[0])===0?1:name.indexOf(toks[0])>=0?2:3});});});
+    return res.sort(function(a,b){return a.rank-b.rank||a.ci-b.ci||a.i-b.i;});}
+  function revealIn(ci,i){var c=CHAINS[ci],m=picked[ci]=picked[ci]||{},s=c.steps[i]; // pick every case that leads to this line
+    s.cases.concat(s.kind==='case'?[i]:[]).forEach(function(a){m[c.steps[a].group]=a;});}
+  function jumpStep(i){var card=$('cstep-'+i);if(!card)return;card.scrollIntoView({block:'center',behavior:'smooth'});card.classList.add('flash');setTimeout(function(){card.classList.remove('flash');},1200);}
+  function drawCallsList(){var box=$('cv-list');if(!box)return;var h='';
+    if(curQ.trim()){var r=hits(curQ);
+      h=r.length?'<div class="fkey">'+f(T.chHits,{n:r.length})+'</div>'+r.slice(0,60).map(function(x){var s=CHAINS[x.ci].steps[x.i],u=s.unit?byId(s.unit):null;
+          return '<button type="button" class="cvhit '+(u?u.z:'zx')+'" data-hit="'+x.ci+':'+x.i+'"><code>'+esc(s.name)+'()</code>'+(s.what||s.doc?'<span class="w">'+esc(s.what||s.doc)+'</span>':'')+
+            '<span>'+esc(chainName(x.ci))+T.sep+f(T.chHitAt,{n:x.no})+'</span></button>';}).join('')+(r.length>60?'<div class="fkey">'+f(T.chHitMore,{n:r.length-60})+'</div>':'')
+        :'<div class="fkey">'+T.chNoHit+'</div>';}
+    else h=CHAINS.map(function(x,i){
+      return '<button type="button" class="cvpick" data-chain="'+i+'" aria-pressed="'+(i===curChain)+'"><span class="cvn">'+esc(chainName(i))+'</span><span class="cvm">'+f(T.chMeta1,{n:x.n})+(x.forks?T.sep+f(T.chForks,{n:x.forks}):'')+
+        '<span class="tpics">'+x.units.map(byId).filter(function(u){return u;}).slice(0,6).map(function(u){return '<span class="pic '+u.z+'">'+ic(u.icon)+'</span>';}).join('')+'</span></span></button>';}).join('')+
+      (!SAVE&&unsaved().length?'<button type="button" class="cvpick" data-ncopyall><span class="cvn">'+f(T.fnCopyAll,{n:unsaved().length})+'</span><span class="cvm">'+T.fnLocal+'</span></button>':'');
+    box.className='cvlist'+(curQ.trim()?' hits':'');box.innerHTML=h;
+    Array.prototype.forEach.call(box.querySelectorAll('[data-chain]'),function(b){b.addEventListener('click',function(){flushNotes();curChain=+b.getAttribute('data-chain');curFn=null;setHash('c'+curChain);drawCalls();});});
+    Array.prototype.forEach.call(box.querySelectorAll('[data-hit]'),function(b){b.addEventListener('click',function(){var at=b.getAttribute('data-hit').split(':');
+      flushNotes();curChain=+at[0];curFn=null;revealIn(curChain,+at[1]);setHash('c'+curChain);drawCalls();jumpStep(+at[1]);});});
+    Array.prototype.forEach.call(box.querySelectorAll('[data-ncopyall]'),function(b){b.addEventListener('click',function(){copyText(noteFile(unsaved()),b.querySelector('.cvn')||b);});});}
+  // The sentence on a function is written in the calls file, most often by an AI. A reader who knows better
+  // rewrites it here, and the service puts it on that function's line. A function the script filled in has
+  // no line: its sentence goes under the `展开` line it came from. A page with no service behind it shows no pen.
+  function canEdit(s){return !!SAVE&&(s.at!=null||s.exp!=null);}
+  function whatBox(s,i,card){
+    var said=s.what?'<p class="cwhat">'+rich(s.what)+'</p>':s.auto?'<p class="cwhat auto">'+(card&&s.doc?esc(s.doc):T.chAutoNone)+'<span class="tagx">'+T.chAuto+'</span></p>':'';
+    if(!canEdit(s))return said;
+    return '<div class="cwrap" data-wbox="'+i+'">'+said+'<button type="button" class="nbtn wed" data-wedit="'+i+'">'+ic('pen')+(s.what?T.whEdit:T.whWrite)+'</button></div>';}
+  function editWhat(c,i){var s=c.steps[i],box=document.querySelector('[data-wbox="'+i+'"]');if(!box||!canEdit(s)||box.querySelector('textarea'))return;
+    box.innerHTML='<textarea class="wedit" placeholder="'+esc(T.whPh)+'">'+esc(s.what||'')+'</textarea><div class="nbtns"><button type="button" data-wsave>'+T.whSave+'</button><button type="button" data-wcancel>'+T.whCancel+'</button><span class="nstate local" hidden></span></div>';
+    var ed=box.querySelector('textarea'),st=box.querySelector('.nstate');ed.focus();ed.setSelectionRange(ed.value.length,ed.value.length);
+    function back(){var y=window.scrollY;drawCalls();window.scrollTo(0,y);}
+    function save(){st.hidden=false;st.className='nstate';st.textContent=T.fnSaving;
+      fetch('/what',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({at:s.at,exp:s.exp,fn:s.fn,text:ed.value,token:SAVE.token})})
+        .then(function(r){return r.json();}).then(function(j){if(!j||!j.ok)throw 0;
+          c.steps.forEach(function(x){if(x===s||(s.at==null&&x.kind==='fn'&&x.at==null&&x.exp===s.exp&&x.fn===s.fn))x.what=j.text;});
+          if(j.shift)CHAINS.forEach(function(o){if(o.file===c.file)o.steps.forEach(function(x){ // a line came or went: what stands below it has moved
+            if(x.at!=null&&x.at>j.from)x.at+=j.shift;if(x.exp!=null&&x.exp>j.from)x.exp+=j.shift;});});
+          back();})
+        .catch(function(){st.className='nstate local';st.textContent=T.whFail;});}
+    box.querySelector('[data-wsave]').addEventListener('click',save);box.querySelector('[data-wcancel]').addEventListener('click',back);
+    ed.addEventListener('keydown',function(ev){if(ev.key==='Enter'&&!ev.shiftKey&&!ev.isComposing){ev.preventDefault();save();}else if(ev.key==='Escape')back();});}
   function openChain(i){curChain=i;curFn=null;if(view!=='calls')setView('calls');else drawAlt();setHash('c'+i);$('viewbar').scrollIntoView({block:'start',behavior:'smooth'});}
   function chainHead(c,i){var us=c.units.map(byId).filter(function(u){return u;});
     return '<div class="cvhead"><h3>'+esc(chainName(i))+'</h3>'+(c.intro||[]).map(function(x){return '<p>'+rich(x)+'</p>';}).join('')+
@@ -1114,7 +1347,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   // Shown through the service on this machine (`web --open`), the page hands each note back and the service
   // writes it into the project's notes file: the reader types, and it is kept. Opened as a plain file there is
   // nobody to hand it to, so the note stays in this browser until the reader carries it over.
-  var SAVE=D.save||null,sendT=null,sending={};
+  var sendT=null,sending={};
   function keepNote(k,v){try{if(v===inRepo(k))localStorage.removeItem(noteSlot(k));else localStorage.setItem(noteSlot(k),v);}catch(e){}
     if(SAVE){sending[k]='busy';clearTimeout(sendT);sendT=setTimeout(function(){sendNote(k);},700);}}
   function paintNote(k){var ed=$('note-edit'),st=$('note-state');if(ed&&st&&ed.getAttribute('data-key')===k)st.innerHTML=noteState(k);}
@@ -1134,16 +1367,6 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function copyText(text,btn){function done(){var was=btn.textContent;btn.textContent=T.fnCopied;setTimeout(function(){btn.textContent=was;},1400);}
     function byHand(){var a=document.createElement('textarea');a.value=text;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(a);}
     try{navigator.clipboard.writeText(text).then(done,byHand);}catch(e){byHand();}}
-  function md(t){var out=[],para=[],list=[],code=null; // a note is Markdown: paragraphs, lists, code, a little emphasis
-    function inl(x){return esc(x).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');}
-    function endP(){if(para.length){out.push('<p>'+para.map(inl).join('<br>')+'</p>');para=[];}}
-    function endL(){if(list.length){out.push('<ul>'+list.map(function(x){return '<li>'+inl(x)+'</li>';}).join('')+'</ul>');list=[];}}
-    String(t).split('\n').forEach(function(line){
-      if(/^\s*```/.test(line)){if(code==null){endP();endL();code=[];}else{out.push('<pre class="csig">'+esc(code.join('\n'))+'</pre>');code=null;}return;}
-      if(code!=null){code.push(line);return;}
-      var m=/^\s*(?:[-*]|\d+[.)])\s+(.*)$/.exec(line),h=/^\s*#{1,6}\s+(.*)$/.exec(line);
-      if(m){endP();list.push(m[1]);}else if(h){endP();endL();out.push('<p><b>'+inl(h[1])+'</b></p>');}else if(!line.trim()){endP();endL();}else{endL();para.push(line);}});
-    if(code!=null)out.push('<pre class="csig">'+esc(code.join('\n'))+'</pre>');endP();endL();return out.join('');}
   function noteState(k){var v=noteOf(k).trim();
     if(SAVE&&sending[k]==='busy')return '<span class="nstate">'+T.fnSaving+'</span>';
     if(SAVE&&sending[k]==='fail')return '<span class="nstate local">'+T.fnFail+'</span>';
@@ -1157,14 +1380,20 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       (next!=null?'<button type="button" data-fnopen="'+next+'">'+no[next]+' '+esc(c.steps[next].name)+'() ›</button>':'')+'</div>'+
       '<div class="ctop"><span class="rk">'+no[i]+'</span><h3 class="fnh"><code>'+esc(s.name)+'()</code></h3>'+
       (u?'<button type="button" class="pchip cunit '+u.z+'" data-to="'+esc(s.unit)+'">'+pic(u.icon)+'<span>'+esc(u.name)+'</span></button>':'')+(loc?'<code class="cloc">'+loc+'</code>':'')+'</div>'+
-      (s.what?'<p class="cwhat">'+rich(s.what)+'</p>':s.auto?'<p class="cwhat auto">'+T.chAutoNone+'<span class="tagx">'+T.chAuto+'</span></p>':'')+(s.more&&s.more.length?'<div class="cmore">'+s.more.map(function(x){return '<p>'+rich(x)+'</p>';}).join('')+'</div>':'')+
+      whatBox(s,i,false)+(s.more&&s.more.length?'<div class="cmore">'+s.more.map(function(x){return '<p>'+rich(x)+'</p>';}).join('')+'</div>':'')+
       (s.sig?'<code class="csig">'+esc(s.sig)+'</code>':'')+ioTable(s)+
       (s.doc?'<div class="blk"><h3>'+T.chDoc+'</h3><p class="cmore">'+esc(s.doc)+'</p></div>':'')+
       '<div class="fngrid"><div class="blk"><h3>'+T.fnSrc+'</h3>'+
         (lines.length?'<pre class="src" style="counter-reset:l '+((F.line||1)-1)+'">'+lines.map(function(x){return '<span class="l">'+esc(x)+'</span>';}).join('')+'</pre>'+(F.cut?'<div class="fkey">'+f(T.fnSrcCut,{n:lines.length})+'</div>':'')
           :'<div class="empty">'+T.fnNoSrc+(loc?' <code>'+loc+'</code>':'')+'</div>')+'</div>'+
-      '<div class="blk"><h3>'+T.fnMine+' <span id="note-state">'+noteState(s.key)+'</span></h3>'+
+      '<div class="blk npanel" id="note-panel" data-mode="'+(noteOf(s.key).trim()?'read':'edit')+'"><h3>'+T.fnMine+' <span id="note-state">'+noteState(s.key)+'</span>'+
+          '<button type="button" class="nbtn" data-nmode><span class="when-read">'+ic('pen')+T.fnEdit+'</span><span class="when-edit">'+T.fnDone+'</span></button></h3>'+
+        '<div class="nbar"><button type="button" data-fmt="b" title="'+T.fmtB+'" aria-label="'+T.fmtB+'"><b>B</b></button><button type="button" data-fmt="hl" title="'+T.fmtHl+'" aria-label="'+T.fmtHl+'"><mark>A</mark></button>'+
+          ['red','orange','green','blue','purple'].map(function(k){return '<button type="button" data-fmt="c:'+k+'" title="'+T.fmtColor+'" aria-label="'+T.fmtColor+' '+k+'"><i class="sw" style="--c:var(--n-'+k+')"></i></button>';}).join('')+
+          '<button type="button" data-fmt="an">'+ic('note')+T.fmtAn+'</button></div>'+
+        '<div class="nan" id="note-an" hidden><input type="text" id="note-an-in" placeholder="'+esc(T.fmtAnPh)+'"><button type="button" data-fmt="an-ok">'+T.fmtOk+'</button></div>'+
         '<textarea class="nedit" id="note-edit" data-key="'+esc(s.key)+'" placeholder="'+esc(T.fnPh)+'">'+esc(noteOf(s.key))+'</textarea>'+
+        '<div class="fkey nhint">'+T.fnFmt+'</div>'+
         '<div class="nview" id="note-view">'+(noteOf(s.key).trim()?md(noteOf(s.key)):'<span class="sub">'+T.fnEmpty+'</span>')+'</div>'+
         (SAVE?'<div class="fkey">'+f(T.fnAuto,{f:'<code>'+esc(D.notesFile)+'</code>'})+'</div>'
           :'<div class="nbtns"><button type="button" data-ncopy="'+esc(s.key)+'">'+T.fnCopy+'</button><button type="button" data-ncopyall id="note-all"'+(n?'':' hidden')+'>'+f(T.fnCopyAll,{n:n})+'</button></div>'+
@@ -1198,7 +1427,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
         (u?'<button type="button" class="pchip cunit '+u.z+'" data-to="'+esc(s.unit)+'">'+pic(u.icon)+'<span>'+esc(u.name)+'</span></button>':'')+
         (loc?'<code class="cloc">'+loc+'</code>':'')+
         (s.key?'<button type="button" class="nbtn'+(noteOf(s.key).trim()?' has':'')+'" data-fnopen="'+i+'">'+(noteOf(s.key).trim()?T.fnNote:T.fnNoteOpen)+'</button>':'')+'</div>'+
-        (s.what?'<p class="cwhat">'+rich(s.what)+'</p>':s.auto?'<p class="cwhat auto">'+(s.doc?esc(s.doc):T.chAutoNone)+'<span class="tagx">'+T.chAuto+'</span></p>':'')+
+        whatBox(s,i,true)+
         (s.more&&s.more.length?'<div class="cmore">'+s.more.map(function(x){return '<p>'+rich(x)+'</p>';}).join('')+'</div>':'')+
         (s.sig?'<code class="csig'+(s.key?' open':'')+'"'+(s.key?' data-fnopen="'+i+'" role="button" tabindex="0" title="'+esc(T.fnNoteOpen)+'"':'')+'>'+esc(s.sig)+'</code>':'')+
         ioTable(s)+
@@ -1207,35 +1436,53 @@ details .tags{flex-direction:row;flex-wrap:wrap}
         (s.state==='text'?'<div class="fkey">'+T.chText+'</div>':'')+
         (s.doc&&!s.auto?'<details><summary>'+T.chDoc+'</summary><div><p class="cmore">'+esc(s.doc)+'</p></div></details>':'')+ran+
         '</div></div>';});
-    return h+'</div>'+(c.more?'<div class="fkey">'+f(T.chMore,{n:c.more})+'</div>':'')+(c.passed?'<div class="fkey">'+f(T.chPassed,{n:c.passed})+'</div>':'')+'<div class="fkey">'+T.chCap+(c.forks?' '+T.chForkCap:'')+(c.file?' '+f(T.chFile,{f:'<code>'+esc(c.file)+'</code>'}):'')+'</div>';}
+    return h+'</div>'+(c.more?'<div class="fkey">'+f(T.chMore,{n:c.more})+'</div>':'')+(c.passed?'<div class="fkey">'+f(T.chPassed,{n:c.passed})+'</div>':'')+'<div class="fkey">'+T.chCap+(c.forks?' '+T.chForkCap:'')+(SAVE&&c.steps.some(canEdit)?' '+f(T.whTip,{f:'<code>'+esc(c.file)+'</code>'}):'')+(c.file?' '+f(T.chFile,{f:'<code>'+esc(c.file)+'</code>'}):'')+'</div>';}
   function drawCalls(){var box=$('alt');
     if(!CHAINS.length){box.innerHTML='<div class="empty">'+T.chNone+'</div><div class="ask" style="margin-top:12px">'+T.chAskAny+'<span class="say">'+esc(T.chSayAny)+'</span></div>';return;}
     if(curChain>=CHAINS.length)curChain=0;
     var c=CHAINS[curChain],ci=curChain;
-    box.innerHTML='<div class="cv"><div class="cvlist">'+CHAINS.map(function(x,i){
-      return '<button type="button" class="cvpick" data-chain="'+i+'" aria-pressed="'+(i===curChain)+'"><span class="cvn">'+esc(chainName(i))+'</span><span class="cvm">'+f(T.chMeta1,{n:x.n})+(x.forks?T.sep+f(T.chForks,{n:x.forks}):'')+
-        '<span class="tpics">'+x.units.map(byId).filter(function(u){return u;}).slice(0,6).map(function(u){return '<span class="pic '+u.z+'">'+ic(u.icon)+'</span>';}).join('')+'</span></span></button>';}).join('')+
-      (!SAVE&&unsaved().length?'<button type="button" class="cvpick" data-ncopyall><span class="cvn">'+f(T.fnCopyAll,{n:unsaved().length})+'</span><span class="cvm">'+T.fnLocal+'</span></button>':'')+
-      '</div><div class="cvmain">'+(curFn!=null&&c.steps[curFn]&&c.steps[curFn].kind==='fn'?fnPage(c,ci,curFn):chainHead(c,ci)+chainTree(c,ci)+chainCards(c,ci))+'</div></div>';
+    if(!$('cv-q')){ // the frame is drawn once: the search field has to stay where it is while its results change
+      box.innerHTML='<div class="cv"><div class="cvside"><label class="cvq">'+ic('search')+'<input id="cv-q" type="search" autocomplete="off" spellcheck="false" placeholder="'+esc(T.chFind)+'" aria-label="'+esc(T.chFind)+'"></label><div class="cvlist" id="cv-list"></div></div><div class="cvmain" id="cv-main"></div></div>';
+      var q=$('cv-q'),typing=false;q.value=curQ;
+      var ask=function(){if(typing)return;curQ=q.value;drawCallsList();};
+      q.addEventListener('compositionstart',function(){typing=true;});q.addEventListener('compositionend',function(){typing=false;ask();});
+      q.addEventListener('input',ask);q.addEventListener('search',ask);
+      q.addEventListener('keydown',function(ev){if(ev.isComposing)return;if(ev.key==='Enter'){var b=$('cv-list').querySelector('[data-hit]');if(b)b.click();}else if(ev.key==='Escape'){q.value='';ask();}});}
+    drawCallsList();
+    $('cv-main').innerHTML=curFn!=null&&c.steps[curFn]&&c.steps[curFn].kind==='fn'?fnPage(c,ci,curFn):chainHead(c,ci)+chainTree(c,ci)+chainCards(c,ci);
+    box=$('cv-main');
     wire(box);
     Array.prototype.forEach.call(box.querySelectorAll('[data-fnopen]'),function(b){function go(){flushNotes();curFn=+b.getAttribute('data-fnopen');setHash('c'+ci+'n'+curFn);drawCalls();$('viewbar').scrollIntoView({block:'start'});}
       b.addEventListener('click',go);if(b.tagName!=='BUTTON')b.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}});});
     Array.prototype.forEach.call(box.querySelectorAll('[data-fnback]'),function(b){b.addEventListener('click',function(){var i=+b.getAttribute('data-fnback');flushNotes();curFn=null;setHash('c'+ci);drawCalls();jump(i);});});
     Array.prototype.forEach.call(box.querySelectorAll('[data-ncopy]'),function(b){b.addEventListener('click',function(){copyText(noteFile([b.getAttribute('data-ncopy')]),b);});});
     Array.prototype.forEach.call(box.querySelectorAll('[data-ncopyall]'),function(b){b.addEventListener('click',function(){copyText(noteFile(unsaved()),b.querySelector('.cvn')||b);});});
-    var ed=$('note-edit');if(ed)ed.addEventListener('input',function(){var k=ed.getAttribute('data-key');keepNote(k,ed.value);
+    Array.prototype.forEach.call(box.querySelectorAll('[data-wedit]'),function(b){b.addEventListener('click',function(){editWhat(c,+b.getAttribute('data-wedit'));});});
+    var ed=$('note-edit'),pan=$('note-panel'),anSel=[0,0];
+    if(ed){
+      Array.prototype.forEach.call(box.querySelectorAll('[data-nmode]'),function(b){b.addEventListener('click',function(){var to=pan.getAttribute('data-mode')==='edit'?'read':'edit';pan.setAttribute('data-mode',to);if(to==='edit')ed.focus();else flushNotes();});});
+      var addAn=function(){var say=$('note-an-in').value.replace(/["<>\n]/g,' ').trim();$('note-an').hidden=true;ed.focus();ed.setSelectionRange(anSel[0],anSel[1]);if(say)fmt(ed,'<mark title="'+say+'">','</mark>',T.fmtWord);};
+      Array.prototype.forEach.call(box.querySelectorAll('[data-fmt]'),function(b){b.addEventListener('mousedown',function(ev){ev.preventDefault();}); // the selection in the note stays
+        b.addEventListener('click',function(){var k=b.getAttribute('data-fmt');
+          if(k==='b')fmt(ed,'**','**',T.fmtWord);else if(k==='hl')fmt(ed,'==','==',T.fmtWord);else if(k.slice(0,2)==='c:')fmt(ed,'<font color="'+k.slice(2)+'">','</font>',T.fmtWord);
+          else if(k==='an'){anSel=[ed.selectionStart,ed.selectionEnd];$('note-an').hidden=false;$('note-an-in').value='';$('note-an-in').focus();}
+          else if(k==='an-ok')addAn();});});
+      $('note-an-in').addEventListener('keydown',function(ev){if(ev.isComposing)return;if(ev.key==='Enter'){ev.preventDefault();addAn();}else if(ev.key==='Escape'){$('note-an').hidden=true;ed.focus();}});
+      ed.addEventListener('keydown',function(ev){if((ev.metaKey||ev.ctrlKey)&&!ev.altKey&&ev.key.toLowerCase()==='b'){ev.preventDefault();fmt(ed,'**','**',T.fmtWord);}});
+      ed.addEventListener('paste',function(ev){var cd=ev.clipboardData,html=cd?cd.getData('text/html'):'';if(!html||!richPaste(html))return;
+        var t=h2m(html);if(t){ev.preventDefault();put(ed,t);}});}
+    if(ed)ed.addEventListener('input',function(){var k=ed.getAttribute('data-key');keepNote(k,ed.value);
       $('note-view').innerHTML=ed.value.trim()?md(ed.value):'<span class="sub">'+T.fnEmpty+'</span>';$('note-state').innerHTML=noteState(k);
       var all=$('note-all'),n=unsaved().length;if(all){all.hidden=!n;all.textContent=f(T.fnCopyAll,{n:n});}});
-    function reveal(i){var m=picked[ci]=picked[ci]||{},s=c.steps[i]; // pick every case that leads to this line
-      s.cases.concat(s.kind==='case'?[i]:[]).forEach(function(a){m[c.steps[a].group]=a;});}
-    function jump(i){var card=$('cstep-'+i);if(!card)return;card.scrollIntoView({block:'center',behavior:'smooth'});card.classList.add('flash');setTimeout(function(){card.classList.remove('flash');},1200);}
-    Array.prototype.forEach.call(box.querySelectorAll('[data-chain]'),function(b){b.addEventListener('click',function(){flushNotes();curChain=+b.getAttribute('data-chain');curFn=null;setHash('c'+curChain);drawCalls();});});
+    function reveal(i){revealIn(ci,i);}
+    var jump=jumpStep;
     Array.prototype.forEach.call(box.querySelectorAll('[data-ccase]'),function(b){b.addEventListener('click',function(){var y=window.scrollY;reveal(+b.getAttribute('data-ccase'));drawCalls();window.scrollTo(0,y);});});
     Array.prototype.forEach.call(box.querySelectorAll('[data-cstep]'),function(b){b.addEventListener('click',function(){var i=+b.getAttribute('data-cstep');
-      if(!shown(ci,c.steps[i])){reveal(i);drawCalls();}jump(i);});});}
+      if(!shown(ci,c.steps[i])){reveal(i);drawCalls();}jump(i);});
+      b.addEventListener('dblclick',function(){editWhat(c,+b.getAttribute('data-cstep'));});});}
   function setView(v){view=v;views.forEach(function(x){$('view-'+x[0]).setAttribute('aria-pressed',String(x[0]===v));if(x[0]===v)$('vcap').textContent=x[2];});
     $('plan').hidden=v!=='plan';$('alt').hidden=v==='plan';drawAlt();}
-  function drawAlt(){var box=$('alt');if(view==='plan'){box.innerHTML='';return;}
+  function drawAlt(){var box=$('alt');box.classList.toggle('callsv',view==='calls');if(view==='plan'){box.innerHTML='';return;}
     if(view==='calls'){drawCalls();return;}
     var avail=box.clientWidth-26,h='';
     if(D.frame){ // the whole project as one box: where you are in it, and where uncommitted work landed

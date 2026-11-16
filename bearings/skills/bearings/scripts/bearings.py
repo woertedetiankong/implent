@@ -31,9 +31,11 @@ The map also counts the uncommitted work in the repository's other worktrees.
 Read-only towards the project, with one exception. It writes the map page, under the git dir unless --out
 says otherwise, and beside it a dated copy of the parts list whenever the list has changed, so that "what
 changed lately" can be measured for a list nobody has committed. The exception: `web --open` shows the page
-through a small service on this machine, and a note a reader types on a function's page is written into
-calls-notes.md beside the call chains. The service listens on this machine only, writes that one file only,
-and stops by itself when no page has asked anything of it for half an hour. Python 3 standard library only.
+through a small service on this machine, and two things a reader writes on the page go into the project: a
+note on a function's page, into calls-notes.md beside the call chains, and a rewritten sentence on a function
+of a chain, onto that function's line in calls.md. The service listens on this machine only, writes those two
+files only, and stops by itself when no page has asked anything of it for half an hour. Python 3 standard
+library only; the page carries Temml (scripts/vendor, MIT) to set the formulas in notes.
 """
 import argparse
 import ast
@@ -499,11 +501,19 @@ def flow_line(flow, line):
             node["note"] = field
 
 
-def calls_line(chain, line, stack):
+def call_name(field):
+    """A function as a chain writes it: `f`, `f()` and `f(a, b)` are f."""
+    return re.sub(r"\s*\(.*\)\s*$", "", field.strip().strip("`").strip()).strip("`").strip()
+
+
+def calls_line(chain, line, stack, at=None):
     """One line of a call chain. `function | what it does` names a function; one set in under another is
     called by it. Under a function, `进 name: what it is | where it comes from` (or `in`) is something that
     goes into it and `出 name: what it is | where it goes` (`out`) something that comes out: a parameter, a
-    variable, a field, the return value. Any other line under a function is more of its explanation."""
+    variable, a field, the return value. Any other line under a function is more of its explanation.
+    A `function | sentence` line set in under `展开` gives that sentence to one of the functions filled in
+    there. `at` is the number of the line in its file; a step remembers it, so the page can hand a
+    sentence a reader rewrote back to that line."""
     if not line.strip():
         return
     line = line.expandtabs(4)
@@ -522,15 +532,22 @@ def calls_line(chain, line, stack):
         while stack and stack[-1] >= indent:
             stack.pop()
         chain["steps"].append({"kind": "expand", "fn": "", "what": "", "note": "", "more": [], "depth": min(len(stack), 60),
-                               "levels": max(1, min(5, int(grow.group(1) or EXPAND_LEVELS))), "ins": [], "outs": []})
+                               "levels": max(1, min(5, int(grow.group(1) or EXPAND_LEVELS))), "ins": [], "outs": [],
+                               "at": at, "indent": indent, "says": {}})
         return
     fork = CALL_FORK_RE.match(line)
     fields = [x.strip() for x in re.sub(r"^\s*[-*]\s+", "", fork.group(2) if fork else line).strip().split("|")]
+    last = chain["steps"][-1] if chain["steps"] else None
+    if last and last["kind"] == "expand" and indent > last["indent"]:
+        # set in under `展开`: a sentence for one of the functions the script fills in there
+        if not fork and CALL_NAME_RE.match(call_name(fields[0])):
+            last["says"][call_name(fields[0])] = " ".join(x for x in fields[1:] if x)
+        return
     if fork:   # `分支 what varies | a note` and, under it, `情况 name | when it applies`
         kind, name = "branch" if fork.group(1).lower() in ("分支", "branch") else "case", ""
     else:
         kind = "fn"
-        name = re.sub(r"\s*\(.*\)\s*$", "", fields[0].strip("`").strip()).strip("`").strip()  # `f()` and `f(a, b)` are f
+        name = call_name(fields[0])
         if not CALL_NAME_RE.match(name):
             if chain["steps"]:   # a sentence, not a function: it belongs to the line above
                 chain["steps"][-1]["more"].append(line.strip())
@@ -539,7 +556,7 @@ def calls_line(chain, line, stack):
         stack.pop()
     chain["steps"].append({"kind": kind, "fn": name, "what": " ".join(x for x in (fields if fork else fields[1:]) if x)
                            if kind == "fn" else fields[0].rstrip(":："), "note": " ".join(x for x in fields[1:] if x) if fork else "",
-                           "more": [], "depth": min(len(stack), 60), "ins": [], "outs": []})
+                           "more": [], "depth": min(len(stack), 60), "ins": [], "outs": [], "at": at})
     stack.append(indent)
 
 
@@ -548,12 +565,12 @@ def read_calls(text):
     what the chain is about, and a ```calls block holds its functions. A block can also carry its title on
     the fence. A heading with no block under it (the file's own title, say) names nothing."""
     chains, chain, stack, title, intro, fenced = [], None, [], "", [], False
-    for line in text.split("\n"):
+    for at, line in enumerate(text.split("\n")):
         if chain is not None:
             if line.strip().startswith("```"):
                 chain = None
             else:
-                calls_line(chain, line, stack)
+                calls_line(chain, line, stack, at)
             continue
         if fenced:
             fenced = not line.strip().startswith("```")
@@ -2732,6 +2749,7 @@ def read_chain(chain, code, parts, wiring, unit=None, seen=None):
         if s["kind"] == "expand":
             # what the function above calls, read from the code, takes its place in the chain from here on
             add, had = [], {fn_key(caller)} if caller and caller.get("qual") else set()
+            says = s.get("says") or {}   # the sentences written under `展开` for the functions it fills in
 
             def grow(fn, depth, level):
                 for g in code.callees(fn)[0]:
@@ -2740,8 +2758,10 @@ def read_chain(chain, code, parts, wiring, unit=None, seen=None):
                     if g["end"] - g["line"] < EXPAND_TINY and not code.callees(g)[0]:
                         passed[0] += 1   # a few lines that call nothing further: left out, and counted
                         continue
-                    add.append({"kind": "fn", "fn": g["file"] + ":" + g["qual"], "what": "", "note": "", "more": [],
-                                "depth": depth, "ins": [], "outs": [], "auto": True})
+                    said = [says[k] for k in (g["file"] + ":" + g["qual"], g["qual"], g["name"]) if says.get(k)]
+                    add.append({"kind": "fn", "fn": g["file"] + ":" + g["qual"], "what": said[0] if said else "",
+                                "note": "", "more": [], "depth": depth, "ins": [], "outs": [], "auto": True,
+                                "exp": s.get("at")})
                     if fn_key(g) not in had and level < s["levels"]:
                         had.add(fn_key(g))
                         grow(g, depth + 1, level + 1)
@@ -2750,7 +2770,9 @@ def read_chain(chain, code, parts, wiring, unit=None, seen=None):
             queue[at_q:at_q] = add
             continue
         row = {"kind": s["kind"], "fn": s["fn"], "what": s["what"], "note": s.get("note", ""), "more": s.get("more", []),
-               "up": up, "d": max(0, d), "cases": cases, "auto": bool(s.get("auto"))}
+               "up": up, "d": max(0, d), "cases": cases, "auto": bool(s.get("auto")),
+               # where its sentence is written: its own line, or for a filled-in function the `展开` line
+               "at": s.get("at"), "exp": s.get("exp")}
         if s["kind"] != "fn":
             if s["kind"] == "case":
                 before = last_child.get(up)
@@ -2829,6 +2851,9 @@ def load_chains(root, files, parts, routes, top, wiring, runs=(), calls_file="",
         chain = read_chain(c, code, parts, wiring, unit=u, seen=seen)
         chain["title"] = (unit_label(u) + ("：" + c["title"] if c["title"] else "")) if u is not None else c["title"]
         chain["file"], chain["in_list"] = where, where == listed and bool(listed)
+        if chain["in_list"] or not calls_file:   # only a line of the calls file can be handed back from the page
+            for row in chain["steps"]:
+                row["at"] = row["exp"] = None
         out.append(chain)
     # the notes a reader keeps, each found by the function its heading names
     noted = {}
@@ -3880,6 +3905,9 @@ def web_page(root, parts, t, args, save=None):
     page = open(os.path.join(here, "map_template.html"), encoding="utf-8").read()
     # Every "<" in the data is written as \u003c. A commit subject holding both "<!--" and "<script" would
     # otherwise put the browser in a state where the page's own </script> no longer ends the script.
+    for mark, name in (("/*__MATH_CSS__*/", "temml.css"), ("/*__MATH_JS__*/", "temml.min.js")):
+        lib = os.path.join(here, "vendor", name)   # sets the formulas in notes; without it they show as written
+        page = page.replace(mark, slurp(lib) if os.path.isfile(lib) else "")
     page = page.replace("__PROJECT__", data["project"]).replace(
         "/*__DATA__*/null", json.dumps(data, ensure_ascii=False).replace("<", "\\u003c"))
     if not args.fragment:
@@ -3893,7 +3921,8 @@ def web_page(root, parts, t, args, save=None):
 # The map is a snapshot: one file, rebuilt whole. A reader's notes are the one thing written on the page
 # that has to end up in the project. So `web --open` shows the page through a small service on this machine:
 # it builds the page afresh each time it is loaded, and takes a note back and writes it into the notes file.
-# It listens on this machine only, writes that one file only, and stops by itself when no page has asked
+# So does the sentence on a function of a chain, when a reader rewrites it: it goes onto its line in the calls file.
+# It listens on this machine only, writes those two files only, and stops by itself when no page has asked
 # anything of it for a while.
 
 SERVE_IDLE = 1800     # seconds without a request before the service stops; an open page asks every few minutes
@@ -3940,6 +3969,54 @@ def write_note(path, heads, key, text, zh=True):
         fh.write("\n".join(out).rstrip("\n") + "\n")
     os.replace(tmp, path)
     return text
+
+
+def write_what(path, at, exp, fn, text):
+    """Puts the sentence a reader wrote for one function of a chain into the calls file. `at` is the line
+    the function is written on: the sentence after its bar is replaced. A function the script filled in has
+    no line; `exp` is then the `展开` line it came from, and the sentence goes on a line of its own set in
+    under that. No text takes the sentence away. Returns {"text": the sentence as it now stands, "from":
+    a line, "shift": by how many lines everything below that line moved}, or None when the file no longer
+    has that function on that line (it changed since the page was made)."""
+    lines = slurp(path).split("\n")
+    text = " ".join(str(text).replace("|", "｜").split())[:600]
+
+    def named(k):   # the function line k names, or None
+        line = lines[k].expandtabs(4)
+        if not line.strip() or line.strip().startswith("```") or CALL_EXPAND_RE.match(line) or CALL_FORK_RE.match(line):
+            return None
+        return call_name(re.sub(r"^\s*[-*]\s+", "", line).split("|")[0])
+
+    def dent(k):
+        line = lines[k].expandtabs(4)
+        return len(line) - len(line.lstrip())
+    short, shift = fn.split(":")[-1], 0
+    if isinstance(at, int) and 0 <= at < len(lines):
+        if named(at) != fn:
+            return None
+        lines[at] = lines[at].split("|")[0].rstrip() + (" | " + text if text else "")
+    elif isinstance(exp, int) and 0 <= exp < len(lines) and CALL_EXPAND_RE.match(lines[exp]):
+        k, mine = exp + 1, None
+        while k < len(lines) and lines[k].strip() and not lines[k].strip().startswith("```") and dent(k) > dent(exp):
+            if named(k) in (fn, short):
+                mine = k
+            k += 1
+        new = " " * (dent(exp) + 2) + short + " | " + text
+        if mine is not None and text:
+            lines[mine] = new
+        elif mine is not None:
+            del lines[mine]
+            shift = -1
+        elif text:
+            lines.insert(exp + 1, new)
+            shift = 1
+    else:
+        return None
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines))
+    os.replace(tmp, path)
+    return {"text": text, "from": exp if shift else -1, "shift": shift}
 
 
 def serve_file(root):
@@ -4011,7 +4088,7 @@ def ensure_server(root, args):
 def cmd_serve(root, parts, t, args):
     """The service behind `web --open`. Not meant to be run by hand."""
     token = secrets.token_urlsafe(18)
-    state = {"last": time.time(), "heads": {}, "keys": set(), "notes": "", "zh": True}
+    state = {"last": time.time(), "heads": {}, "keys": set(), "notes": "", "zh": True, "calls": ""}
     lock = threading.Lock()
     asks = serve_asks(root, args)
 
@@ -4027,7 +4104,7 @@ def cmd_serve(root, parts, t, args):
             now.fragment, now.out = False, None
             page, book = web_page(root, now_parts, TEXT[language(now_parts)], now, save={"token": token})
             state.update(heads=book["heads"], keys=set(book["fns"]), notes=os.path.join(root, book["notes_file"]),
-                         zh=language(now_parts) == "zh")
+                         zh=language(now_parts) == "zh", calls=now.calls_path)
             return page
 
     class Handler(http.server.BaseHTTPRequestHandler):
@@ -4069,12 +4146,19 @@ def cmd_serve(root, parts, t, args):
             state["last"] = time.time()
             try:
                 size = int(self.headers.get("Content-Length") or 0)
-                if not self.here() or self.path != "/note" or not 0 < size <= NOTE_MAX:
+                if not self.here() or self.path not in ("/note", "/what") or not 0 < size <= NOTE_MAX:
                     return self.reply(403, {"ok": False})
                 ask = json.loads(self.rfile.read(size).decode("utf-8"))
                 key, text = ask.get("key"), ask.get("text")
-                if not hmac.compare_digest(str(ask.get("token", "")), token) or key not in state["keys"] \
-                        or not isinstance(text, str):
+                if not hmac.compare_digest(str(ask.get("token", "")), token) or not isinstance(text, str):
+                    return self.reply(403, {"ok": False})
+                if self.path == "/what":   # the sentence on one function of a chain, into the calls file
+                    fn = ask.get("fn")
+                    with lock:
+                        kept = write_what(state["calls"], ask.get("at"), ask.get("exp"), fn, text) \
+                            if state["calls"] and isinstance(fn, str) and CALL_NAME_RE.match(fn) else None
+                    return self.reply(200 if kept else 409, dict(kept or {}, ok=bool(kept)))
+                if key not in state["keys"]:
                     return self.reply(403, {"ok": False})
                 with lock:
                     kept = write_note(state["notes"], state["heads"].get(key, []), key, text, state["zh"])
@@ -4156,6 +4240,7 @@ apart from the parts list and its diagrams, and the page shows them in a view of
                                   under it. What every case shares is written once, above and below the fork
       展开 2        or  expand 2             under a function: the script fills in what that function calls, two
                                   levels down, as it reads it from the code. Nothing has to be written for those
+        function | sentence          set in under 展开: a sentence for one of the functions filled in there
   where each function is, its signature, its parameters and their types, the comment the code carries on it and
   whether the function above calls it are read from the code (Python, JavaScript/TypeScript, Go, C/C++);
   `bearings.py calls --from NAME` prints what NAME calls, and with --draft prints it as the frame of a block to
