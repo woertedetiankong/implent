@@ -3907,7 +3907,8 @@ def web_page(root, parts, t, args, save=None):
     # otherwise put the browser in a state where the page's own </script> no longer ends the script.
     for mark, name in (("/*__MATH_CSS__*/", "temml.css"), ("/*__MATH_JS__*/", "temml.min.js")):
         lib = os.path.join(here, "vendor", name)   # sets the formulas in notes; without it they show as written
-        page = page.replace(mark, slurp(lib) if os.path.isfile(lib) else "")
+        note = "/*! Temml 0.14.0 | MIT License | Copyright (c) 2020 Ron Kok | https://github.com/ronkok/Temml */\n"
+        page = page.replace(mark, note + slurp(lib) if os.path.isfile(lib) else "")   # the licence asks for its notice
     page = page.replace("__PROJECT__", data["project"]).replace(
         "/*__DATA__*/null", json.dumps(data, ensure_ascii=False).replace("<", "\\u003c"))
     if not args.fragment:
