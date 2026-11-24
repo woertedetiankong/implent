@@ -367,7 +367,7 @@ C 项目用 `scripts/bearings_run.h`：把项目的源码加上 `-finstrument-fu
 
 项目对文档格式有检查、放不进 `docs/` 时，清单也可以放在根目录的 `PARTS.md` 或 `.bearings/parts.md`。只允许一个一级标题的项目，可以先写一个总标题，其余每级往下顺延一级。
 
-完整的写法见 [`bearings/skills/bearings/SKILL.md`](bearings/skills/bearings/SKILL.md)。
+清单和流程图的完整写法见 [`bearings/skills/bearings/SKILL.md`](bearings/skills/bearings/SKILL.md)。函数调用链、录制运行、任务、多窗口各有一份写法，在旁边的 [`references/`](bearings/skills/bearings/references/) 里；AI 用到哪个才读哪个。
 
 # implementation-journal：给 AI 的记忆
 
