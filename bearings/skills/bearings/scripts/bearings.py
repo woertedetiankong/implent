@@ -157,6 +157,13 @@ TEXT = {
         "unknown_window": "没记到是哪个窗口",
         "last_at": "最后改动 {t}",
         "sep": "，",
+        "words_head": "{lang}对照：{done}/{total} 处文字有译文（{files}）",
+        "words_no_file": "还没有{lang}对照。页面上切到{lang}时，界面会换，清单里的文字仍按原文显示。把译文写进 {file}（函数调用链的写进 {calls}），格式见 --help；words --draft 打印待译的全部条目。",
+        "words_missing": "还没有译文的 {n} 处（页面上按原文显示）：",
+        "words_stale": "原文在清单里找不到了的译文 {n} 条（原文改过字？把这条的第一行改成现在的原文，或者删掉）：",
+        "words_clash": "译出来和别的名字重了的 {n} 个名字（页面不用这几条，名字按原文显示；换一个译法）：",
+        "words_all": "每一处文字都有译文。",
+        "doctor_words_missing": "{n} 处文字还没有{lang}译文，页面切到{lang}时按原文显示（运行 words 看是哪些）",
         "doctor_head": "清单体检：{path}",
         "doctor_ok": "清单和代码对得上，没有发现问题。",
         "doctor_paths": "路径对不上任何文件的 {n} 处（代码可能挪过位置）：",
@@ -295,6 +302,13 @@ TEXT = {
         "unknown_window": "no window on record",
         "last_at": "last edit {t}",
         "sep": ", ",
+        "words_head": "{lang} translations: {done} of {total} texts have one ({files})",
+        "words_no_file": "No {lang} translations yet. With the page switched to {lang}, its own words change and the list's stay as written. Write the translations into {file} (those of the call chains into {calls}); --help gives the format, and words --draft prints every entry still to translate.",
+        "words_missing": "{n} texts with no translation yet (the page shows them as written):",
+        "words_stale": "{n} translations whose original is no longer on the list (reworded? change the entry's first line to the text as it is now, or delete the entry):",
+        "words_clash": "{n} names whose translation is the same as another name (the page leaves these names as written; choose another word):",
+        "words_all": "Every text has a translation.",
+        "doctor_words_missing": "{n} texts have no {lang} translation yet and show as written when the page is switched to {lang} (run words to see which)",
         "doctor_head": "Check-up of {path}",
         "doctor_ok": "The list agrees with the code; nothing found.",
         "doctor_paths": "{n} paths that match no file (the code may have moved):",
@@ -3554,13 +3568,18 @@ def cmd_doctor(root, parts, t, args):
     chains, book = load_chains(root, files, parts, args.routes, args.top, wiring, runs, args.calls_path, listed,
                                source=False)
     chained = dict(chain_problems(chains), notes_lost=book["lost"])
+    said = words_now(root, parts, args)
+    if not said["have"]:
+        said = dict(said, missing=[])      # no translations were ever started: nothing to report
     if args.json:
         print(json.dumps({"list": listed, "dead_paths": [{"unit": u, "path": p} for u, p in dead],
                           "unmapped": len(unmapped), "near_names": near, "wrong_level": level, "unbacked": loose,
                           "wiring": dict(wires, code_gone=gone),
                           "stale": [{"unit": u, "drawn": d, "changes_since": n} for u, d, n in old],
                           "undrawn": bare, "unexplained": plain, "marks_missed": missed, "runs": ran,
-                          "call_chains": chained}, ensure_ascii=False, indent=2))
+                          "call_chains": chained,
+                          "translations": {k: v for k, v in said.items() if k != "words"}},
+                         ensure_ascii=False, indent=2))
         return
     zh = t is TEXT["zh"]
     join = "；" if zh else "; "
@@ -3633,12 +3652,16 @@ def cmd_doctor(root, parts, t, args):
     section(t["doctor_calls_bare"], ["%s%s%s()" % (x["on"], colon, x["fn"]) for x in chained["bare"]])
     section(t["doctor_calls_forks"], [x["on"] + colon + x["branch"] for x in chained["forks"]])
     section(t["doctor_notes_lost"], [x["fn"] for x in chained["notes_lost"]])
+    section(t["words_stale"], ["%s%s%s" % (x["file"], colon, x["text"]) for x in said["stale"]])
+    section(t["words_clash"], ["%s / %s → %s" % (x["name"], x["same_as"], x["translation"]) for x in said["clash"]])
     if not found:
         print("  " + t["doctor_ok"])
     if bare:
         print("  " + t["doctor_bare"].format(n=len(bare)))
     if plain:
         print("  " + t["doctor_plain"].format(n=len(plain)))
+    if said["missing"]:
+        print("  " + t["doctor_words_missing"].format(n=len(said["missing"]), lang=LANG_NAMES["zh" if zh else "en"][said["lang"]]))
     print(t["doctor_limit"])
 
 
@@ -3752,6 +3775,182 @@ def cmd_windows(root, parts, t, args):
         print("  " + t["clash_" + c["kind"]].format(who="、".join(c["who"]) if t is TEXT["zh"] else ", ".join(c["who"]),
                                                     file=c["file"], part=c["part"] or t["unmapped_changed"],
                                                     where="、".join(c["where"])))
+
+
+# Two languages --------------------------------------------------------------------
+# The list is written in one language, Chinese or English, and so are the call chains. A file beside each gives
+# the other language: parts.zh.md beside an English parts.md (parts.en.md beside a Chinese one), and calls.zh.md
+# or calls.en.md beside the calls file. It is a plain list of pairs: a line of the original text exactly as the
+# list has it, and under it a line that starts with ":" and holds the translation. The list stays the one source of
+# the picture: paths, diagrams and names are read from it alone, and a text with no translation is shown as
+# written. The page carries both and the reader switches between them.
+LANG_NAMES = {"zh": {"zh": "中文", "en": "英文"}, "en": {"zh": "Chinese", "en": "English"}}
+WORDS_SKIP = frozenset((
+    "icon", "to", "dir", "kind", "state", "key", "file", "sig", "line1", "returns", "doc", "type", "code", "paths",
+    "files", "hash", "date", "subject", "fn", "caller", "cands", "ex", "fns", "save", "project", "lang", "generated",
+    "list", "callsFile", "notesFile", "measured", "since", "base", "drawn", "last", "said", "tool", "i18n", "params",
+    "in", "out", "ran"))
+WORDS_DERIVED = frozenset(("ports", "together", "inner", "unit", "units", "unitName", "group", "parent"))
+WORDS_NAMES = frozenset(("name", "a", "b", "title"))
+WORDS_FIRST = ("name", "title", "what", "explain", "intro", "sensitive", "external", "rules", "nodes", "edges")
+
+
+def other_lang(lang):
+    return "en" if lang == "zh" else "zh"
+
+
+def words_path(path, lang):
+    stem, ext = os.path.splitext(path)
+    return "%s.%s%s" % (stem, lang, ext or ".md")
+
+
+def load_words(paths):
+    """The translations: ({original: translation}, [(file, original, translation)] as written). A line that
+    starts with "#" is a heading for the people who keep the file and is not read, nor is an HTML comment."""
+    words, rows = {}, []
+    for path in paths:
+        if not os.path.isfile(path):
+            continue
+        src = None
+        for line in re.sub(r"<!--.*?-->", "", open(path, encoding="utf-8").read(), flags=re.S).split("\n"):
+            text = line.strip()
+            if not text or text.startswith("#"):
+                continue
+            if text[0] in ":：":
+                if src is not None:
+                    rows.append((path, src, text[1:].strip()))
+                    if text[1:].strip():
+                        words.setdefault(src, text[1:].strip())
+                src = None
+                continue
+            if src is not None:
+                rows.append((path, src, ""))
+            src = text
+        if src is not None:
+            rows.append((path, src, ""))
+    return words, rows
+
+
+def words_of(data):
+    """Every text on the page that a person wrote in the list or the calls file, once each, in reading order:
+    [(heading it stands under, text, whether it is a name, "list" or "calls")]. The page's own rule for what it
+    translates is the same walk over the same keys (WORDS_SKIP goes to the page with the translations); a
+    name that stands in several places is one text, so every place changes together."""
+    out, seen = [], set()
+
+    def walk(v, key, owner, group, home):
+        if isinstance(v, str):
+            if key == "name" and (owner.get("kind") is not None or "type" in owner or "via" in owner):
+                return   # a function, a parameter: the code's own name
+            text = v.strip()
+            if text and text not in seen:
+                seen.add(text)
+                out.append((group, text, key in WORDS_NAMES, home))
+        elif isinstance(v, list):
+            for x in v:
+                walk(x, key, owner, group, home)
+        elif isinstance(v, dict):
+            keys = sorted(v, key=lambda k: WORDS_FIRST.index(k) if k in WORDS_FIRST else len(WORDS_FIRST))
+            for k in keys:
+                if k not in WORDS_SKIP and k not in WORDS_DERIVED:
+                    walk(v[k], k, v, group, home)
+
+    walk(data.get("explain") or [], "explain", {}, "", "list")
+    walk(data.get("frame") or {}, "frame", {}, "", "list")
+    for r in data.get("routes") or []:
+        walk(r, "route", {}, r.get("title") or "", "list")
+    in_wing = set()
+    for w in data.get("wings") or []:
+        walk({k: w[k] for k in w if k != "parts"}, "wing", {}, w["name"], "list")
+        for i in w["parts"]:
+            in_wing.add(i)
+            walk(data["parts"][i], "part", {}, data["parts"][i]["name"], "list")
+    for i, part in enumerate(data.get("parts") or []):
+        if i not in in_wing:
+            walk(part, "part", {}, part["name"], "list")
+    for c in data.get("chains") or []:
+        walk(c, "chain", {}, c.get("title") or "", "calls")
+    return out
+
+
+def words_state(root, args, lang, data):
+    """What the page and the check-up need to know about the other language: the translations that can be
+    used, the texts that have none, the entries whose original is gone, and the names that would collide."""
+    other = other_lang(lang)
+    calls_home = os.path.join(root, args.calls_home)
+    paths = [words_path(args.list_path, other), words_path(calls_home, other)]
+    words, rows = load_words(paths)
+    wanted = words_of(data)
+    known = {text for _, text, _, _ in wanted}
+    names = {text for _, text, is_name, _ in wanted if is_name}
+    clash, taken = [], {}
+    for _, text, is_name, _ in wanted:      # two boxes are told apart by their names, in either language
+        tr = words.get(text)
+        if not is_name or not tr:
+            continue
+        twin = taken.get(tr) or (tr if tr in names and tr != text and words.get(tr, tr) == tr else None)
+        if twin and twin != text:
+            clash.append({"name": text, "same_as": twin, "translation": tr})
+        else:
+            taken[tr] = text
+    for x in clash:
+        words.pop(x["name"], None)
+    rel = lambda path: os.path.relpath(path, root).replace(os.sep, "/")
+    return {"lang": other, "files": [rel(x) for x in paths], "have": [rel(x) for x in paths if os.path.isfile(x)],
+            "words": words, "total": len(wanted),
+            "missing": [{"under": g, "text": text, "in": home} for g, text, _, home in wanted if text not in words],
+            "stale": [{"file": rel(f), "text": src} for f, src, _ in rows if src not in known],
+            "clash": clash}
+
+
+def words_now(root, parts, args):
+    """The same, for a command that does not write the page."""
+    quiet = dict(vars(args), no_links=True, no_windows=True, no_source=True, fragment=True)
+    return web_page(root, parts, TEXT[language(parts)], argparse.Namespace(**quiet))[1]["words"]
+
+
+def cmd_words(root, parts, t, args):
+    """The other language of the page: how much of the list has a translation, what is still missing, and
+    which translations no longer match the list. With --draft: the missing entries, ready to be filled in."""
+    state = words_now(root, parts, args)
+    if args.json:
+        print(json.dumps({k: v for k, v in state.items() if k != "words"}, ensure_ascii=False, indent=2))
+        return
+    lang = LANG_NAMES["zh" if t is TEXT["zh"] else "en"][state["lang"]]
+    if args.draft:
+        for home, path in zip(("list", "calls"), state["files"]):
+            rows = [x for x in state["missing"] if x["in"] == home]
+            if not rows:
+                continue
+            print("# → %s\n" % path)
+            under = None
+            for x in rows:
+                if x["under"] != under:
+                    under = x["under"]
+                    if under:
+                        print("## %s\n" % under)
+                print("%s\n: \n" % x["text"])
+        return
+    if not state["have"]:
+        print(t["words_no_file"].format(lang=lang, file=state["files"][0], calls=state["files"][1]))
+    print(t["words_head"].format(lang=lang, done=state["total"] - len(state["missing"]), total=state["total"],
+                                 files=" / ".join(state["have"] or state["files"])))
+    if state["missing"]:
+        print(t["words_missing"].format(n=len(state["missing"])))
+        for x in state["missing"][:40]:
+            print("    %s%s" % ("[%s] " % x["under"] if x["under"] else "", x["text"]))
+        if len(state["missing"]) > 40:
+            print("    …")
+    elif state["have"]:
+        print(t["words_all"])
+    if state["stale"]:
+        print(t["words_stale"].format(n=len(state["stale"])))
+        for x in state["stale"][:40]:
+            print("    %s: %s" % (x["file"], x["text"]))
+    if state["clash"]:
+        print(t["words_clash"].format(n=len(state["clash"])))
+        for x in state["clash"]:
+            print("    %s / %s → %s" % (x["name"], x["same_as"], x["translation"]))
 
 
 def cmd_web(root, parts, t, args):
@@ -3901,6 +4100,10 @@ def web_page(root, parts, t, args, save=None):
                        "explain": w.explain,
                        "parts": [parts.index(p) for p in w.parts]} for w in args.top["wings"]],
             "tasks": out_tasks, "tasksOld": tasks_old, "save": save}
+    # the other language: the page carries the translations and the reader switches (see "Two languages")
+    words = book["words"] = words_state(root, args, lang, data)
+    data["i18n"] = {"lang": words["lang"], "map": words["words"], "missing": len(words["missing"]),
+                    "total": words["total"], "file": words["files"][0], "skip": sorted(WORDS_SKIP)}
     here = os.path.dirname(os.path.abspath(__file__))
     page = open(os.path.join(here, "map_template.html"), encoding="utf-8").read()
     # Every "<" in the data is written as \u003c. A commit subject holding both "<!--" and "<script" would
@@ -4261,6 +4464,19 @@ projects docs/tasks/<task>/handoff.md):
   新增：/ Added:  改了：/ Changed:  去掉：/ Removed:   Part / Box: one sentence     (Part / Room / Box for a room)
     marks that box on the part's flow diagram; the names must be the ones on the list
 
+the other language (parts.zh.md beside an English parts.md, parts.en.md beside a Chinese one; calls.zh.md or
+calls.en.md beside the calls file). The page shows the list in the language it is written in, and in the other
+where this file gives it; the reader switches at the top of the page. Paths, diagrams and names are read from the
+list alone:
+  # anything                   a heading for whoever keeps the file; not read (nor is <!-- a comment -->)
+  the original text            one line, exactly as the list has it: a name, a first line, a paragraph of an
+                               explanation (without `Explain:`), a box's name or note, the words on an arrow,
+                               a route's or chain's title, a function's sentence, what goes in or comes out
+  : the translation            the line under it, starting with a colon. Leave code names in backticks as they are
+  a text with no entry is shown as written. `bearings.py words` lists the texts still without one and the
+  entries whose original the list no longer has; `words --draft` prints the missing entries to fill in.
+  Two names must not be given the same translation: the page tells boxes apart by name.
+
 a recorded run (docs/runs/<name>.json): one real run of a route, written by scripts/bearings_run.py (Python),
 scripts/bearings_run.h (C) or any program that writes this shape; the page shows the latest run of each route:
   {"route": "<the route's title>", "name": "what was run", "recorded": "2026-11-14T10:02:11",
@@ -4317,6 +4533,9 @@ def main():
     k.add_argument("--json", action="store_true")
     d = sub.add_parser("doctor", help="check the list against the code: stale paths, misspelt boxes, aged diagrams")
     d.add_argument("--json", action="store_true")
+    wd = sub.add_parser("words", help="the page's other language: which texts of the list have a translation, which do not")
+    wd.add_argument("--draft", action="store_true", help="print the entries still to translate, ready to fill in")
+    wd.add_argument("--json", action="store_true")
     sv = sub.add_parser("serve", help=argparse.SUPPRESS)   # the service behind `web --open`
     sv.add_argument("--port", type=int, default=0)
     sv.add_argument("--no-links", action="store_true")
@@ -4335,7 +4554,7 @@ def main():
     args.calls_path, args.calls_home = calls_path(root, args.list_path, args.calls_file)
     {"parts": cmd_parts, "check": cmd_check, "web": cmd_web, "links": cmd_links, "doctor": cmd_doctor,
      "tasks": cmd_tasks, "windows": cmd_windows, "runs": cmd_runs, "calls": cmd_calls,
-     "serve": cmd_serve}[args.cmd](root, parts, t, args)
+     "words": cmd_words, "serve": cmd_serve}[args.cmd](root, parts, t, args)
 
 
 if __name__ == "__main__":

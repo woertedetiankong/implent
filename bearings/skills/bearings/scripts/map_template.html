@@ -52,6 +52,7 @@ p{margin:0}
 .top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 28px;align-items:end}
 .title{font-size:clamp(32px,5.2vw,56px);font-weight:900;line-height:1.04;letter-spacing:-.015em;margin:0;overflow-wrap:anywhere}
 .stamp{font-size:13px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.topr{display:flex;flex-direction:column;align-items:flex-end;gap:8px} .langnote{margin:10px 0 0}
 .sum{font-size:17px;font-weight:500;max-width:38em}
 .key{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted);align-items:center;justify-content:flex-end}
 .key span{display:inline-flex;align-items:center;gap:7px}
@@ -486,7 +487,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
 .note{font-size:12.5px;color:var(--muted);max-width:64em}
 
 @media (max-width:860px){
-  .top{grid-template-columns:minmax(0,1fr)} .stamp{text-align:left} .key{justify-content:flex-start}
+  .top{grid-template-columns:minmax(0,1fr)} .stamp{text-align:left} .topr{align-items:flex-start} .key{justify-content:flex-start}
   .plan{grid-template-columns:minmax(0,1fr) !important}
   .rooms{--cols:2 !important}
   .trow .s{display:none}
@@ -551,10 +552,11 @@ details .tags{flex-direction:row;flex-wrap:wrap}
 <div class="wrap">
   <header class="top">
     <h1 class="title" id="title"></h1>
-    <div class="stamp" id="stamp"></div>
+    <div class="topr"><div class="seg" id="langs"></div><div class="stamp" id="stamp"></div></div>
     <p class="sum" id="sum"></p>
     <div class="key" id="key"></div>
   </header>
+  <div class="ask langnote" id="langnote" hidden></div>
   <div class="lead" id="lead" hidden></div>
   <div class="viewbar" id="viewbar" hidden><div class="seg" id="views"></div><span class="vcap" id="vcap"></span></div>
   <div class="plan" id="plan"></div>
@@ -581,6 +583,24 @@ details .tags{flex-direction:row;flex-wrap:wrap}
 <script>
 (function(){
   var D=/*__DATA__*/null;
+  // Two languages. The list is written in one; D.i18n holds the other for every text someone has translated (a
+  // file beside the list, parts.zh.md or parts.en.md). The reader picks at the top of the page and the pick is
+  // kept. The same text is the same everywhere it stands, a name above all, so the boxes still find each other
+  // by name. A text with no translation stays as written.
+  var I18N=D.i18n||{lang:D.lang==='zh'?'en':'zh',map:{},missing:0,total:0},BASE=D.lang,LANGKEY='bearings-lang',pick=null;
+  try{var lq=/[?&]lang=(zh|en)\b/.exec(location.search);pick=lq?lq[1]:localStorage.getItem(LANGKEY);}catch(e){}
+  if(pick!=='zh'&&pick!=='en'){ // nothing picked yet: the browser's language, when the project has it
+    var nav=/^zh/i.test(navigator.language||'')?'zh':'en';pick=nav===BASE||(I18N.total&&I18N.missing<I18N.total)?nav:BASE;}
+  var TRANSLATED=pick!==BASE;
+  if(TRANSLATED){(function(){var M=I18N.map||{},SK={},has=Object.prototype.hasOwnProperty;(I18N.skip||[]).forEach(function(k){SK[k]=1;});
+    function tr(s){return has.call(M,s)?M[s]:s;}
+    function walk(v){
+      if(Array.isArray(v)){v.forEach(function(x,i){if(typeof x==='string')v[i]=tr(x);else if(x&&typeof x==='object')walk(x);});return;}
+      Object.keys(v).forEach(function(k){if(SK[k])return;var x=v[k];
+        if(typeof x==='string'){if(k==='name'&&(v.kind!=null||'type' in v||'via' in v))return;v[k]=tr(x);} // not a function's or a parameter's name
+        else if(x&&typeof x==='object')walk(x);});}
+    walk(D);D.lang=pick;})();}
+  try{document.documentElement.lang=D.lang==='zh'?'zh-CN':'en';}catch(e){}
   var ICONS={
     pen:'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
     mic:'M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6',
@@ -610,6 +630,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function ic(name){return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="'+(ICONS[name]||ICONS.box)+'"/></svg>';}
   function pic(name){return '<span class="pic">'+ic(name)+'</span>';}
   var T={zh:{
+    langMissing:'清单里有 {n} 处文字还没有中文，按原文显示。想补上，对 AI 说：',langNone:'这个项目的清单是用英文写的，还没有中文对照，所以下面的内容按原文显示。想看中文，对 AI 说：',langSay:'给项目地图补上中文对照',
     stamp:'生成于 {d}',sumA:'{n} 块，分在 {g} 个区。',sumOn:'亮着的 {k} 块有还没提交的改动。',sumOff:'现在没有未提交的改动。',sumUn:'另有 {n} 个改动的文件不在清单里。',sumUnOnly:'有 {n} 个还没提交的文件不在清单里。',
     kOn:'这次动到了',kCare:'要小心',kDots:'近 {d} 天改得多不多',kWin:'哪个窗口在动',
     pending:'还没提交的改动',landed:'{f} 个文件，落在 {k} 块',landedOff:'另有 {n} 个不在清单里',onlyOff:'{n} 个文件，都不在清单里',none:'点任意一块，看它是怎么工作的',
@@ -678,6 +699,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     noteRel:'图上的实线虚线和“它用到”读的是 {l} 的引用语句，别的语言和走网络的连接量不到。',
     note:'本页由 bearings 根据 {p} 和最近 {n} 次提交自动生成。流程图画的是清单里写下的描述；“常和它一起动”是统计出来的，不代表代码上一定有依赖。'
   },en:{
+    langMissing:'{n} texts on the list have no English yet and are shown as written. To have them translated, say to the AI:',langNone:'This project\'s list is written in Chinese and has no English translations yet, so what follows is shown as written. To read it in English, say to the AI:',langSay:'Add the English translations to the project map',
     stamp:'Generated {d}',sumA:'{n} parts in {g} wings.',sumOn:' The {k} lit parts have uncommitted changes.',sumOff:' Nothing is uncommitted right now.',sumUn:' {n} more changed files are not on the list.',sumUnOnly:' {n} uncommitted files are not on the list.',
     kOn:'touched this time',kCare:'handle with care',kDots:'how busy in the last {d} days',kWin:'which window is on it',
     pending:'Uncommitted changes',landed:'{f} files across {k} parts',landedOff:'{n} more not on the list',onlyOff:'{n} files, none on the list',none:'Pick any part to see how it works',
@@ -912,6 +934,18 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   $('title').textContent=D.project;
   if(D.explain&&D.explain.length){$('lead').hidden=false;$('lead').innerHTML=D.explain.map(function(x){return '<p>'+rich(x)+'</p>';}).join('');}
   $('stamp').textContent=f(T.stamp,{d:D.generated});
+  // the two languages, and what to say when the one being read is not all there yet
+  $('langs').innerHTML=[['zh','中文'],['en','English']].map(function(x){return '<button type="button" data-lang="'+x[0]+'" lang="'+x[0]+'" aria-pressed="'+(D.lang===x[0])+'">'+x[1]+'</button>';}).join('');
+  Array.prototype.forEach.call($('langs').querySelectorAll('button'),function(b){b.addEventListener('click',function(){
+    var l=b.getAttribute('data-lang'),kept=false;if(l===D.lang)return;
+    try{localStorage.setItem(LANGKEY,l);kept=true;}catch(e){}
+    flushNotes();
+    var had=/([?&])lang=(zh|en)\b/.test(location.search);
+    if(had)location.search=location.search.replace(/([?&])lang=(zh|en)\b/,'$1lang='+l);
+    else if(kept)location.reload();
+    else location.search=(location.search?location.search+'&':'?')+'lang='+l;});});
+  if(TRANSLATED&&I18N.total&&I18N.missing){$('langnote').hidden=false;
+    $('langnote').innerHTML=(I18N.missing<I18N.total?f(T.langMissing,{n:I18N.missing}):T.langNone)+'<span class="say">'+esc(T.langSay)+'</span>';}
   // Uncommitted work lands in parts, which light up, or in files no part owns (listed under the name ""), which
   // cannot light anything: the summary has to say those apart, or new work outside the list would go unseen.
   var litParts=D.pending.parts.filter(function(x){return x.part;}).length;
@@ -936,7 +970,14 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       }else cur+=ch;}
     if(cur)out.push(cur);return out;
   }
-  function flowSvg(flow,avail,opt){
+  // The words on an arrow: one line, or two when one line would be wider than the gap they sit in. They break at a
+  // space or a comma, as near the middle as there is one; words with no such place stay on one line.
+  var LABW=74;
+  function labLines(s,max){if(tw(s,12)<=max)return [s];var best=null,bw=1e9;
+    for(var i=1;i<s.length-1;i++){if(' 、，,;；/'.indexOf(s[i])<0)continue;
+      var a=s.slice(0,s[i]===' '?i:i+1).trim(),b=s.slice(i+1).trim(),w=Math.max(tw(a,12),tw(b,12));if(a&&b&&w<bw){bw=w;best=[a,b];}}
+    return best||[s];}
+  function flowSvg(flow,avail,opt,min){
     // Wide: layers run left to right and wrap onto further bands, like lines of text. Narrow: layers run top to bottom.
     // An arrow that leaves its band, or steps back, travels in the gap under a band. Every such arrow gets a lane of
     // its own there and its own spot on the box it leaves and the box it reaches, so no two run on top of each other.
@@ -977,13 +1018,40 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     var cols=[];nodes.forEach(function(n,i){(cols[layer[i]]=cols[layer[i]]||[]).push(i);});
     for(var q=0;q<cols.length;q++)cols[q]=cols[q]||[];
     // The boxes at the two ends get a narrow column each, outside the rows of columns that wrap between them.
-    var ported=hasL||hasR,lead=hasL?PW+PG:0,tail=hasR?PW+PG:0;
-    if(ported){W=158;GX=88;}
-    var per=Math.floor((avail-PAD*2-lead-tail+GX)/(W+GX)),tight=Math.floor((avail-PAD*2-lead-tail-3*W)/2);
-    if(ported&&per===2&&tight>=66){per=3;GX=tight;} // three columns between the ends, if a slightly narrower gap allows it
-    var vertical=per<(hasL&&hasR?3:2),pos=[],bands=[],rects=[],apart=null,VW=0,VH,bottom;
-    var inner=cols.length-(hasL?1:0)-(hasR?1:0),nIn=Math.min(per,inner),X0=PAD+lead;
-    function size(n,w,end,slim){n.w=w;n.lab=wrap(n.name,end?13:14,w-(end?58:62),2);n.nt=n.note&&!slim?wrap(n.note,11.5,w-24,2):[];
+    var ported=hasL||hasR;
+    var inner=cols.length-(hasL?1:0)-(hasR?1:0),c0=hasL?1:0;
+    // The words of an arrow to the next column sit in the gap between the two columns, so each gap is at least as
+    // wide as the widest words in it. Long words go on two lines first; after that the gap grows, that gap alone.
+    // `min` holds the widths an earlier pass found it needed, once it knew which arrows run beside the boxes
+    // (see "tracks" below). gapw[c] is the gap after column c.
+    var labw=[],mins=min&&min.g||[];
+    flow.edges.forEach(function(e){e.run=null;e.ll=null;e.fx=null;if(!e.label)return;var u=idx[e.a],v=idx[e.b];
+      if(layer[v]-layer[u]!==1)return;
+      e.ll=labLines(e.label,LABW);e.pw=Math.max.apply(null,e.ll.map(function(x){return tw(x,12);}))+14;
+      labw[layer[u]]=Math.max(labw[layer[u]]||0,e.pw+6);});
+    function gaps(base){var g=[];for(var c=0;c<cols.length-1;c++){var end=(hasL&&c===0)||(hasR&&c===cols.length-2);
+      g[c]=Math.max(end?PG:base,labw[c]||0,mins[c]||0);}return g;}
+    // the widest band when the columns between the ends go `n` to a band
+    function bandW(g,n){var widest=0;for(var j=0;j<inner;j+=n){var w=0;
+      for(var k=j;k<Math.min(inner,j+n);k++)w+=W+(k>j?g[c0+k-1]:0);widest=Math.max(widest,w);}return widest;}
+    // How many columns go side by side. The boxes and gaps are tried at their full size first, then a little
+    // narrower, and the first size at which a whole band fits is taken; if none does, the layers run downwards.
+    var sizes=ported?[[158,88],[158,66],[146,66]]:[[172,104],[160,80],[148,66]],want=Math.min(inner,ported?3:2),got=null,gapw,per;
+    var g0=gaps(0),lead=hasL?PW+(inner||hasR?g0[0]:0):0,tail=hasR?PW+(inner?g0[cols.length-2]:0):0,room=avail-PAD*2-lead-tail;
+    sizes.forEach(function(z,q){if(got&&got.per>=want)return;W=z[0];var g=gaps(z[1]),n=0;
+      for(var k=Math.max(1,inner);k>=1&&!n;k--)if(bandW(g,k)<=room)n=k;
+      if(!got||n>=want)got={W:W,g:g,per:n};});
+    W=got.W;gapw=got.g;per=got.per;
+    // words between two boxes of one column need room between those boxes
+    if(flow.edges.some(function(e){return e.label&&e.a!==e.b&&layer[idx[e.a]]===layer[idx[e.b]];}))GY=30;
+    var vertical=inner?per<Math.min(inner,hasL&&hasR?3:2):room<0,pos=[],bands=[],rects=[],apart=null,VW=0,VH,bottom;
+    if(!per)per=1;
+    var IW=inner?bandW(gapw,per):0,X0=PAD+lead;
+    // A name whose longest word would not fit across its box is set a little smaller, so that no word is cut in two.
+    function size(n,w,end,slim){n.w=w;var full=end?13:14,fs=full,room=w-(end?58:62),word=0;
+      n.name.split(/[\s\/-]+/).forEach(function(x){if(/^[\x00-\xff]+$/.test(x))word=Math.max(word,tw(x,1));});
+      while(fs>11.5&&word*fs>room)fs-=.5;
+      n.fs=fs<full?fs:0;n.lab=wrap(n.name,fs,room,2);n.nt=n.note&&!slim?wrap(n.note,11.5,w-24,2):[];
       n.top=12+Math.max(34,n.lab.length*18);n.h=n.top+(n.nt.length?5+n.nt.length*15:0)+11;}
     function sortBySources(col,key){col.sort(function(a,b){function bc(i){var s=nodes[i].inn.filter(function(u){return pos[u];});
       return s.length?s.reduce(function(t,u){return t+pos[u][key];},0)/s.length:1e6+i;}return bc(a)-bc(b);});}
@@ -1004,7 +1072,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     }else{
       var lastBand=Math.max(0,Math.ceil(inner/per)-1);
       cols.forEach(function(col,c){var isL=hasL&&c===0,isR=hasR&&c===cols.length-1,j=c-(hasL?1:0),r=isL?0:isR?lastBand:Math.floor(j/per);
-        col.c=c;col.band=r;col.w=isL||isR?PW:W;col.x=isL?PAD:isR?X0+(nIn?nIn*(W+GX)-GX+PG:0):X0+(j%per)*(W+GX);col.n=0;
+        col.c=c;col.band=r;col.w=isL||isR?PW:W;col.x=isL?PAD:isR?X0+(inner?IW+gapw[c-1]:0):X0;col.n=0;
+        if(!isL&&!isR)for(var k=j-j%per;k<j;k++)col.x+=W+gapw[c0+k];
         col.forEach(function(i){size(nodes[i],col.w,isL||isR,(isL||isR)&&doorTo(nodes[i]));});
         (bands[r]=bands[r]||{cols:[],h:0,lanes:[],overs:[]}).cols.push(col);
         col.h=col.reduce(function(t,i){return t+nodes[i].h+GY;},-GY);bands[r].h=Math.max(bands[r].h,col.h);});
@@ -1024,9 +1093,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
         var more=r<bands.length-1,under=bd.lanes.length?24+(bd.lanes.length-1)*LANE+10:0;bd.floor=top+bd.h;bd.end=bd.floor+under;
         top+=bd.h+(bd.lanes.length?under+(more?24:0):(more?40:0));});
       bottom=nodes.length?top:PAD;
-      if(fr&&inner>0)rects.push({x0:X0-FP,x1:X0+nIn*(W+GX)-GX+FP,y0:bands[0].top-bands[0].head-26,y1:bands[bands.length-1].end+12});
-      VW=nodes.length?X0+Math.max(1,nIn)*(W+GX)-GX+tail+PAD:0;
-      if(!inner)VW=PAD*2+(hasL&&hasR?PW*2+PG:PW);
+      if(fr&&inner>0)rects.push({x0:X0-FP,x1:X0+IW+FP,y0:bands[0].top-bands[0].head-26,y1:bands[bands.length-1].end+12});
+      VW=nodes.length?X0+(inner?IW:0)+tail+PAD:0;
       // Which side of its box each lane arrow leaves by and arrives at, and its place among the arrows sharing that
       // side. One that goes on to a later box in its own band arrives from the left; a box at the far end sends its
       // arrows back out of its left side, towards the diagram. Arrows that run down beside one column each get
@@ -1037,6 +1105,18 @@ details .tags{flex-direction:row;flex-wrap:wrap}
           e.s2=b.band===e.gap?(b.last?'b':'r'):(b.first?'t':'l');}
         e.k1=a.ports[e.s1]=(a.ports[e.s1]||0);a.ports[e.s1]++;e.k2=b.ports[e.s2]=(b.ports[e.s2]||0);b.ports[e.s2]++;
         e.g1=a.col[e.s1]=(a.col[e.s1]||0);a.col[e.s1]++;e.g2=b.col[e.s2]=(b.col[e.s2]||0);b.col[e.s2]++;});});
+      // Tracks: an arrow in a lane runs up or down beside its box, in the gap between two columns. The words of an
+      // arrow to the next column keep to the part of that gap no track uses, so a line never runs behind words
+      // that belong to another arrow. Where a gap has no room for both, the diagram is laid out again with that
+      // gap wider (twice at most).
+      var lack=null;
+      function trk(k){return k?14+(k-1)*8+5:3;}
+      bands.forEach(function(bd){bd.cols.forEach(function(B,q){if(!q)return;
+        var A=bd.cols[q-1],x0=A.x+A.w+trk(A.r),x1=B.x-trk(B.l),widest=0;
+        flow.edges.forEach(function(e){if(e.kind!=='next'||!e.ll||pos[idx[e.a]].col!==A||pos[idx[e.b]].col!==B)return;
+          e.fx=(x0+x1)/2;widest=Math.max(widest,e.pw);});
+        if(x1-x0<widest-.5){lack=lack||mins.slice();lack[A.c]=B.x-A.x-A.w+widest-(x1-x0);}});});
+      if(lack&&!(min&&min.n>=2))return flowSvg(flow,avail,opt,{g:lack,n:(min&&min.n||0)+1});
     }
     if(rects.length)bottom=Math.max(bottom,rects[rects.length-1].y1);
     // the shelf: boxes that no arrow reaches, in rows under the diagram
@@ -1066,14 +1146,15 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     if(apart)s+=outline([apart]);
     if(shelf.length)s+='<text class="fcap" x="'+(vertical?PAD:X0)+'" y="'+capY+'">'+esc(T.shelf)+'</text>';
     flow.edges.forEach(function(e,k){
-      var u=idx[e.a],v=idx[e.b],a=pos[u],b=pos[v],A=nodes[u],B=nodes[v],d,lx,ly;
+      var u=idx[e.a],v=idx[e.b],a=pos[u],b=pos[v],A=nodes[u],B=nodes[v],d,lx,ly,lines=[e.label||''];
       if(vertical||e.kind==='same'){
         var down=a.y<=b.y,y1=down?a.y+A.h:a.y,y2=down?b.y-2:b.y+B.h+2,my=(y1+y2)/2;
         d='M'+a.cx+','+y1+' C'+a.cx+','+my+' '+b.cx+','+my+' '+b.cx+','+y2;lx=(a.cx+b.cx)/2;ly=my;
         if(vertical&&Math.abs(y2-y1)>70){lx=b.cx;ly=down?y2-23:y2+25;} // past other rows: the words sit in the gap next to where it arrives
       }else if(e.kind==='next'){
         var x1=a.x+A.w,x2=b.x-2,mx=(x1+x2)/2;
-        d='M'+x1+','+a.cy+' C'+mx+','+a.cy+' '+mx+','+b.cy+' '+x2+','+b.cy;lx=mx;ly=(a.cy+b.cy)/2-14;
+        d='M'+x1+','+a.cy+' C'+mx+','+a.cy+' '+mx+','+b.cy+' '+x2+','+b.cy;
+        if(e.ll)lines=e.ll;lx=e.fx!=null?e.fx:mx;ly=(a.cy+b.cy)/2-3.5-(lines.length*15+6)/2; // the words rest just above the line
       }else{ // a jump ahead, a step back, or onto another band: along its own lane over or under a band
         var bd=bands[e.gap],over=e.kind==='over',gy=over?bd.top-18-e.lane*LANE:bd.floor+24+e.lane*LANE,S=port(u,e.s1,e.k1,e.g1),E=port(v,e.s2,e.k2,e.g2),xs=S.gx==null?S.x:S.gx,xe=E.gx==null?E.x:E.gx;
         d='M'+S.x+','+S.y+(S.gx==null?'':' L'+S.gx+','+S.y)+' L'+xs+','+gy+' L'+xe+','+gy+(E.gx==null?'':' L'+E.gx+','+E.y)+' L'+(E.x+E.ex)+','+(E.y+E.ey);
@@ -1082,27 +1163,29 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       }
       s+='<path class="fe'+(opt&&opt.dash(e)?' loose':'')+'" d="'+d+'" marker-end="url(#fah)"'+(e.both?' marker-start="url(#fah)"':'')+'/>';
       movers+='<circle class="fdot" r="3.6"><animateMotion dur="2.6s" begin="'+(k*0.45).toFixed(2)+'s" repeatCount="indefinite" path="'+d+'"/></circle>';
-      if(e.label)labs.push({t:e.label,x:lx,y:ly,w:tw(e.label,12)+14,lane:vertical||e.kind==='lane'||e.kind==='over',run:vertical?null:e.run});
+      if(e.label)labs.push({t:lines,x:lx,y:ly,w:Math.max.apply(null,lines.map(function(x){return tw(x,12);}))+14,h:lines.length*15+6,
+        lane:vertical||e.kind==='lane'||e.kind==='over',run:vertical?null:e.run});
     });
     // no label may sit on another: one on a lane slides along it, any other steps down
     var labels='';
-    function clear(l,i){for(var j=0;j<i;j++){var m=labs[j];if(Math.abs(l.x-m.x)<(l.w+m.w)/2+4&&Math.abs(l.y-m.y)<22)return false;}return true;}
+    function clear(l,i){for(var j=0;j<i;j++){var m=labs[j];if(Math.abs(l.x-m.x)<(l.w+m.w)/2+4&&Math.abs(l.y-m.y)<(l.h+m.h)/2+1)return false;}return true;}
     labs.forEach(function(l,i){
       var lo=l.w/2+2,hi=VW-l.w/2-2,ok;
       if(l.run&&l.run[1]-l.run[0]>l.w+8){lo=Math.max(lo,l.run[0]+l.w/2+4);hi=Math.min(hi,l.run[1]-l.w/2-4);}
       var x0=l.x=Math.max(lo,Math.min(hi,l.x));ok=clear(l,i);
       if(!ok&&l.lane){for(var d=12;d<=320&&!ok;d+=12){ok=[x0+d,x0-d].some(function(x){if(x<lo||x>hi)return false;l.x=x;return clear(l,i);});}
         if(!ok)l.x=x0;}
-      for(var tries=0;!ok&&tries<8;tries++){l.y+=23;ok=clear(l,i);}
-      VH=Math.max(VH,l.y+16);
-      labels+='<rect class="felbg" x="'+(l.x-l.w/2)+'" y="'+(l.y-10.5)+'" width="'+l.w+'" height="21" rx="6"/><text class="fel" x="'+l.x+'" y="'+(l.y+4)+'" text-anchor="middle">'+esc(l.t)+'</text>';});
+      for(var tries=0;!ok&&tries<8;tries++){l.y+=l.h+2;ok=clear(l,i);}
+      VH=Math.max(VH,l.y+l.h/2+6);
+      labels+='<rect class="felbg" x="'+(l.x-l.w/2)+'" y="'+(l.y-l.h/2)+'" width="'+l.w+'" height="'+l.h+'" rx="6"/>'+
+        l.t.map(function(t,k){return '<text class="fel" x="'+l.x+'" y="'+(l.y+4+(k-(l.t.length-1)/2)*15)+'" text-anchor="middle">'+esc(t)+'</text>';}).join('');});
     s+=movers;
     var anyMark=false;
     function box(n,p){var mk=opt&&opt.mark?opt.mark(n):'',bg=opt&&opt.badge?opt.badge(n):'';if(mk)anyMark=true;
       s+='<g class="fn'+(n.ext?' ext':'')+(mk?' mk':'')+(fr&&n.outer?' port':'')+(opt?opt.cls(n):'')+'"'+(opt?opt.attr(n):'')+'><rect class="fb" x="'+p.x+'" y="'+p.y+'" width="'+n.w+'" height="'+n.h+'" rx="10"/>'+
         '<rect class="fp" x="'+(p.x+11)+'" y="'+(p.y+11)+'" width="34" height="34" rx="8"/><g transform="translate('+(p.x+17.5)+','+(p.y+17.5)+') scale(.875)"><path class="fi" d="'+(ICONS[opt?opt.icon(n):n.icon]||ICONS.box)+'"/></g>';
       var ly=p.y+(n.lab.length===1?33:25);
-      n.lab.forEach(function(t,k){s+='<text class="fl" x="'+(p.x+54)+'" y="'+(ly+k*18)+'">'+esc(t)+'</text>';});
+      n.lab.forEach(function(t,k){s+='<text class="fl"'+(n.fs?' style="font-size:'+n.fs+'px"':'')+' x="'+(p.x+54)+'" y="'+(ly+k*18)+'">'+esc(t)+'</text>';});
       n.nt.forEach(function(t,k){s+='<text class="fnote" x="'+(p.x+12)+'" y="'+(p.y+n.top+16+k*15)+'">'+esc(t)+'</text>';});
       if(mk){var bt=mk==='new'?T.mNew:T.mChg,bw=tw(bt,11)+18; // a word on the box, so the mark does not rest on colour alone
         s+='<g class="fmk '+mk+'"><rect x="'+(p.x+n.w-bw-8)+'" y="'+(p.y-10)+'" width="'+bw+'" height="20" rx="10"/><text x="'+(p.x+n.w-bw/2-8)+'" y="'+(p.y+4)+'" text-anchor="middle">'+esc(bt)+'</text></g>';}
@@ -1284,7 +1367,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   // The sentence on a function is written in the calls file, most often by an AI. A reader who knows better
   // rewrites it here, and the service puts it on that function's line. A function the script filled in has
   // no line: its sentence goes under the `展开` line it came from. A page with no service behind it shows no pen.
-  function canEdit(s){return !!SAVE&&(s.at!=null||s.exp!=null);}
+  function canEdit(s){return !!SAVE&&!TRANSLATED&&(s.at!=null||s.exp!=null);} // the sentence is rewritten in the language the calls file is in
   function whatBox(s,i,card){
     var said=s.what?'<p class="cwhat">'+rich(s.what)+'</p>':s.auto?'<p class="cwhat auto">'+(card&&s.doc?esc(s.doc):T.chAutoNone)+'<span class="tagx">'+T.chAuto+'</span></p>':'';
     if(!canEdit(s))return said;

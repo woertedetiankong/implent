@@ -295,6 +295,28 @@ C 项目用 `scripts/bearings_run.h`：把项目的源码加上 `-finstrument-fu
 
 会话记录只在本机读，不会发到任何地方。窗口的名字和你最近打给它的那句话会写进生成的页面，把页面发给别人之前留意一下。不想读会话记录，加 `--no-windows`。
 
+## 中文和英文两种语言
+
+清单只用一种语言写，就是你平时用的那种，调用链也一样。页面可以再用另一种语言显示：清单是英文的配中文，清单是中文的配英文，读的人在页面顶上切换。
+
+页面自己的字总是跟着切换。清单里的字要靠清单旁边的一份对照文件：英文的 `parts.md` 旁边放 `parts.zh.md`，中文的旁边放 `parts.en.md`；调用链的对照是 `calls.zh.md` 或 `calls.en.md`。一条对照两行，上面是原文，下面以冒号开头写译文：
+
+```text
+Experiment runner
+: 实验运行器
+
+timed plan
+: 定时计划
+```
+
+- 人写的字都可以配译文：名字、第一句话、说明、规矩、方框和箭头上的字、主线和调用链的标题、函数的那句话、进出的东西。没配的按原文显示，所以对照文件写到一半也能用。
+- 一个名字只翻一次，图上、详情里、调用链里一起变。两个名字不能翻成同一个词，页面靠名字分辨方框；撞了的，页面按原文显示，`words` 和体检会报出来。
+- 这份文件是你要另一种语言时才写的，对 AI 说“给项目地图补上中文对照”。写了以后，清单里哪句话改了字，它的对照跟着改。
+- `bearings.py words` 列出有多少处配了译文、哪些还没有、哪些对照的原文已经不在清单里；`words --draft` 把缺的全部列成空白对照，填好贴进文件。
+- 函数笔记是读的人自己的，两种语言下是同一份。切到另一种语言时不能在页面上改函数的那句话，因为那句话属于调用链文件，用的是它的语言。
+
+页面记住你上次选的语言。没选过时，项目有浏览器语言的对照就用它，没有就用清单的语言。地址后面加 `?lang=zh` 或 `?lang=en` 可以直接指定。
+
 ## 部分清单长什么样
 
 所有内容都来自项目里的一个文件，默认是 `docs/parts.md`：
@@ -367,7 +389,7 @@ C 项目用 `scripts/bearings_run.h`：把项目的源码加上 `-finstrument-fu
 
 项目对文档格式有检查、放不进 `docs/` 时，清单也可以放在根目录的 `PARTS.md` 或 `.bearings/parts.md`。只允许一个一级标题的项目，可以先写一个总标题，其余每级往下顺延一级。
 
-清单和流程图的完整写法见 [`bearings/skills/bearings/SKILL.md`](bearings/skills/bearings/SKILL.md)。函数调用链、录制运行、任务、多窗口各有一份写法，在旁边的 [`references/`](bearings/skills/bearings/references/) 里；AI 用到哪个才读哪个。
+清单和流程图的完整写法见 [`bearings/skills/bearings/SKILL.md`](bearings/skills/bearings/SKILL.md)。函数调用链、录制运行、两种语言、任务、多窗口各有一份写法，在旁边的 [`references/`](bearings/skills/bearings/references/) 里；AI 用到哪个才读哪个。
 
 # implementation-journal：给 AI 的记忆
 
