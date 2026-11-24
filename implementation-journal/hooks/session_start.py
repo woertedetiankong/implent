@@ -8,13 +8,18 @@ A repo that started with the earlier form of the skill has a folder per task
 instead; such a task is open while the folder has a next-session.md and its
 handoff.md is not marked Complete.
 
-- No open task: print nothing.
+- No open task: print nothing, unless the repo has finished tasks (see below).
 - One open task: print its record (or, for an older folder, its restart
   entry), so resuming needs no pasting.
 - Several: print a short list and tell the session to settle which task it is
   for before touching any record.
 - A repo that still has only the older repo-level docs/tasks/NEXT-SESSION.md
   gets that file printed, exactly as before.
+
+A finished task's record is no longer shown to anyone, and the decisions in it are not in the code.
+So when the repo has finished records, every output ends with one line that says how to look them up
+for the files about to be changed (the skill's scripts/decided.py). That line is all a session with no
+open task gets.
 
 After a compaction (source == "compact") it also reminds the session to bring
 its record up to date, since compaction is the context loss a planned pause
@@ -84,6 +89,29 @@ def entry_in(dossier):
     return None
 
 
+def decided_note(tasks_dir, cwd):
+    """One line for a repo that has finished tasks: how to see what they decided about a file. Nothing when
+    there are none, or when the lookup script is not where this hook expects it."""
+    done = 0
+    for name in os.listdir(tasks_dir):
+        path = os.path.join(tasks_dir, name)
+        if os.path.isdir(path):
+            meta = frontmatter(read(os.path.join(path, "handoff.md")))
+        elif name.lower().endswith(".md") and name.lower() not in NOT_RECORDS:
+            meta = frontmatter(read(path))
+        else:
+            continue
+        done += meta.get("status", "").lower().startswith("complete")
+    here = os.path.dirname(os.path.abspath(__file__))
+    script = os.path.join(os.path.dirname(here), "skills", "implementation-journal", "scripts", "decided.py")
+    if not done or not os.path.isfile(script):
+        return ""
+    return ("implementation-journal: %d finished task%s in this repo %s decisions the code does not show "
+            "(what the user settled, limits from outside). Before changing code here, see the ones made about "
+            "those files: `python3 \"%s\" <files or folders>`." % (
+                done, "" if done == 1 else "s", "holds" if done == 1 else "hold", script))
+
+
 def open_tasks(tasks_dir):
     found = []
     for name in sorted(os.listdir(tasks_dir)):
@@ -133,7 +161,10 @@ def main():
     legacy = os.path.join(tasks_dir, LEGACY_NAME)
     has_legacy = os.path.isfile(legacy)
     tasks = open_tasks(tasks_dir)
+    note = decided_note(tasks_dir, cwd)
     if not tasks and not has_legacy:
+        if note:
+            print(note)
         return
 
     def rel(path):
@@ -169,6 +200,8 @@ def main():
                 "If the user's first message makes clear which task this session is for, read that task's "
                 "record before anything else. If it does not, ask which one, or whether this is new work. "
                 "Leave the other tasks' records alone: other sessions may be working from them."]
+    if note:
+        out += ["", note]
     print("\n".join(out))
 
 

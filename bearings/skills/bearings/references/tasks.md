@@ -36,6 +36,7 @@ The map also shows what is being worked on. It takes that from the task records 
 - A finished task (`status: Complete`) that has lines for people stays on the page for as long as its record is in the repo: for a month as "finished lately", after that folded under "finished earlier". One without lines for people leaves at once.
 - A finished task's lines describe the code as it was when they were written. The page measures whether it has moved on since: later commits, and uncommitted work, in the files the task itself changed. When there are any, the card says "changed since" and the sheet gives the count and the sentence to say to have the lines brought up to date. This needs the task's commits to be known, which they are when the record cites them by hash or was committed with them.
 - The page also shows how a task got to where it is (a step finished, finished, opened again, finished a second time). It reads that from the git history of the record, so only versions that were committed appear.
+- A part's sheet lists the tasks whose work landed in that part, the ones in progress first; a click opens the task. This is measured the same way as the parts a task lights up, and a part no task on the page touched has no such list.
 - The page shows nothing else from a record and never links to one. The rest is written for an agent.
 
 ## What to do, and when

@@ -58,6 +58,20 @@ More than one session may be at work in the same project, in the same folder or 
 - Before opening a new record, look at the open ones. If one already covers the same part of the project, tell the user before starting.
 - When several tasks are open and it is not clear which one this session is for, ask before reading or writing any of them. The user may name a task the way the map shows it ("继续做“语音助手”"): that is the `Name` in a record's lines for people, not a file name.
 
+## What earlier tasks decided
+
+Once a task is marked Complete, no new session is shown its record. What it decided is still in force and still not in the code. So before changing code in a project that has records, look up what was decided about the files you are about to change:
+
+```sh
+python3 scripts/decided.py <files or folders>
+```
+
+The script is in this skill folder (in Claude Code, `${CLAUDE_SKILL_DIR}/scripts/decided.py`). Given no path, it takes the files with uncommitted changes. For every record, open or finished, whose commits changed one of those files, it prints the task's name, whether it is finished, and its lines under `Decided`. Which files a record's work changed is measured from git: the commits the record cites, and the commits it was committed with.
+
+- Take those lines as still in force. When the work in front of you would go against one, say so to the user and name the task it came from, before doing it. A rule does not lapse because the request did not repeat it.
+- When the user now decides differently, write the new decision in your own record and name the earlier task. Leave the earlier record as it is, unless this is that task opened again (see below). Where two records disagree, the newer one holds.
+- A record the script "could not place" was committed apart from its work and cites no commit, so there is nothing to measure from. If its name sounds like the area you are working in, read its `Decided` yourself.
+
 ## Coming back to a finished task
 
 - When the user asks to change something a finished record covers, that is the same task opened again, not a new one. Set its status back to `Open`, say in `Now` what is being changed, add what is decided this time under `Decided`, and keep the `Name`. Open a new record only for a different piece of work that happens to touch the same code, and name the earlier task in it.

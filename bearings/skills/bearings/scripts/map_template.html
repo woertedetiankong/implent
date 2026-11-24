@@ -651,7 +651,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     care:'要小心',
     partMeta:'{n} 个文件，近 {d} 天改动 {r} 次',
     rules:'规矩',noRules:'还没有为这一块记下规矩。',moreRules:'还有 {n} 条',
-    pals:'常和它一起动',noPals:'它通常单独改动。',
+    pals:'常和它一起动',noPals:'它通常单独改动。',partTasks:'动过这一块的事',ptDoing:'在做',partTasksNote:'按提交量出来的。点一件，看它做成了什么。',
     how:'它是怎么工作的',aroundH:'它和周围的连接',aroundNote:'这张图是从代码里量出来的：谁用到它，它用到谁。它内部怎么工作，还没有画。',ask:'想看它内部怎么工作，对 AI 说：',say:'给“{n}”画流程图',aged:'这张图画于 {d}，之后这一块的代码改了 {n} 次。',agedMuch:'这张图画于 {d}，之后这一块的代码改了 {n} 次，可能已经过时。',nf:'{n} 个文件',extKey:'项目以外的服务',noFlow:'这一块还没有流程图。',
     forCoders:'给看代码的人',
     work:'每次工作踩到了哪几块',wide:'跨块的',all:'全部',noWork:'最近没有这样的工作。',
@@ -720,7 +720,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     care:'care',
     partMeta:'{n} files, {r} changes in {d} days',
     rules:'Rules',noRules:'No rules recorded for this part yet.',moreRules:'{n} more',
-    pals:'Usually changes with',noPals:'It usually changes alone.',
+    pals:'Usually changes with',noPals:'It usually changes alone.',partTasks:'Tasks that worked here',ptDoing:'in progress',partTasksNote:'Measured from the commits. Pick one to see what it came to.',
     how:'How it works',aroundH:'What it connects to',aroundNote:'Measured from the code: who uses it and what it uses. How it works inside has not been drawn yet.',ask:'To see how it works inside, say to the AI:',say:'Draw the flow diagram for "{n}"',aged:'Drawn {d}; the code of this part has changed {n} times since.',agedMuch:'Drawn {d}; the code of this part has changed {n} times since, so it may be out of date.',nf:'{n} files',extKey:'a service outside the project',noFlow:'No flow diagram for this part yet.',
     forCoders:'For people who read code',
     work:'Where each piece of work stepped',wide:'Across parts',all:'All',noWork:'No such work recently.',
@@ -1626,6 +1626,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   var quiet=true;
   function setHash(h){try{history.replaceState(null,'',h?'#'+h:location.pathname+location.search);}catch(e){}}
   function setStage(html,cls){var c=$('stage');c.className='stage '+(cls||'z0');c.innerHTML=html;
+    Array.prototype.forEach.call(c.querySelectorAll('[data-task]'),function(b){b.addEventListener('click',function(){selectTask(+b.getAttribute('data-task'));});});
     Array.prototype.forEach.call(c.querySelectorAll('[data-go]'),function(b){b.addEventListener('click',function(){var g=b.getAttribute('data-go');
       if(g!=='home'){selectPart(g);return;}
       var up=b.classList.contains('crumb')&&D.frame;home(); // the first crumb is the project: back to its diagram
@@ -1743,6 +1744,13 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function chips(list,attr){return '<div class="pals">'+list.slice(0,8).map(function(x){
     return '<button type="button" class="pal '+x.u.z+'" '+attr(x.u)+' title="'+esc(f(T.nFiles,{n:x.n}))+'">'+pic(x.u.icon)+esc(x.u.name)+'<span class="pct">'+x.n+'</span></button>';}).join('')+
     (list.length>8?'<span class="sub">'+f(T.more,{n:list.length-8})+'</span>':'')+'</div>';}
+  // The tasks whose work landed in this part, in progress first: a way from a part to what was done to it.
+  // Measured, like the parts a task lights up. Nothing is drawn when no task on the page touched the part.
+  function tasksOn(p){var list=[];TASKS.forEach(function(t,i){if(taskRooms(t).some(function(x){return x.name===p.name;}))list.push({t:t,i:i});});
+    if(!list.length)return '';
+    return '<div class="blk"><h3>'+T.partTasks+'</h3><div class="pals">'+list.slice(0,12).map(function(x){
+      return '<button type="button" class="pchip plain" style="cursor:pointer" data-task="'+x.i+'"><span>'+esc(x.t.name)+'</span><span class="pl">'+(x.t.finished?T.finFlag:x.t.needs.length?f(T.needsFlag,{n:x.t.needs.length}):T.ptDoing)+'</span></button>';}).join('')+
+      (list.length>12?'<span class="sub">'+f(T.more,{n:list.length-12})+'</span>':'')+'</div><p class="sub">'+T.partTasksNote+'</p></div>';}
   function usesBlocks(name,links,find,attr){ // measured: what this one imports, and what imports it
     function side(mine,other,title,none){var list=links.filter(function(x){return x[mine]===name&&find(x[other]);}).map(function(x){return {u:find(x[other]),n:x.n};});
       return '<div class="blk"><h3>'+title+'</h3>'+(list.length?chips(list,attr):'<p class="sub">'+none+'</p>')+'</div>';}
@@ -1783,6 +1791,7 @@ details .tags{flex-direction:row;flex-wrap:wrap}
         '<span class="nm">'+esc(c.name)+'</span><span class="sm">'+c.files+(c.external?'<span class="tagx">'+T.outsideTag+'</span>':dots(c.recent))+'</span></button>';}).join('')+'</div>';
       h+='</div>';
     }
+    h+=tasksOn(p);
     h+='<div class="cols3">';
     if(D.measured.length)h+=usesBlocks(p.name,D.links,function(n){return byName[n];},function(u){return 'data-go="'+esc(u.name)+'"';});
     h+=rulesBlock(p)+'<div class="blk"><h3>'+T.pals+'</h3>';
