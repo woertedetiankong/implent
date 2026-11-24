@@ -329,6 +329,27 @@ svg.rel{display:block;margin:0 auto}
 .pchip .cnt{font-family:var(--f-num);font-size:15px;color:var(--z);font-variant-numeric:tabular-nums}
 @media (max-width:560px){.sbody{grid-template-columns:minmax(0,1fr);gap:4px 0} .sbody .iot{padding-top:6px}}
 .tasks[hidden]{display:none}
+/* what the project can do now, and whether the reader tried it */
+.can{display:flex;flex-direction:column;gap:10px}
+.can[hidden]{display:none}
+.krows{display:flex;flex-direction:column;gap:6px}
+.krow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 12px;align-items:center;text-align:left;cursor:pointer;background:var(--sheet);border:1.5px solid var(--hair);border-radius:10px;padding:9px 12px;font:inherit;color:inherit}
+.krow:hover{border-color:var(--ink)}
+.kst{font-family:var(--f-text);font-size:11.5px;font-weight:700;line-height:18px;padding:0 8px;border-radius:9px;white-space:nowrap;border:1.5px solid var(--hair);color:var(--muted)}
+.kst.ok{color:var(--n-green);border-color:var(--n-green)}
+.kst.bad{background:var(--warn);border-color:var(--warn);color:var(--on)}
+.kst.again{color:var(--warn);border-color:var(--warn)}
+.kwhat{font-size:15px;line-height:1.45;overflow-wrap:anywhere}
+.kfrom{display:inline-flex;gap:5px;align-items:center;font-size:12.5px;color:var(--muted)}
+.kfrom .pic{width:20px;height:20px;font-size:13px;border-radius:5px}
+@media (max-width:560px){.krow{grid-template-columns:auto minmax(0,1fr)} .kfrom{grid-column:1/-1}}
+.tryrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tbtn{font:inherit;font-weight:700;font-size:14px;cursor:pointer;border-radius:8px;padding:5px 16px;border:1.5px solid var(--ink);background:var(--sheet);color:var(--ink)}
+.tbtn.ok:hover{background:var(--n-green);border-color:var(--n-green);color:var(--sheet)}
+.tbtn.no:hover{background:var(--warn);border-color:var(--warn);color:var(--on)}
+.tnote{flex:1;min-width:180px;font:inherit;font-size:14px;padding:5px 10px;border:1.5px solid var(--hair);border-radius:8px;background:var(--paper);color:var(--ink)}
+.trys{margin:0;font-size:15px;line-height:1.55}
+.trys.bad,.trys.again{color:var(--warn);font-weight:600}
 .thd{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline}
 .thd h2{font-size:21px;font-weight:900;margin:0}
 .tcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:10px}
@@ -571,6 +592,10 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     <details class="older" id="tolder" hidden><summary id="tolders"></summary><div class="tcards" id="tcards2"></div></details>
     <p class="sub" id="taskso" hidden></p>
   </section>
+  <section class="can" id="can" hidden>
+    <div class="thd"><h2 id="canh"></h2><span class="sub" id="canm"></span></div>
+    <div class="krows" id="canb"></div>
+  </section>
   <section class="stage" id="stage" aria-live="polite"></section>
   <section class="work">
     <div class="whead"><h2 id="workh"></h2><div class="seg" id="seg"></div></div>
@@ -639,7 +664,12 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     tMade:'做成了什么',tTry:'你可以怎么试',tLeft:'还没做的',tChg:'流程图上变了哪里',tChgNote:'这些标记是 AI 收尾时写的，不是量出来的。',
     mNew:'新增',mChg:'改了',mGone:'去掉',mSame:'没变的框变淡',mNoBox:'图上没有这个框',mNoFlow:'这一块还没有流程图，所以只有文字。',
     tAskMade:'想在这里看到它做成了什么样，对 AI 说：',tSayMade:'给“{n}”写一份做完后的说明',
-    sinceH:'这段时间的变化',sDays:'{n} 天',sMeta:'从 {d} 起，{n} 次提交',sSeen:'你上次打开这页是 {n} 天前。',sLocal:'清单没有提交过，这里比的是本机留的旧副本。',sShort:'提交太多，只数了最近的一部分。',sListNew:'清单是这段时间里新建的，所以不列新增和重画。',sListNone:'量不出清单这段时间变了什么：它没有提交过，本机留的副本也还没有那么早。',sQuiet:'这段时间没有提交，也没有量到变化。',sBoxPlus:'多了 {a} 个方框',sBoxMinus:'少了 {b} 个方框',sAdded:'新增的块',sRemoved:'去掉的块',sRedrawn:'重画的图',sFirst:'第一次画',sBoxes:'方框 +{a} −{b}',sArrows:'连线变了',sRoute:'主线',sTDone:'做完了',sTAgain:'重新打开',sTMore:'做完后又改了',sTNew:'开始了',sTStep:'有进展',sTasks:'事情',sBusy:'改得最多',sWatch:'该留意的',sOld:'图可能过时',sNothing:'这段时间清单和任务记录都没有变化。',tOlder:'更早做完的事 {n} 件',tOlderH:'做完的事',againFlag:'重新打开',afterFlag:'之后又改过',timesFlag:'第 {n} 次做完',tStory:'这件事的经过',sDone:'做完了',sMore:'又改了',sAgain:'重新打开',sStep:'做完一步',sOpen:'进行中',tAfter:'这份说明写于 {d}。之后这件事动过的文件又被别的工作改了 {n} 次，现在可能已经不是说明里的样子。',tTouched:'这件事动过的文件里，现在有 {n} 个有还没提交的改动。',tAskFresh:'想让说明跟上现在的样子，对 AI 说：',tSayFresh:'按现在的代码更新“{n}”的说明',tasksH:'正在做的事',tasksN:'{n} 件',tasksWait:'{k} 件在等你',needsFlag:'等你 {n} 件',tasksOld:'另有 {n} 件很久没动、也没有说明的事，没有列出。',
+    sinceH:'这段时间的变化',sDays:'{n} 天',sMeta:'从 {d} 起，{n} 次提交',sSeen:'你上次打开这页是 {n} 天前。',sLocal:'清单没有提交过，这里比的是本机留的旧副本。',sShort:'提交太多，只数了最近的一部分。',sListNew:'清单是这段时间里新建的，所以不列新增和重画。',sListNone:'量不出清单这段时间变了什么：它没有提交过，本机留的副本也还没有那么早。',sQuiet:'这段时间没有提交，也没有量到变化。',sBoxPlus:'多了 {a} 个方框',sBoxMinus:'少了 {b} 个方框',sAdded:'新增的块',sRemoved:'去掉的块',sRedrawn:'重画的图',sFirst:'第一次画',sBoxes:'方框 +{a} −{b}',sArrows:'连线变了',sRoute:'主线',sTDone:'做完了',sTAgain:'重新打开',sTMore:'做完后又改了',sTNew:'开始了',sTStep:'有进展',sTasks:'事情',sBusy:'改得最多',sWatch:'该留意的',sOld:'图可能过时',sNothing:'这段时间清单和任务记录都没有变化。',tOlder:'更早做完的事 {n} 件',tOlderH:'做完的事',againFlag:'重新打开',afterFlag:'之后又改过',timesFlag:'第 {n} 次做完',tStory:'这件事的经过',sDone:'做完了',sMore:'又改了',sAgain:'重新打开',sStep:'做完一步',sOpen:'进行中',tAfter:'这份说明写于 {d}。之后这件事动过的文件又被别的工作改了 {n} 次，现在可能已经不是说明里的样子。',tTouched:'这件事动过的文件里，现在有 {n} 个有还没提交的改动。',tAskFresh:'想让说明跟上现在的样子，对 AI 说：',tSayFresh:'按现在的代码更新“{n}”的说明',tAskSince:'想先看看后来改了什么，对 AI 说：',tSaySince:'“{n}”做完以后又改了什么？',
+    canH:'现在能做什么',canN:'{n} 件',canBad:'{n} 件不能用',canAgain:'{n} 件该重试',canNew:'{n} 件还没试',canOk:'{n} 件试过能用',canFold:'试过能用的 {n} 件',
+    cNew:'还没试',cBad:'不能用',cAgain:'该重试',cOk:'能用',
+    tryH:'你试过了吗',tryNew:'还没有人试过。',tryOk:'{d} 试过，能用。',tryBad:'{d} 试过，不能用。',tryAgain:'{d} 试过能用。之后这件事的代码有 {n} 个文件改过，值得再试一次。',tryUnknown:'之后代码有没有改过，这里量不出来。',
+    tryNote:'当时记的：{x}',tryYes:'能用',tryNo:'不能用',tryPh:'想记一句的话写在这里，可以不写',trySaving:'正在记…',tryFail:'没记上。刷新页面再试一次。',
+    tryAsk:'试完以后，对 AI 说：',trySayOk:'“{n}”我试过了，能用',trySayNo:'“{n}”我试了，不能用',tryFix:'想让 AI 修，对它说：',trySayFix:'“{n}”我试了不能用',colon:'：',tasksH:'正在做的事',tasksN:'{n} 件',tasksWait:'{k} 件在等你',needsFlag:'等你 {n} 件',tasksOld:'另有 {n} 件很久没动、也没有说明的事，没有列出。',
     tBare:'AI 还没有给这件事写给人看的说明。',tBareLong:'AI 记着这件事，但还没有写给人看的说明，所以这里只有它的名字和它动过哪几块。',
     tUpdated:'{d} 更新',tStale:'{d} 更新，{n} 天没动了',tNeeds:'等你',tNext:'接下来',tRooms:'这件事动过哪几块',tNoRooms:'还没量到它动过哪一块。',tWin:'正在做这件事',
     tAsk:'想让它接着做，开一个新窗口，对 AI 说：',tSay:'继续做“{n}”',tAskBare:'想在这里看到它做到哪了，对 AI 说：',tSayBare:'给“{n}”写一份给人看的说明',
@@ -708,7 +738,12 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     tMade:'What was made',tTry:'How you can try it',tLeft:'Not done yet',tChg:'What changed on the flow diagrams',tChgNote:'The agent wrote these marks when it wrapped up; they are not measured.',
     mNew:'added',mChg:'changed',mGone:'removed',mSame:'unchanged boxes are faded',mNoBox:'no such box on the diagram',mNoFlow:'This part has no flow diagram yet, so there are only words.',
     tAskMade:'To see here what it came to, say to the AI:',tSayMade:'Write up what "{n}" came to',
-    sinceH:'What changed lately',sDays:'{n} days',sMeta:'since {d}, {n} commits',sSeen:'You last opened this page {n} days ago.',sLocal:'The list has never been committed; this compares with an older copy kept on this machine.',sShort:'Too many commits; only the most recent were counted.',sListNew:'The list was first written within this stretch, so nothing is listed as added or redrawn.',sListNone:'No telling what changed on the list: it was never committed, and the copies kept on this machine do not go back that far.',sQuiet:'No commits in this stretch, and no change measured.',sBoxPlus:'{a} more boxes',sBoxMinus:'{b} fewer boxes',sAdded:'Parts added',sRemoved:'Parts removed',sRedrawn:'Diagrams redrawn',sFirst:'drawn for the first time',sBoxes:'boxes +{a} −{b}',sArrows:'lines changed',sRoute:'route',sTDone:'finished',sTAgain:'opened again',sTMore:'changed after it was finished',sTNew:'started',sTStep:'moved on',sTasks:'Tasks',sBusy:'Changed most',sWatch:'Worth a look',sOld:'diagram may be out of date',sNothing:'Neither the list nor the task records changed in this stretch.',tOlder:'{n} finished earlier',tOlderH:'Finished',againFlag:'open again',afterFlag:'changed since',timesFlag:'finished, time {n}',tStory:'How it went',sDone:'finished',sMore:'changed again',sAgain:'opened again',sStep:'a step finished',sOpen:'in progress',tAfter:'These lines were written on {d}. The files this task changed have been changed {n} times since by other work, so things may no longer be as described.',tTouched:'{n} of the files this task changed have uncommitted changes right now.',tAskFresh:'To bring the lines up to date, say to the AI:',tSayFresh:'Update the write-up of "{n}" to match the code as it is now',tasksH:'In progress',tasksN:'{n} tasks',tasksWait:'{k} waiting for you',needsFlag:'needs you: {n}',tasksOld:'{n} more have been quiet for a long time and have no lines for people; they are not listed.',
+    sinceH:'What changed lately',sDays:'{n} days',sMeta:'since {d}, {n} commits',sSeen:'You last opened this page {n} days ago.',sLocal:'The list has never been committed; this compares with an older copy kept on this machine.',sShort:'Too many commits; only the most recent were counted.',sListNew:'The list was first written within this stretch, so nothing is listed as added or redrawn.',sListNone:'No telling what changed on the list: it was never committed, and the copies kept on this machine do not go back that far.',sQuiet:'No commits in this stretch, and no change measured.',sBoxPlus:'{a} more boxes',sBoxMinus:'{b} fewer boxes',sAdded:'Parts added',sRemoved:'Parts removed',sRedrawn:'Diagrams redrawn',sFirst:'drawn for the first time',sBoxes:'boxes +{a} −{b}',sArrows:'lines changed',sRoute:'route',sTDone:'finished',sTAgain:'opened again',sTMore:'changed after it was finished',sTNew:'started',sTStep:'moved on',sTasks:'Tasks',sBusy:'Changed most',sWatch:'Worth a look',sOld:'diagram may be out of date',sNothing:'Neither the list nor the task records changed in this stretch.',tOlder:'{n} finished earlier',tOlderH:'Finished',againFlag:'open again',afterFlag:'changed since',timesFlag:'finished, time {n}',tStory:'How it went',sDone:'finished',sMore:'changed again',sAgain:'opened again',sStep:'a step finished',sOpen:'in progress',tAfter:'These lines were written on {d}. The files this task changed have been changed {n} times since by other work, so things may no longer be as described.',tTouched:'{n} of the files this task changed have uncommitted changes right now.',tAskFresh:'To bring the lines up to date, say to the AI:',tSayFresh:'Update the write-up of "{n}" to match the code as it is now',tAskSince:'To see first what changed afterwards, say to the AI:',tSaySince:'What changed after "{n}" was finished?',
+    canH:'What it can do now',canN:'{n} things',canBad:'{n} broken',canAgain:'{n} to try again',canNew:'{n} not tried',canOk:'{n} tried and working',canFold:'{n} tried and working',
+    cNew:'not tried',cBad:'broken',cAgain:'try again',cOk:'works',
+    tryH:'Have you tried it?',tryNew:'Nobody has tried this yet.',tryOk:'Tried on {d}: it works.',tryBad:'Tried on {d}: it does not work.',tryAgain:'It worked on {d}. Since then {n} of this task\'s files have changed, so it is worth trying again.',tryUnknown:'Whether the code changed since cannot be measured here.',
+    tryNote:'Noted then: {x}',tryYes:'It works',tryNo:'It does not',tryPh:'A line to remember it by, if you like',trySaving:'Saving…',tryFail:'Not saved. Reload the page and try once more.',
+    tryAsk:'After trying it, say to the AI:',trySayOk:'I tried "{n}" and it works',trySayNo:'I tried "{n}" and it does not work',tryFix:'To have the AI fix it, say:',trySayFix:'I tried "{n}" and it does not work',colon:': ',tasksH:'In progress',tasksN:'{n} tasks',tasksWait:'{k} waiting for you',needsFlag:'needs you: {n}',tasksOld:'{n} more have been quiet for a long time and have no lines for people; they are not listed.',
     tBare:'The agent has not written its lines for people about this yet.',tBareLong:'The agent keeps a record of this task but has written no lines for people yet, so all there is to show is its name and the parts it touched.',
     tUpdated:'updated {d}',tStale:'updated {d}, quiet for {n} days',tNeeds:'Waiting for you',tNext:'Next',tRooms:'The parts this task touched',tNoRooms:'No part measured for it yet.',tWin:'working on this now',
     tAsk:'To have it carry on, open a new window and say to the AI:',tSay:'Continue "{n}"',tAskBare:'To see here where it stands, say to the AI:',tSayBare:'Write the lines for people for "{n}"',
@@ -1856,7 +1891,8 @@ details .tags{flex-direction:row;flex-wrap:wrap}
   function moved(t){return t.finished&&((t.after||0)>0||(t.touched||0)>0);}
   function movedBlock(t){if(!moved(t))return '';
     return '<div class="blk"><div class="aged much">'+ic('sign')+'<span>'+[t.after?f(T.tAfter,{d:t.updated,n:t.after}):'',t.touched?f(T.tTouched,{n:t.touched}):''].filter(function(x){return x;}).join(' ')+'</span></div>'+
-      '<div class="ask">'+T.tAskFresh+'<span class="say">'+esc(f(T.tSayFresh,{n:t.name}))+'</span></div></div>';}
+      '<div class="ask">'+T.tAskFresh+'<span class="say">'+esc(f(T.tSayFresh,{n:t.name}))+'</span></div>'+
+      '<div class="ask">'+T.tAskSince+'<span class="say">'+esc(f(T.tSaySince,{n:t.name}))+'</span></div></div>';}
   // How the task got here, from the history of its record: finished, opened again, finished again.
   function storyBlock(t){var st=t.story||[];if(st.length<2)return '';
     return '<div class="blk"><h3>'+T.tStory+'</h3><div class="story">'+st.map(function(r,i){
@@ -1888,6 +1924,39 @@ details .tags{flex-direction:row;flex-wrap:wrap}
     return h+'<div class="fkey">'+T.tChgNote+'</div></div>';
   }
   function taskWins(t){return t.wins.map(winByKey).filter(function(w){return w;});}
+  // What a task made is something a person can try. Whether they did, and whether it worked, is theirs to say:
+  // on a served page with two buttons, otherwise by telling the AI. A thing that worked is worth trying again
+  // once the task's files have changed, and that is measured.
+  function canState(t){var k=t.tried;return !t.made.length?'':!k?'new':!k.ok?'bad':k.changed?'again':'ok';}
+  function tryFlag(i){var s=canState(TASKS[i]),e=$('tryflag-'+i);if(e)e.innerHTML=s==='bad'?'<span class="flag me">'+T.cBad+'</span>':s==='again'?'<span class="flag">'+T.cAgain+'</span>':'';}
+  function tryBlock(t){if(!t.made.length)return '';
+    var k=t.tried,s=canState(t),h='<div class="blk"><h3>'+T.tryH+'</h3>';
+    h+='<p class="trys '+s+'">'+(s==='new'?T.tryNew:s==='bad'?f(T.tryBad,{d:k.date}):s==='again'?f(T.tryAgain,{d:k.date,n:k.changed}):f(T.tryOk,{d:k.date}))+(s==='ok'&&k.changed===null?' '+T.tryUnknown:'')+'</p>';
+    if(k&&k.note)h+='<p class="sub">'+esc(f(T.tryNote,{x:k.note}))+'</p>';
+    if(SAVE)h+='<div class="tryrow"><button type="button" class="tbtn ok" data-try="1">'+T.tryYes+'</button><button type="button" class="tbtn no" data-try="0">'+T.tryNo+'</button>'+
+      '<input class="tnote" id="trynote" maxlength="200" placeholder="'+esc(T.tryPh)+'" aria-label="'+esc(T.tryPh)+'"><span class="sub" id="trymsg" aria-live="polite"></span></div>';
+    else h+='<div class="ask">'+T.tryAsk+'<span class="say">'+esc(f(T.trySayOk,{n:t.name}))+'</span><span class="say">'+esc(f(T.trySayNo,{n:t.name}))+'</span></div>';
+    if(s==='bad')h+='<div class="ask">'+T.tryFix+'<span class="say">'+esc(f(T.trySayFix,{n:t.name})+(k.note?T.colon+k.note:''))+'</span></div>';
+    return h+'</div>';}
+  function wireTry(t,i){Array.prototype.forEach.call($('stage').querySelectorAll('[data-try]'),function(b){b.addEventListener('click',function(){
+    var note=($('trynote')||{}).value||'';$('trymsg').textContent=T.trySaving;
+    fetch('/tried',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:t.id,ok:b.getAttribute('data-try')==='1',text:note,token:SAVE.token})})
+      .then(function(r){return r.json();}).then(function(j){if(!j.ok)throw 0;t.tried=j.tried;drawCan();tryFlag(i);selectTask(i);})
+      .catch(function(){var m=$('trymsg');if(m)m.textContent=T.tryFail;});});});}
+  function drawCan(){
+    var list=[],rank={bad:0,again:1,'new':2,ok:3},n={bad:0,again:0,'new':0,ok:0};
+    TASKS.forEach(function(t,i){if(t.made.length)list.push({t:t,i:i,s:canState(t)});});
+    if(!list.length){$('can').hidden=true;return;}
+    list.sort(function(a,b){return rank[a.s]-rank[b.s];});list.forEach(function(x){n[x.s]++;});
+    $('can').hidden=false;$('canh').textContent=T.canH;
+    $('canm').textContent=[f(T.canN,{n:list.length}),n.bad?f(T.canBad,{n:n.bad}):'',n.again?f(T.canAgain,{n:n.again}):'',n['new']?f(T.canNew,{n:n['new']}):'',n.ok?f(T.canOk,{n:n.ok}):''].filter(function(x){return x;}).join(T.sep);
+    function row(x){var rooms=taskRooms(x.t).filter(function(r){return byName[r.name];}).sort(function(a,b){return b.n-a.n;}).slice(0,3);
+      return '<button type="button" class="krow" data-task="'+x.i+'"><span class="kst '+x.s+'">'+{bad:T.cBad,again:T.cAgain,'new':T.cNew,ok:T.cOk}[x.s]+'</span><span class="kwhat">'+esc(x.t.made[0])+'</span>'+
+        '<span class="kfrom">'+rooms.map(function(r){var p=byName[r.name];return '<span class="pic '+p.z+'" title="'+esc(p.name)+'">'+ic(p.icon)+'</span>';}).join('')+'<span>'+esc(x.t.name)+'</span></span></button>';}
+    var first=list.filter(function(x){return x.s!=='ok';}),fine=list.filter(function(x){return x.s==='ok';});
+    $('canb').innerHTML=first.map(row).join('')+(first.length&&fine.length>4?'<details class="older"><summary>'+f(T.canFold,{n:fine.length})+'</summary><div class="krows">'+fine.map(row).join('')+'</div></details>':fine.map(row).join(''));
+    Array.prototype.forEach.call($('canb').querySelectorAll('[data-task]'),function(b){b.addEventListener('click',function(){selectTask(+b.getAttribute('data-task'));});});
+  }
   function selectTask(i){
     var t=TASKS[i],list=taskRooms(t),map={},wins=taskWins(t);
     unselRows();setHash('t'+i);curFlow=null;curPart=null;curInner=null;curTask=i;$('task-'+i).setAttribute('aria-pressed','true');
@@ -1900,13 +1969,13 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       if(t.needs.length)h+='<div class="blk"><h3>'+T.tNeeds+'</h3><div class="signs">'+t.needs.map(function(x){return '<div class="sign">'+ic('user')+'<span>'+esc(x)+'</span></div>';}).join('')+'</div></div>';
       if(t.next)h+='<div class="blk"><h3>'+T.tNext+'</h3><p>'+esc(t.next)+'</p></div>';
     }else if(!hasMade(t))h+='<div class="empty">'+T.tBareLong+'</div>';
-    h+=madeBlock(t)+movedBlock(t)+storyBlock(t);
+    h+=madeBlock(t)+tryBlock(t)+movedBlock(t)+storyBlock(t);
     if(wins.length)h+='<div class="nowby">'+wins.map(function(w){return wb(w)+'<span>'+esc(winName(w))+'</span>';}).join('')+'<span class="sub">'+T.tWin+'</span></div>';
     h+='<div class="blk"><h3>'+T.tRooms+'</h3>'+(list.length?stackBar(list)+legend(list):'<p class="sub">'+T.tNoRooms+'</p>')+'</div>';
     h+=marksBlock(t);
     if(t.finished){if(!hasMade(t))h+='<div class="ask">'+T.tAskMade+'<span class="say">'+esc(f(T.tSayMade,{n:t.name}))+'</span></div>';}
     else h+='<div class="ask">'+(t.plain?T.tAsk:T.tAskBare)+'<span class="say">'+esc(f(t.plain?T.tSay:T.tSayBare,{n:t.name}))+'</span></div>';
-    setStage(h+'</div>');drawTaskFlows();
+    setStage(h+'</div>');drawTaskFlows();if(SAVE)wireTry(t,i);
   }
   if(TASKS.length||D.tasksOld){
     var older=TASKS.filter(function(t){return t.old;}).length,fin=TASKS.filter(function(t){return t.finished&&!t.old;}).length,doing=TASKS.length-fin-older;
@@ -1918,14 +1987,16 @@ details .tags{flex-direction:row;flex-wrap:wrap}
       var b=document.createElement('button');b.type='button';b.className='tcard';b.id='task-'+i;b.setAttribute('aria-pressed','false');
       var rooms=taskRooms(t).filter(function(x){return byName[x.name];}).sort(function(x,y){return y.n-x.n;}).slice(0,6);
       b.innerHTML='<span class="tt"><span class="tn">'+esc(t.name)+'</span>'+(t.finished?'<span class="flag fin">'+(t.times>1?f(T.timesFlag,{n:t.times}):T.finFlag)+'</span>':t.needs.length?'<span class="flag me">'+f(T.needsFlag,{n:t.needs.length})+'</span>':'')+
-        (t.again?'<span class="flag">'+T.againFlag+'</span>':'')+(moved(t)?'<span class="flag">'+T.afterFlag+'</span>':'')+'</span>'+
+        (t.again?'<span class="flag">'+T.againFlag+'</span>':'')+(moved(t)?'<span class="flag">'+T.afterFlag+'</span>':'')+'<span id="tryflag-'+i+'"></span></span>'+
         '<span class="tnow'+(t.plain||t.made.length?'':' none')+'">'+esc(t.finished&&t.made.length?t.made[0]:t.plain?t.now:t.made.length?t.made[0]:T.tBare)+'</span><span class="tf">'+
         (rooms.length?'<span class="tpics">'+rooms.map(function(x){var p=byName[x.name];return '<span class="pic '+p.z+'" title="'+esc(p.name)+'">'+ic(p.icon)+'</span>';}).join('')+'</span>':'')+
         taskWins(t).map(function(w){return wb(w);}).join('')+'<span>'+esc(taskWhen(t))+'</span></span>';
       b.addEventListener('click',function(){if(curTask===i)home();else selectTask(i);});
-      $(t.old?'tcards2':'tcards').appendChild(b);});
+      $(t.old?'tcards2':'tcards').appendChild(b);tryFlag(i);});
     if(D.tasksOld){$('taskso').hidden=false;$('taskso').textContent=f(T.tasksOld,{n:D.tasksOld});}
   }
+
+  drawCan();
 
   // ---- what changed lately ----
   // For a reader who comes back after a while. Everything in it is measured: the list against its own earlier
