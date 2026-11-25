@@ -82,4 +82,4 @@ A numbered list, most useful step first, each one something the next session can
 
 ## Read budget
 
-The whole file competes for the next session's context and the person's patience. Aim for 300 to 400 words. The validator warns past 600 words, or past 80 lines, and says how the words divide among the sections; two Chinese characters count as one word. A longer record usually means `Decided` has started to describe the code.
+The whole file competes for the next session's context and the person's patience. Aim for 300 to 400 words outside `For People`; that section has its own limits above and is not counted. The validator warns past 600 such words, or past 80 lines in all, and says how the words divide among the sections; two Chinese characters count as one word. A longer record usually means `Decided` has started to describe the code.

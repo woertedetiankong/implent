@@ -13,8 +13,10 @@ model diligence:
   under Needs you, at most three Not yet lines, a Done line on a task that
   was finished lately
 - the read budget (WARN past MAX_WORDS words or MAX_LINES lines, and past
-  MAX_DECIDED lines under Decided). Words are counted so that a record in
-  Chinese is measured too: two Chinese characters count as one word.
+  MAX_DECIDED lines under Decided). The words counted are those outside
+  For People: that section is what the map shows a person, it has limits of
+  its own, and it cannot be cut to make room. Words are counted so that a
+  record in Chinese is measured too: two Chinese characters count as one word.
 - in any record: relative-date phrases ("today", "last week", ...), broken
   relative links, leftover template placeholders. Code fences are skipped.
 
@@ -47,7 +49,7 @@ LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)[^)]*\)")
 PLACEHOLDERS = ("<YYYY-MM-DD>", "<slug>", "<what the person would call", "<where it stands",
                 "<one thing the work is waiting", "<what happens once", "<decision", "<next step")
 MAX_LINES = 80      # references/task-file.md read budget
-MAX_WORDS = 600     # the aim there is 300 to 400; past half as much again the record is no longer short
+MAX_WORDS = 600     # outside For People. The aim there is 300 to 400; past half as much again it is no longer short
 # Characters of scripts written without spaces between words; two of them are counted as one word.
 CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff]")
 MAX_DECIDED = 14    # past a dozen lines, Decided has usually started to describe the code
@@ -225,12 +227,18 @@ def check_record(path, report):
         steps = [l.strip() for l in body.splitlines() if l.strip()]
         if not steps or all(NONE_RE.match(l.lstrip("-*0123456789. ")) for l in steps):
             report.warn(path, line_no, "an open task with nothing under Next — say what the next session should start on")
-    total = count_words("\n".join(body_of(lines)))
+    # What the next session has to read. The lines for people are counted apart: the map needs them, they
+    # have limits of their own (three Not yet lines, one sentence a mark), and a record whose Decided is
+    # already down to what the code cannot show must not be told to cut them.
+    people = sum(count_words(found[name][1]) for name in PEOPLE_HEADINGS if name in found)
+    total = count_words("\n".join(body_of(lines))) - people
     if total > MAX_WORDS:
-        sizes = sorted(((count_words(body), name) for name, (_, body) in found.items()), reverse=True)
+        sizes = sorted(((count_words(body), name) for name, (_, body) in found.items()
+                        if name not in PEOPLE_HEADINGS), reverse=True)
         split = ", ".join(f"{name} {n}" for n, name in sizes if n)
-        report.warn(path, 1, f"record is {total} words (aim for 300 to 400; this warns past {MAX_WORDS}): {split}. "
-                             "Cut from the longest first: under Decided, the lines the code or git now show")
+        report.warn(path, 1, f"record is {total} words outside For People (aim for 300 to 400; this warns past "
+                             f"{MAX_WORDS}): {split}. Cut from the longest first: under Decided, the lines the "
+                             "code or git now show")
     elif len(lines) > MAX_LINES:
         report.warn(path, len(lines), f"record is {len(lines)} lines (budget {MAX_LINES}) — "
                                       "it has probably started to describe the code")

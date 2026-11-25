@@ -11,7 +11,7 @@ It keeps nothing else. A record that repeats the code costs time to write, time 
 
 ## The record
 
-One file per task, `docs/tasks/<YYYY-MM-DD>-<slug>.md`, with three sections and about 300 to 400 words in all. Read [references/task-file.md](references/task-file.md) before writing one; it has the format and the rules for each line.
+One file per task, `docs/tasks/<YYYY-MM-DD>-<slug>.md`, with three sections: a few lines for the person, and about 300 to 400 words for the next session. Read [references/task-file.md](references/task-file.md) before writing one; it has the format and the rules for each line.
 
 - `## For People`: what the task is called, where it stands, what is waiting on the person, and what the last finished step came to. Plain words. The companion skill `bearings` shows these lines on the project map, and for most people that map is the only place they see them.
 - `## Decided`: what the next session could not work out from the code and git history.
