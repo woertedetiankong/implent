@@ -1,6 +1,6 @@
 ---
 name: implementation-journal
-description: "Keep one short record per task, so the next AI session can carry on where this one stopped and the person steering the work can see where it stands: what was decided that neither the code nor git history shows, what comes next, and a few plain lines for the person. Use when work will span sessions, when the user makes a decision or names a constraint that should outlive the chat, when the user asks for a handoff, restart notes, a task record or a decision log, or asks to continue or change a task that already has a record under docs/tasks/. Do not use for a single-session fix that leaves nothing to remember."
+description: "Keep one short record per task, so the next AI session can carry on where this one stopped and the person steering the work can see where it stands: what was decided that neither the code nor git history shows, what comes next, and a few plain lines for the person. Use when work will span sessions or the user says part of it is left for later, when the user makes a decision or names a constraint that should outlive the chat, when the user pastes back their answers to a plan (the decisions picked on a plan page) and building starts, when the user asks for a handoff, restart notes, a task record or a decision log, or asks to continue or change a task that already has a record under docs/tasks/. Do not use for a single-session fix that leaves nothing to remember."
 ---
 
 # Implementation Journal
@@ -25,6 +25,9 @@ Where the file lives: `docs/tasks/` unless the project already keeps task record
 
 - **Open the record** when the work will outlive this session, or at the first decision worth keeping, whichever comes first. A small fix that is done in one sitting and decides nothing gets no record.
 - **Add to `Decided` as it happens**, not at the end. The moment to write is when the user settles something, when you learn of a limit from outside the code, when you choose one reading of an unclear request, when you leave something out on purpose, or when you try an approach and drop it for a reason a commit message will not carry.
+- **When the user answers a plan** (the response pasted back from a plan page, such as the `html-plan` skill makes), write the answers under `Decided` before building. The plan page is not where the next session looks, so what was chosen on it is otherwise lost. Take the response one answer at a time:
+  - An option the user picked or changed, an edit of theirs, or a comment that changes what gets built: a decision of the user's, one line each.
+  - An answer the response marks as not opened (html-plan writes `_(not opened; default kept)_` beside it), or a default nobody touched: the user never looked at it, even if they said to go ahead with the plan. It is your own proposal still standing. Write it as a guess and do not put the user's name on it: `- Guess, a plan default the user did not open: exports are kept for 30 days.`
 - **Bring the record up to date before any pause**: a final response, a hand back to the user, the end of a step. `Now`, `Next` and the status say how things stand at that moment, not how they were planned.
 - **Close it** by setting `status: Complete` and rewriting the lines for people to describe the task as a whole.
 
