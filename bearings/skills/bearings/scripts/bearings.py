@@ -27,7 +27,9 @@ it never tells anyone what to change or leave alone.
 Uncommitted work is split by window: which Claude Code or Codex session edited each file,
 read from the session records those tools keep on this machine (--no-windows skips that).
 A page written with --out is for handing to someone else, so it leaves out each window's name
-and the latest request typed into it; --asks keeps them.
+and the latest request typed into it; --asks keeps them. After writing such a page the script
+names the files whose source is inside it. In any page, a function whose source looks like it
+holds a key or a password is shown without its source.
 The map also counts the uncommitted work in the repository's other worktrees.
 
 Read-only towards the project, with one exception. It writes the map page, under the git dir unless --out
@@ -81,6 +83,17 @@ CALLS_FILES = ("calls.md", "CALLS.md")
 NOTES_FILE = "calls-notes.md"
 SRC_LINES = 400      # lines of one function's source handed to the page
 SRC_TOTAL = 1500000  # characters of source handed to the page in all
+# The source of the functions on the call chains goes into the page, and a page gets handed on. A function
+# whose lines look like they hold a key or a password, or that sits in a file named like a secrets file, is
+# shown without its source. These are the shapes of the common ones; it is a net, not a proof.
+SECRET_TEXT_RE = re.compile(
+    r"sk-ant-|sk-[A-Za-z0-9]{32,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY|gh[pousr]_[A-Za-z0-9]{30,}"
+    r"|github_pat_[A-Za-z0-9_]{30,}|xox[abeprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{30,}"
+    r"|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\."
+    r"|(?:password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token)[\"']?\s*[:=]\s*[\"'][^\"'\s$<{]{12,}[\"']", re.I)
+SECRET_NAME_RE = re.compile(
+    r"(^|/)(\.env(\.[^/]*)?|credentials[^/]*|secrets?(\.[^/]*)?|[^/]*\.local\.json)$"
+    r"|\.(pem|key|p12|pfx|keystore|jks|tfvars)$", re.I)
 CHAIN_STEPS = 400  # lines of one chain handed to the page: its functions, and the branches and cases among them
 # Which function calls which is something the script can read. So a chain need not write every function by
 # hand: `展开 2` under a function has the script fill in what that function calls, two levels down, as measured.
@@ -135,6 +148,8 @@ WHEN_RE = re.compile(r"^\d{4}-\d\d-\d\d(?:[T ]\d\d:\d\d(?::\d\d)?)?")
 TEXT = {
     "zh": {
         "no_parts": "没找到部分清单（{files}）。先让 AI 按技能说明起草一份。",
+        "web_inside": "页面里带着 {n} 个文件里 {k} 个函数的源码：{files}。把页面发给别人之前看一眼这份名单；不想带源码，加 --no-source。",
+        "web_held": "{n} 个函数的源码没有放进页面，因为看上去带着密钥或密码：{fns}。",
         "parts_head": "{n} 个部分，{files} 个文件：",
         "files": "{n} 个文件",
         "unmapped": "未归类的文件 {n} 个：",
@@ -295,6 +310,8 @@ TEXT = {
     },
     "en": {
         "no_parts": "No parts list found ({files}). Have the agent draft one first, following the skill.",
+        "web_inside": "The page carries the source of {k} functions from {n} files: {files}. Look through this list before handing the page on; --no-source leaves the source out.",
+        "web_held": "Shown without source, because it looks like it holds a key or a password ({n}): {fns}.",
         "parts_head": "{n} parts, {files} files:",
         "files": "{n} files",
         "unmapped": "{n} unmapped files:",
@@ -3042,7 +3059,9 @@ def load_chains(root, files, parts, routes, top, wiring, runs=(), calls_file="",
     folder = os.path.dirname(calls_file) if calls_file else os.path.dirname(os.path.join(root, listed or "x"))
     notes_file = os.path.join(folder, NOTES_FILE)
     book = {"fns": {}, "notes": 0, "notes_file": os.path.relpath(notes_file, root).replace(os.sep, "/"), "lost": [],
-            "heads": {}}   # function -> the headings its note stands under, as written
+            "heads": {},   # function -> the headings its note stands under, as written
+            "inside": [],  # the files whose source is in the page
+            "held": []}    # the functions shown without their source because it looks like it holds a secret
     written = [(c, os.path.relpath(calls_file, root).replace(os.sep, "/"), None)
                for c in (read_calls(slurp(calls_file)) if calls_file else [])]
     written += [(c, listed, None) for c in top.get("chains", [])]
@@ -3088,6 +3107,11 @@ def load_chains(root, files, parts, routes, top, wiring, runs=(), calls_file="",
                 lines = text[s["line"] - 1:end]
                 cut = len(lines) > SRC_LINES
                 lines = [x.rstrip()[:400] for x in lines[:SRC_LINES]]
+                if SECRET_NAME_RE.search(s["file"]) or SECRET_TEXT_RE.search("\n".join(lines)):
+                    book["held"].append(s["key"])
+                    lines, cut = [], False
+                elif lines and s["file"] not in book["inside"]:
+                    book["inside"].append(s["file"])
                 budget -= sum(len(x) + 1 for x in lines)
             book["fns"][s["key"]] = {"file": s["file"], "line": s["line"], "src": "\n".join(lines), "cut": cut,
                                      "note": noted.get(s["key"], "")}
@@ -4208,12 +4232,20 @@ def cmd_web(root, parts, t, args):
     """Writes the map page. With --open it is shown through a small service on this machine, so that what a
     reader writes on the page (a note on a function) goes straight into the project's files; the page as a
     plain file is written too, and is what opens when the service cannot start."""
-    page, _ = web_page(root, parts, t, args)
+    page, book = web_page(root, parts, t, args)
     out = args.out or state_path(root)
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     with open(out, "w", encoding="utf-8") as fh:
         fh.write(page)
     print(os.path.abspath(out))
+    comma = "、" if t is TEXT["zh"] else ", "
+    if book["held"]:
+        print(t["web_held"].format(n=len(book["held"]), fns=comma.join(book["held"][:20])
+                                   + (" …" if len(book["held"]) > 20 else "")))
+    if args.out and book["inside"]:   # a page written to hand on: say whose code went with it
+        files = sorted(book["inside"])
+        print(t["web_inside"].format(n=len(files), k=sum(1 for f in book["fns"].values() if f["src"]),
+                                     files=comma.join(files[:60]) + (" …" if len(files) > 60 else "")))
     if not args.open:
         return
     url = None if (args.out or args.fragment or args.no_serve) else ensure_server(root, args)
