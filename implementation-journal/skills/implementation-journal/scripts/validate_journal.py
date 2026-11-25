@@ -12,8 +12,9 @@ model diligence:
   no backticks, a sentence on every Added/Changed/Removed mark, no "None"
   under Needs you, at most three Not yet lines, a Done line on a task that
   was finished lately
-- the read budget (WARN past MAX_LINES, and past MAX_DECIDED lines under
-  Decided)
+- the read budget (WARN past MAX_WORDS words or MAX_LINES lines, and past
+  MAX_DECIDED lines under Decided). Words are counted so that a record in
+  Chinese is measured too: two Chinese characters count as one word.
 - in any record: relative-date phrases ("today", "last week", ...), broken
   relative links, leftover template placeholders. Code fences are skipped.
 
@@ -46,6 +47,9 @@ LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)[^)]*\)")
 PLACEHOLDERS = ("<YYYY-MM-DD>", "<slug>", "<what the person would call", "<where it stands",
                 "<one thing the work is waiting", "<what happens once", "<decision", "<next step")
 MAX_LINES = 80      # references/task-file.md read budget
+MAX_WORDS = 600     # the aim there is 300 to 400; past half as much again the record is no longer short
+# Characters of scripts written without spaces between words; two of them are counted as one word.
+CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff]")
 MAX_DECIDED = 14    # past a dozen lines, Decided has usually started to describe the code
 NOT_RECORDS = ("next-session.md", "index.md", "readme.md")
 # The one section a person reads, on the bearings map. bearings.py parses the same heading and keys;
@@ -117,6 +121,22 @@ def sections(lines):
     if current:
         found[current] = (start + 1, "\n".join(lines[start:]))
     return found
+
+
+def count_words(text):
+    """How long a text is to read, in words. A line count misses a record of a few very long lines, and
+    counting what stands between spaces misses Chinese, where a whole sentence is one unbroken run."""
+    rest = CJK_RE.sub(" ", text)
+    return sum(1 for token in rest.split() if re.search(r"\w", token)) + (len(CJK_RE.findall(text)) + 1) // 2
+
+
+def body_of(lines):
+    """The lines after the header."""
+    if lines and lines[0].strip() == "---":
+        for at, line in enumerate(lines[1:], 1):
+            if line.strip() == "---":
+                return lines[at + 1:]
+    return lines
 
 
 def check_common(path, lines, report):
@@ -205,7 +225,13 @@ def check_record(path, report):
         steps = [l.strip() for l in body.splitlines() if l.strip()]
         if not steps or all(NONE_RE.match(l.lstrip("-*0123456789. ")) for l in steps):
             report.warn(path, line_no, "an open task with nothing under Next — say what the next session should start on")
-    if len(lines) > MAX_LINES:
+    total = count_words("\n".join(body_of(lines)))
+    if total > MAX_WORDS:
+        sizes = sorted(((count_words(body), name) for name, (_, body) in found.items()), reverse=True)
+        split = ", ".join(f"{name} {n}" for n, name in sizes if n)
+        report.warn(path, 1, f"record is {total} words (aim for 300 to 400; this warns past {MAX_WORDS}): {split}. "
+                             "Cut from the longest first: under Decided, the lines the code or git now show")
+    elif len(lines) > MAX_LINES:
         report.warn(path, len(lines), f"record is {len(lines)} lines (budget {MAX_LINES}) — "
                                       "it has probably started to describe the code")
     check_common(path, lines, report)

@@ -83,7 +83,7 @@ A project that used the earlier form of this skill has a folder per task (`hando
 
 ## Check
 
-Before finishing, run [scripts/validate_journal.py](scripts/validate_journal.py) with python3 on the record (in Claude Code the path is `${CLAUDE_SKILL_DIR}/scripts/validate_journal.py`). Fix every ERROR. Accept a WARN only on purpose and say so. The script checks shape, not truth, so also read the record once as the next session would: does `Now` match the code as it stands, is every line under `Decided` something that is written nowhere else, and is every `Needs you` line still unanswered?
+Before finishing, run [scripts/validate_journal.py](scripts/validate_journal.py) with python3 on the record (in Claude Code the path is `${CLAUDE_SKILL_DIR}/scripts/validate_journal.py`). Fix every ERROR. Accept a WARN only on purpose and say so. The script checks what can be counted: the header, the three sections, the lines for people, the length (words, and lines under `Decided`), relative dates, broken links. It checks shape, not truth. What it cannot check is yours, so also read the record once as the next session would: does `Now` match the code as it stands, is every line under `Decided` something that is written nowhere else, and is every `Needs you` line still unanswered?
 
 ## Final response
 
