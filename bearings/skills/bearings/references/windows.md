@@ -14,7 +14,7 @@ People often run several Claude Code or Codex sessions on one project, and soon 
 
 - A file changed with an edit tool is matched for certain. A file changed by a shell command is matched by time, and only when exactly one window fits; a commit is matched to a window the same way. Anything else is listed as having no window on record; say so rather than guessing.
 - A window's state is read from its record, so it is as old as the page: regenerate the map before answering "is it still working".
-- `--no-windows` skips the session records. Nothing is sent anywhere. The window names and the latest request typed into each window end up in the generated page, so mention that if the user is about to share the page.
+- `--no-windows` skips the session records. Nothing is sent anywhere. The window names and the latest request typed into each window are the user's own words to their AI tool: they are in the page the user looks at (`web --open`), and left out of a page written with `web --out`, which is the one that gets shared. `--asks` keeps them in such a page; use it only when the user asks for that.
 
 When the user asks what "this window" did and several windows are at work, find this session in the list by its name and report that row. When the list shows that another window has changed a file this session is about to change, tell the user; what to do about it is theirs to decide.
 

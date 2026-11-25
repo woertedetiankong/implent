@@ -26,6 +26,8 @@ it never tells anyone what to change or leave alone.
 
 Uncommitted work is split by window: which Claude Code or Codex session edited each file,
 read from the session records those tools keep on this machine (--no-windows skips that).
+A page written with --out is for handing to someone else, so it leaves out each window's name
+and the latest request typed into it; --asks keeps them.
 The map also counts the uncommitted work in the repository's other worktrees.
 
 Read-only towards the project, with one exception. It writes the map page, under the git dir unless --out
@@ -4297,15 +4299,19 @@ def web_page(root, parts, t, args, save=None):
                           "days": task["days"], "parts": task["rooms"],
                           "pending": short(grouped(list(mine.values()), parts)), "wins": [w["key"] for w in on]})
 
+    # A page written with --out is made to be handed to someone else. A window's name and the latest request
+    # typed into it are the person's own words to their AI tool; they stay out of such a page unless asked for.
+    hush = bool(getattr(args, "out", None)) and not getattr(args, "asks", False)
     pending = {
         # changed files that no part owns come last, under the name "": the page says they are not on the list
         "parts": [{"part": g["name"], "n": g["n"], "files": g["files"],
                    "sensitive": by_name[g["name"]].sensitive if g["name"] else ""}
                   for g in short(grouped(rows, parts))],
-        "windows": [{"key": w["key"], "tool": w["tool"], "title": w["title"], "task": w["task"], "last": w["last"],
+        "windows": [{"key": w["key"], "tool": w["tool"], "title": "" if hush else w["title"], "task": w["task"],
+                     "last": w["last"],
                      "where": "、".join(w["where"]) if lang == "zh" else ", ".join(w["where"]),
                      "unknown": w["unknown"], "n": len(w["rows"]), "guessed": w["guessed"], "parts": short(grouped(w["rows"], parts)),
-                     "state": w["state"], "said": w["said"],
+                     "state": w["state"], "said": "" if hush else w["said"],
                      "commits": [{"hash": c["hash"], "subject": c["subject"][:90], "parts": c["parts"]} for c in w["commits"][:6]],
                      "committed": len(w["commits"])}
                     for w in windows],
@@ -4786,6 +4792,9 @@ def main():
                    help="with --open: open the page as a plain file; notes written on it then stay in the browser")
     w.add_argument("--no-source", action="store_true",
                    help="leave the source of the functions on the call chains out of the page (for a page that will be shared)")
+    w.add_argument("--asks", action="store_true",
+                   help="with --out: keep each window's name and the latest request typed into it in the page; "
+                        "a page written with --out leaves them out, since it is made to be handed on")
     k = sub.add_parser("links", help="which part uses which, measured from import statements")
     k.add_argument("--json", action="store_true")
     d = sub.add_parser("doctor", help="check the list against the code: stale paths, misspelt boxes, aged diagrams")
