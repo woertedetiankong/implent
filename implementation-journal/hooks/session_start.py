@@ -32,8 +32,10 @@ After a compaction (source == "compact") it also reminds the session to bring
 its record up to date, since compaction is the context loss a planned pause
 cannot catch.
 
-Reads stdin JSON and journal files only; writes nothing. stdout of a
-SessionStart hook is added to the session's context.
+Reads stdin JSON and journal files only; writes nothing in the project. stdout of a
+SessionStart hook is added to the session's context. One thing is kept outside the project, in the
+machine's temporary folder: which records this session has been given, so that decided_on_edit.py
+beside this file gives a record's decisions once (see there).
 """
 import datetime
 import json
@@ -227,6 +229,15 @@ def main():
     def rel(path):
         return os.path.relpath(path, cwd)
 
+    session, given = payload.get("session_id"), []
+    try:
+        sys.dont_write_bytecode = True   # nothing is left in the plugin's own folder either
+        import decided_on_edit as once
+    except ImportError:
+        once = None
+    if once and session and payload.get("source") in ("compact", "clear"):
+        once.forget(session)   # what the session was given is gone from its context
+
     out = []
     if payload.get("source") == "compact" and (every or os.path.isfile(legacy)):
         out += [COMPACT_NOTE, ""]
@@ -240,6 +251,7 @@ def main():
         out += [f"implementation-journal: one task is open in this repo ({task['name']}{known}).",
                 f"{what} ({rel(task['entry'])}), {ago(task['updated'], task['age'])}:", "",
                 read(task["entry"]).rstrip()]
+        given = [task["name"]] if task["whole"] else []
     elif tasks:
         total = len(tasks) + (1 if has_legacy else 0)
         out.append(f"implementation-journal: {total} tasks are open in this repo. "
@@ -279,6 +291,8 @@ def main():
         out += ["", note] if out else [note]
     if out:
         print("\n".join(out))
+    if once and given:
+        once.remember(session, os.path.realpath(cwd), given)
 
 
 if __name__ == "__main__":
