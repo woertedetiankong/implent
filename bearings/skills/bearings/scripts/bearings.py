@@ -4385,6 +4385,7 @@ def web_page(root, parts, t, args, save=None):
 # that has to end up in the project. So `web --open` shows the page through a small service on this machine:
 # it builds the page afresh each time it is loaded, and takes a note back and writes it into the notes file.
 # So does the sentence on a function of a chain, when a reader rewrites it: it goes onto its line in the calls file.
+# And whether a thing a task made worked when the reader tried it: one more line in the tried file.
 # It listens on this machine only, writes those three files only, and stops by itself when no page has asked
 # anything of it for a while.
 
