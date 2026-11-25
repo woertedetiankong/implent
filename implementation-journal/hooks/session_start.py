@@ -5,8 +5,17 @@ Several sessions can have tasks open in one repo at the same time, so there is
 no single "next session" file to inject. Each task has its own record under
 docs/tasks/: one file, <date>-<slug>.md, open until its header says Complete.
 A repo that started with the earlier form of the skill has a folder per task
-instead; such a task is open while the folder has a next-session.md and its
-handoff.md is not marked Complete.
+instead. Such a task is open while its handoff.md does not say Complete and the
+folder has a next-session.md, or the handoff has lines for people (a name and
+where it stands), or it changed in the last STALE_DAYS. Apart from the restart
+entry that is the rule the bearings map goes by (`tasks_shown` in bearings.py),
+so the list a session is given and the map a person looks at name the same
+tasks. An old project has many folders that were never marked Complete and say
+nothing to a person; like the map, this leaves them out.
+
+The records are looked for in docs/tasks/ of the folder the session started in,
+and failing that of each folder above it up to the top of the repository, so a
+session started in a subfolder is told the same.
 
 - No open task: print nothing, unless the repo has finished tasks (see below).
 - One open task: print its record (or, for an older folder, its restart
@@ -168,6 +177,27 @@ def decided_note(tasks_dir, cwd):
                 done, "" if done == 1 else "s", "holds" if done == 1 else "hold", script))
 
 
+def find_tasks(start):
+    """docs/tasks/ of the folder a session started in, or of the nearest folder above it up to the top of
+    the repository (the folder that holds .git). Outside a repository only the start folder is looked in:
+    there is nothing to say where the project ends. None when there is none."""
+    start = os.path.abspath(start)
+    top = start
+    while not os.path.exists(os.path.join(top, ".git")):
+        if os.path.dirname(top) == top:
+            top = start   # not in a repository
+            break
+        top = os.path.dirname(top)
+    folder = start
+    while True:
+        tasks = os.path.join(folder, "docs", "tasks")
+        if os.path.isdir(tasks):
+            return tasks
+        if folder == top:
+            return None
+        folder = os.path.dirname(folder)
+
+
 def open_tasks(tasks_dir):
     found = []
     for name in sorted(os.listdir(tasks_dir)):
@@ -185,24 +215,29 @@ def open_tasks(tasks_dir):
             found.append({"name": name[:-3], "entry": dossier, "updated": day, "age": age,
                           "state": people_line(record, "Now|现在"), "people": people_name(record), "whole": True})
             continue
-        entry = entry_in(dossier)
-        if not entry:
-            continue
-        handoff = read(os.path.join(dossier, "handoff.md"))
+        # an older folder: open until its handoff says Complete. Its restart entry is printed when it has
+        # one; a handoff is too long to print and is pointed to instead.
+        handoff_path = os.path.join(dossier, "handoff.md")
+        handoff = read(handoff_path)
         meta = frontmatter(handoff)
-        if meta.get("status", "").lower().startswith("complete"):
+        if not handoff or meta.get("status", "").lower().startswith("complete"):
             continue
+        entry = entry_in(dossier)
         updated = re.search(r"\d{4}-\d{2}-\d{2}", meta.get("updated", "") or name)
-        state = re.search(r"^Current state:\s*(.+)$", read(entry), re.I | re.M)
-        day, age = last_moved(updated.group(0) if updated else "", entry, os.path.join(dossier, "handoff.md"))
+        state = re.search(r"^Current state:\s*(.+)$", read(entry), re.I | re.M) if entry else None
+        day, age = last_moved(updated.group(0) if updated else "", entry or handoff_path, handoff_path)
+        plain = people_name(handoff) and people_line(handoff, "Now|现在")
+        if not entry and not plain and (age is None or age > STALE_DAYS):
+            continue
         found.append({
             "name": name,
-            "entry": entry,
+            "entry": entry or handoff_path,
             "updated": day,
             "age": age,
-            "state": state.group(1).strip() if state else "",
+            "state": state.group(1).strip() if state else people_line(handoff, "Now|现在"),
             "people": people_name(handoff),
             "whole": False,
+            "pointed": not entry,
         })
     found.sort(key=lambda t: t["updated"], reverse=True)
     return found
@@ -214,8 +249,8 @@ def main():
     except ValueError:
         payload = {}
     cwd = payload.get("cwd") or os.getcwd()
-    tasks_dir = os.path.join(cwd, "docs", "tasks")
-    if not os.path.isdir(tasks_dir):
+    tasks_dir = find_tasks(cwd)
+    if not tasks_dir:
         return
     legacy = os.path.join(tasks_dir, LEGACY_NAME)
     legacy_day, legacy_age = last_moved("", legacy)
@@ -241,28 +276,38 @@ def main():
     out = []
     if payload.get("source") == "compact" and (every or os.path.isfile(legacy)):
         out += [COMPACT_NOTE, ""]
-    if not tasks and has_legacy:
+    def row(task):
+        known = ', "%s" to the user' % task["people"] if task["people"] else ""
+        kind = "record" if task["whole"] else "handoff" if task.get("pointed") else "entry"
+        line = f"- {task['name']}{known} ({ago(task['updated'], task['age'])}): {kind} `{rel(task['entry'])}`"
+        return line + (" — " + task["state"][:160] if task["state"] else "")
+
+    if has_legacy and all(t.get("pointed") for t in tasks):
+        # the form before task folders had restart entries of their own: the repo-level entry is the
+        # restart entry, and usually it is about one of these folders
         out += [f"implementation-journal restart entry ({rel(legacy)}), {ago(legacy_day, legacy_age)}:", "",
                 read(legacy).rstrip()]
+        if tasks:
+            out += ["", "Task folders in this repo not marked finished (the entry above may be about one of them):"]
+            out += [row(t) for t in tasks[:MAX_LISTED]]
     elif len(tasks) == 1 and not has_legacy:
         task = tasks[0]
         known = ', which the user knows as "%s"' % task["people"] if task["people"] else ""
-        what = "Its record" if task["whole"] else "Its restart entry"
-        out += [f"implementation-journal: one task is open in this repo ({task['name']}{known}).",
-                f"{what} ({rel(task['entry'])}), {ago(task['updated'], task['age'])}:", "",
-                read(task["entry"]).rstrip()]
+        out.append(f"implementation-journal: one task is open in this repo ({task['name']}{known}).")
+        if task.get("pointed"):
+            out.append(f"It is kept in the older folder form and has no restart entry. Its handoff is "
+                       f"`{rel(task['entry'])}`, {ago(task['updated'], task['age'])}"
+                       + (": " + task["state"][:300] if task["state"] else "."))
+        else:
+            what = "Its record" if task["whole"] else "Its restart entry"
+            out += [f"{what} ({rel(task['entry'])}), {ago(task['updated'], task['age'])}:", "",
+                    read(task["entry"]).rstrip()]
         given = [task["name"]] if task["whole"] else []
     elif tasks:
         total = len(tasks) + (1 if has_legacy else 0)
         out.append(f"implementation-journal: {total} tasks are open in this repo. "
                    "This session may continue one of them or start something new.")
-        for task in tasks[:MAX_LISTED]:
-            known = ', "%s" to the user' % task["people"] if task["people"] else ""
-            kind = "record" if task["whole"] else "entry"
-            line = f"- {task['name']}{known} ({ago(task['updated'], task['age'])}): {kind} `{rel(task['entry'])}`"
-            if task["state"]:
-                line += " — " + task["state"][:160]
-            out.append(line)
+        out += [row(t) for t in tasks[:MAX_LISTED]]
         if len(tasks) > MAX_LISTED:
             out.append(f"- and {len(tasks) - MAX_LISTED} older open tasks under docs/tasks/")
         if has_legacy:
@@ -292,7 +337,7 @@ def main():
     if out:
         print("\n".join(out))
     if once and given:
-        once.remember(session, os.path.realpath(cwd), given)
+        once.remember(session, os.path.realpath(os.path.dirname(os.path.dirname(tasks_dir))), given)
 
 
 if __name__ == "__main__":
