@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Formal Verification Skill"
+  short_description: "Formally verify high-risk logic (concurrency, state machines, parsers) and leave a reusable skill"
+  default_prompt: "Use $create-formal-verification-skill to Formally verify high-risk logic (concurrency, state machines, parsers) and leave a reusable skill."

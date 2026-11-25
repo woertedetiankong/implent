@@ -1,0 +1,4 @@
+interface:
+  display_name: "Why"
+  short_description: "Answer why code is designed this way from commits, PRs, and cited records"
+  default_prompt: "Use $why to Answer why code is designed this way from commits, PRs, and cited records."

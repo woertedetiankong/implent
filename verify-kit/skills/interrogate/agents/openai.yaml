@@ -1,0 +1,4 @@
+interface:
+  display_name: "Interrogate"
+  short_description: "Adversarial code/design review keeping only findings proven by execution"
+  default_prompt: "Use $interrogate to Adversarial code/design review keeping only findings proven by execution."

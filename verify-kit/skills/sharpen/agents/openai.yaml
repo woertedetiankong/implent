@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sharpen"
+  short_description: "Deepen a task prompt with expert checks and raw materials before execution"
+  default_prompt: "Use $sharpen to Deepen a task prompt with expert checks and raw materials before execution."

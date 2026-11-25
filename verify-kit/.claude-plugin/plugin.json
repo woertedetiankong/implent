@@ -1,0 +1,9 @@
+{
+  "name": "verify-kit",
+  "description": "High-signal verification, formal methods, blast-radius analysis, adversarial review, and root-cause hardening skills for AI coding agents (adapted from cursor/plugins pstack).",
+  "author": { "name": "woertedetiankong" },
+  "homepage": "https://github.com/woertedetiankong/implent",
+  "repository": "https://github.com/woertedetiankong/implent",
+  "license": "MIT",
+  "keywords": ["verification", "formal-verification", "tla+", "blast-radius", "review", "codex"]
+}

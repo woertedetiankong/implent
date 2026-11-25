@@ -1,0 +1,4 @@
+interface:
+  display_name: "Maintain Verification Skill"
+  short_description: "Audit and keep a project verification skill and feature map synced with the code"
+  default_prompt: "Use $maintain-verification-skill to Audit and keep a project verification skill and feature map synced with the code."

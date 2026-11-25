@@ -1,0 +1,4 @@
+interface:
+  display_name: "Maintain Formal Verification Skill"
+  short_description: "Resync formal verification models and checks after covered code changes"
+  default_prompt: "Use $maintain-formal-verification-skill to Resync formal verification models and checks after covered code changes."

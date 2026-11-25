@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blast Radius"
+  short_description: "Find what a change can break beyond the diff and prove safety by running code"
+  default_prompt: "Use $blast-radius to Find what a change can break beyond the diff and prove safety by running code."

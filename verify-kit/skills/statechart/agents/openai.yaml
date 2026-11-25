@@ -1,0 +1,4 @@
+interface:
+  display_name: "Statechart"
+  short_description: "Check a TLA+ model and render Mermaid statecharts with shortest bug paths"
+  default_prompt: "Use $statechart to Check a TLA+ model and render Mermaid statecharts with shortest bug paths."

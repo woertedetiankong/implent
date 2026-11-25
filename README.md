@@ -2,14 +2,15 @@
 
 用 AI 写代码时，让 AI 接得上，让人看得懂。
 
-仓库里有两个配合使用的插件，Claude Code 和 Codex 都能用：
+仓库里有三个插件，Claude Code 和 Codex 都能用：
 
 | 插件 | 给谁用 | 做什么 |
 |---|---|---|
 | `bearings` | 人 | 把项目画成一张导览图：分成哪几块、每块怎么工作、块和块怎么连、最近的改动落在哪 |
 | `implementation-journal` | AI | 跨会话的记忆：每件事一个文件，记下代码里看不出来的决定和下一步，让下一个会话接着干 |
+| `verify-kit` | 人 + AI | 按需手动调用的 11 个高杠杆验证与分析 Skill：行为验证、形式化验证（含 TLA+ 状态图）、影响面实证、对抗审查、历史考古、错题固化与需求升维（改编自 `cursor/plugins` 的 `pstack`） |
 
-两个都只做记录和展示。它们不规定 AI 怎么写代码，不拦任何改动。
+前两个（`bearings` 与 `implementation-journal`）只做记录和展示，不规定 AI 怎么写代码，不拦任何改动；`verify-kit` 里的 Skill 默认均设为手动触发（`disable-model-invocation: true`），平时不打扰，需要硬校验时由你按 `/` 点名调用。
 
 它们在“任务”上接头：
 
@@ -100,6 +101,7 @@
 /plugin marketplace add woertedetiankong/implent
 /plugin install bearings@implent
 /plugin install implementation-journal@implent
+/plugin install verify-kit@implent
 ```
 
 以后更新：
@@ -116,6 +118,7 @@
 git clone https://github.com/woertedetiankong/implent.git
 cp -R implent/bearings/skills/bearings ~/.codex/skills/
 cp -R implent/implementation-journal/skills/implementation-journal ~/.codex/skills/
+cp -R implent/verify-kit/skills/* ~/.codex/skills/
 ```
 
 ## 使用 bearings
@@ -488,6 +491,15 @@ python3 /path/to/implent/implementation-journal/skills/implementation-journal/sc
 - `/bearings:map` 命令还没有在真实会话里运行过。
 - 手机宽度和深色模式没有充分检查。
 
+# verify-kit：确定性验证与高杠杆分析 Skill 套件
+
+`verify-kit` 精选自 [`cursor/plugins` 的 `pstack`](https://github.com/cursor/plugins/tree/main/pstack)（MIT 许可），去除了 Cursor 私有规则和其它未打包 Skill 的耦合，适配 Claude Code 与 Codex 独立使用。所有 Skill 均为手动按需调用，详见 [`verify-kit/README.md`](verify-kit/README.md)：
+
+- **行为验证**：`create-verification-skill`、`maintain-verification-skill`
+- **形式化验证**：`create-formal-verification-skill`、`maintain-formal-verification-skill`、`statechart`
+- **防翻车与错题固化**：`blast-radius`、`correct`
+- **对抗审查、历史考古与需求升维**：`interrogate`、`why`、`reframe`、`sharpen`
+
 ## 许可
 
-两个插件都按 [MIT](LICENSE) 发布。
+`bearings` 与 `implementation-journal` 按 [MIT](LICENSE) 发布；`verify-kit` 基于 `cursor/plugins` 的 `pstack` 改编，同样按 [MIT](verify-kit/LICENSE) 发布。

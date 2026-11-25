@@ -1,0 +1,4 @@
+interface:
+  display_name: "Correct"
+  short_description: "Eliminate repeated agent mistakes via architecture, types, lint, CI, and tests"
+  default_prompt: "Use $correct to Eliminate repeated agent mistakes via architecture, types, lint, CI, and tests."

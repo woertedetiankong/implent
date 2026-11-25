@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reframe"
+  short_description: "Surface expert terminology, neighboring fields, and real projects to reframe a problem"
+  default_prompt: "Use $reframe to Surface expert terminology, neighboring fields, and real projects to reframe a problem."
