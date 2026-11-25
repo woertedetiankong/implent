@@ -16,6 +16,13 @@ handoff.md is not marked Complete.
 - A repo that still has only the older repo-level docs/tasks/NEXT-SESSION.md
   gets that file printed, exactly as before.
 
+A record says how things stood when it was last written: "the run is in progress, do not restart it"
+stays on the page long after the run ended. So every record is shown with the day it last changed and
+how long ago that was, and one that has not changed in more than STALE_DAYS is not printed and does not
+count as open here: it gets one line saying where it is. The day is the later of the `updated:` in its
+header and the day the file itself last changed (its last commit when git has it unchanged, so a fresh
+clone does not make every record look new; otherwise when it was last written).
+
 A finished task's record is no longer shown to anyone, and the decisions in it are not in the code.
 So when the repo has finished records, every output ends with one line that says how to look them up
 for the files about to be changed (the skill's scripts/decided.py). That line is all a session with no
@@ -28,12 +35,15 @@ cannot catch.
 Reads stdin JSON and journal files only; writes nothing. stdout of a
 SessionStart hook is added to the session's context.
 """
+import datetime
 import json
 import os
 import re
+import subprocess
 import sys
 
 MAX_LISTED = 6
+STALE_DAYS = 30  # a record that has not changed in longer than this is named, not printed
 ENTRY_NAME = "next-session.md"
 LEGACY_NAME = "NEXT-SESSION.md"
 NOT_RECORDS = ("next-session.md", "index.md", "readme.md")
@@ -63,6 +73,50 @@ def frontmatter(text):
             if sep:
                 fields[key.strip()] = value.strip()
     return {}
+
+
+def git(folder, *args):
+    try:
+        out = subprocess.run(["git", "-C", folder, *args], capture_output=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.decode("utf-8", "replace") if out.returncode == 0 else None
+
+
+def changed_on(path):
+    """The day a file last changed: its last commit when git has it as committed, otherwise the day it
+    was last written. None for a file that is not there."""
+    if not os.path.isfile(path):
+        return None
+    folder, name = os.path.split(path)
+    status = git(folder, "status", "--porcelain", "--", name)
+    if status is not None and not status.strip():
+        at = (git(folder, "log", "-1", "--format=%at", "--", name) or "").strip()
+        if at.isdigit():  # nothing for a file git ignores: that one falls through to the file's own date
+            return datetime.date.fromtimestamp(int(at))
+    try:
+        return datetime.date.fromtimestamp(os.path.getmtime(path))
+    except OSError:
+        return None
+
+
+def last_moved(written, *paths):
+    """(the day a record last changed as YYYY-MM-DD, how many days ago that was). `written` is the date
+    its header gives, if any. ("", None) when nothing says."""
+    days = [d for d in map(changed_on, paths) if d]
+    try:
+        days.append(datetime.date.fromisoformat(written))
+    except ValueError:
+        pass
+    if not days:
+        return "", None
+    return max(days).isoformat(), max((datetime.date.today() - max(days)).days, 0)
+
+
+def ago(day, age):
+    if age is None:
+        return "last changed: unknown"
+    return "last changed %s, %s" % (day, "today" if age == 0 else "1 day ago" if age == 1 else "%d days ago" % age)
 
 
 def people_line(record, keys):
@@ -125,7 +179,8 @@ def open_tasks(tasks_dir):
             if "status" not in meta or meta["status"].lower().startswith("complete"):
                 continue
             updated = re.search(r"\d{4}-\d{2}-\d{2}", meta.get("updated", "") or name)
-            found.append({"name": name[:-3], "entry": dossier, "updated": updated.group(0) if updated else "",
+            day, age = last_moved(updated.group(0) if updated else "", dossier)
+            found.append({"name": name[:-3], "entry": dossier, "updated": day, "age": age,
                           "state": people_line(record, "Now|现在"), "people": people_name(record), "whole": True})
             continue
         entry = entry_in(dossier)
@@ -137,10 +192,12 @@ def open_tasks(tasks_dir):
             continue
         updated = re.search(r"\d{4}-\d{2}-\d{2}", meta.get("updated", "") or name)
         state = re.search(r"^Current state:\s*(.+)$", read(entry), re.I | re.M)
+        day, age = last_moved(updated.group(0) if updated else "", entry, os.path.join(dossier, "handoff.md"))
         found.append({
             "name": name,
             "entry": entry,
-            "updated": updated.group(0) if updated else "",
+            "updated": day,
+            "age": age,
             "state": state.group(1).strip() if state else "",
             "people": people_name(handoff),
             "whole": False,
@@ -159,50 +216,69 @@ def main():
     if not os.path.isdir(tasks_dir):
         return
     legacy = os.path.join(tasks_dir, LEGACY_NAME)
-    has_legacy = os.path.isfile(legacy)
-    tasks = open_tasks(tasks_dir)
+    legacy_day, legacy_age = last_moved("", legacy)
+    every = open_tasks(tasks_dir)
+    tasks = [t for t in every if t["age"] is None or t["age"] <= STALE_DAYS]
+    old = [t for t in every if t not in tasks]
+    has_legacy = os.path.isfile(legacy) and legacy_age <= STALE_DAYS
+    old_legacy = os.path.isfile(legacy) and not has_legacy
     note = decided_note(tasks_dir, cwd)
-    if not tasks and not has_legacy:
-        if note:
-            print(note)
-        return
 
     def rel(path):
         return os.path.relpath(path, cwd)
 
     out = []
-    if payload.get("source") == "compact":
+    if payload.get("source") == "compact" and (every or os.path.isfile(legacy)):
         out += [COMPACT_NOTE, ""]
-    if not tasks:
-        out += [f"implementation-journal restart entry ({rel(legacy)}):", "", read(legacy).rstrip()]
+    if not tasks and has_legacy:
+        out += [f"implementation-journal restart entry ({rel(legacy)}), {ago(legacy_day, legacy_age)}:", "",
+                read(legacy).rstrip()]
     elif len(tasks) == 1 and not has_legacy:
         task = tasks[0]
         known = ', which the user knows as "%s"' % task["people"] if task["people"] else ""
         what = "Its record" if task["whole"] else "Its restart entry"
         out += [f"implementation-journal: one task is open in this repo ({task['name']}{known}).",
-                f"{what} ({rel(task['entry'])}):", "", read(task["entry"]).rstrip()]
-    else:
+                f"{what} ({rel(task['entry'])}), {ago(task['updated'], task['age'])}:", "",
+                read(task["entry"]).rstrip()]
+    elif tasks:
         total = len(tasks) + (1 if has_legacy else 0)
         out.append(f"implementation-journal: {total} tasks are open in this repo. "
                    "This session may continue one of them or start something new.")
         for task in tasks[:MAX_LISTED]:
             known = ', "%s" to the user' % task["people"] if task["people"] else ""
             kind = "record" if task["whole"] else "entry"
-            line = f"- {task['name']}{known} (updated {task['updated'] or 'unknown'}): {kind} `{rel(task['entry'])}`"
+            line = f"- {task['name']}{known} ({ago(task['updated'], task['age'])}): {kind} `{rel(task['entry'])}`"
             if task["state"]:
                 line += " — " + task["state"][:160]
             out.append(line)
         if len(tasks) > MAX_LISTED:
             out.append(f"- and {len(tasks) - MAX_LISTED} older open tasks under docs/tasks/")
         if has_legacy:
-            out.append(f"- an older repo-level entry: `{rel(legacy)}`")
+            out.append(f"- an older repo-level entry ({ago(legacy_day, legacy_age)}): `{rel(legacy)}`")
         out += ["",
                 "If the user's first message makes clear which task this session is for, read that task's "
                 "record before anything else. If it does not, ask which one, or whether this is new work. "
                 "Leave the other tasks' records alone: other sessions may be working from them."]
+    if old or old_legacy:
+        count = len(old) + (1 if old_legacy else 0)
+        out += [""] if out and out[-1] else []
+        out.append("implementation-journal: %d record%s in this repo %s never marked finished but %s not changed "
+                   "in over %d days, so %s not shown here. What such a record calls running, waiting or next was "
+                   "true on the day it was written and may no longer be." % (
+                       count, "" if count == 1 else "s", "was" if count == 1 else "were",
+                       "has" if count == 1 else "have", STALE_DAYS, "it is" if count == 1 else "they are"))
+        for task in old[:MAX_LISTED]:
+            known = ', "%s" to the user' % task["people"] if task["people"] else ""
+            out.append(f"- {task['name']}{known} ({ago(task['updated'], task['age'])}): `{rel(task['entry'])}`")
+        if len(old) > MAX_LISTED:
+            out.append(f"- and {len(old) - MAX_LISTED} more under docs/tasks/")
+        if old_legacy:
+            out.append(f"- an older repo-level entry ({ago(legacy_day, legacy_age)}): `{rel(legacy)}`")
+        out.append("If the user asks to carry on with one of these, read it then, as an account of that day.")
     if note:
-        out += ["", note]
-    print("\n".join(out))
+        out += ["", note] if out else [note]
+    if out:
+        print("\n".join(out))
 
 
 if __name__ == "__main__":
