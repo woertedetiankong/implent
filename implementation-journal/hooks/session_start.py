@@ -54,6 +54,7 @@ import subprocess
 import sys
 
 MAX_LISTED = 6
+PYTHON = "python" if os.name == "nt" else "python3"  # what this machine calls it, for a command the session is shown
 STALE_DAYS = 30  # a record that has not changed in longer than this is named, not printed
 ENTRY_NAME = "next-session.md"
 LEGACY_NAME = "NEXT-SESSION.md"
@@ -173,8 +174,8 @@ def decided_note(tasks_dir, cwd):
         return ""
     return ("implementation-journal: %d finished task%s in this repo %s decisions the code does not show "
             "(what the user settled, limits from outside). Before changing code here, see the ones made about "
-            "those files: `python3 \"%s\" <files or folders>`." % (
-                done, "" if done == 1 else "s", "holds" if done == 1 else "hold", script))
+            "those files: `%s \"%s\" <files or folders>`." % (
+                done, "" if done == 1 else "s", "holds" if done == 1 else "hold", PYTHON, script))
 
 
 def find_tasks(start):

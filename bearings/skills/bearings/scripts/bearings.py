@@ -1227,11 +1227,27 @@ def recent(paths, since):
     return [path for _, path in sorted(dated, reverse=True)]
 
 
-def mentions(path, roots):
+def spellings(roots):
+    """The ways a session record may spell these folders. The records are JSON, so a path is written there
+    escaped: on Windows every backslash is doubled, and looking for the path as the system gives it finds
+    nothing. The drive letter comes in either case, and a tool run from a Unix-style shell writes forward
+    slashes. On other systems this is the path itself, once."""
+    out = []
+    for r in roots:
+        forms = {r}
+        if len(r) > 1 and r[1] == ":":
+            forms |= {r[0].lower() + r[1:], r[0].upper() + r[1:]}
+        forms |= {f.replace("\\", "/") for f in forms}
+        forms |= {json.dumps(f, ensure_ascii=e)[1:-1] for f in forms for e in (True, False)}
+        out += sorted(forms)
+    return out
+
+
+def mentions(path, spelt):
     """Whether a session record names any of these checkouts at all; most records on a machine do not."""
     try:
         with open(path, "rb") as fh, mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as data:
-            return any(data.find(r.encode("utf-8")) >= 0 for r in roots)
+            return any(data.find(r.encode("utf-8")) >= 0 for r in spelt)
     except (OSError, ValueError):
         return False
 
@@ -1258,9 +1274,9 @@ def claude_sessions(roots, since):
     # Every project folder, not only this repo's: a session started elsewhere can edit files here.
     files = glob.glob(os.path.join(home, "projects", "*", "*.jsonl"))
     files += glob.glob(os.path.join(home, "projects", "*", "*", "subagents", "*.jsonl"))
-    found, seen = {}, set()
+    found, seen, spelt = {}, set(), spellings(roots)
     for path in recent(files, since):  # newest first, so a resumed session keeps the edits it copied
-        if not mentions(path, roots):
+        if not mentions(path, spelt):
             continue
         sub = os.path.basename(os.path.dirname(path)) == "subagents"
         sid = os.path.basename(os.path.dirname(os.path.dirname(path))) if sub else os.path.basename(path)[:-6]
@@ -1272,12 +1288,12 @@ def claude_sessions(roots, since):
             s["born"] = min(s["born"] or born(path), born(path))
         with open(path, encoding="utf-8", errors="replace") as fh:
             for line in fh:
-                if not s["here"] and '"cwd":"' in line and any('"cwd":"%s' % json.dumps(r)[1:-1] in line for r in roots):
+                if not s["here"] and '"cwd":"' in line and any('"cwd":"%s' % r in line for r in spelt):
                     s["here"] = True
                 if newest and '"stop_reason"' in line and '"type":"assistant"' in line:
                     # the agent's last word in a turn ends it; anything else means the turn is still running
                     s["turn"] = "done" if '"stop_reason":"end_turn"' in line else "busy"
-                if '"tool_use"' in line and any(r in line for r in roots):
+                if '"tool_use"' in line and any(r in line for r in spelt):
                     try:
                         d = json.loads(line)
                         blocks = d["message"]["content"] if d.get("type") == "assistant" else []
@@ -1335,9 +1351,9 @@ def claude_sessions(roots, since):
 
 def codex_sessions(roots, since):
     home = os.environ.get("CODEX_HOME") or os.path.join(os.path.expanduser("~"), ".codex")
-    found = []
+    found, spelt = [], spellings(roots)
     for path in recent(glob.glob(os.path.join(home, "sessions", "**", "*.jsonl"), recursive=True), since):
-        if not mentions(path, roots):
+        if not mentions(path, spelt):
             continue
         s = new_session("Codex", os.path.basename(path)[:-6])
         cwd, local = "", False
@@ -1350,7 +1366,7 @@ def codex_sessions(roots, since):
                         break
                     local = inside(cwd, roots)  # only then can a command name its files relative to cwd
                     continue
-                call = '_call"' in line and (local or any(r in line for r in roots))
+                call = '_call"' in line and (local or any(r in line for r in spelt))
                 done = s["open"] and "_call_output" in line
                 ask = '"user"' in line
                 if '"task_started"' in line:
@@ -1413,6 +1429,7 @@ def file_title(path):
 def task_of(path):
     """The journal task a file belongs to: (task id, task name). A task's record is one file,
     docs/tasks/<id>.md, or in older projects a folder of several, docs/tasks/<id>/."""
+    path = path.replace(os.sep, "/")
     m = re.match(r"(.*?/docs/tasks/([^/]+))/[^/]+$", path)
     if m:
         return m.group(2), brief_name(m.group(1))

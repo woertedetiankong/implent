@@ -147,8 +147,9 @@ def main():
         if len(r["decided"]) > MAX_LINES:
             out.append("(%d more lines under Decided in that record)" % (len(r["decided"]) - MAX_LINES))
     if len(fresh) > MAX_RECORDS:
-        out += ["", "%d older records also changed this file: %s. `python3 \"%s\" --all %s` prints what they decided." % (
-            len(fresh) - MAX_RECORDS, ", ".join(r["name"] for r, _ in fresh[MAX_RECORDS:]), script, rel)]
+        out += ["", "%d older records also changed this file: %s. `%s \"%s\" --all %s` prints what they decided." % (
+            len(fresh) - MAX_RECORDS, ", ".join(r["name"] for r, _ in fresh[MAX_RECORDS:]),
+            "python" if os.name == "nt" else "python3", script, rel)]
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": "\n".join(out)}},
                      ensure_ascii=False))
 

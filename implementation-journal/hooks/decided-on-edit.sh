@@ -5,10 +5,12 @@
 # about that file. It only tells: the edit is not blocked or undone. The logic,
 # and the reasons for it, are in decided_on_edit.py beside this file.
 #
-# Exits 0 silently when the file's repository has no task records, so a global
-# install is safe.
+# Exits 0 silently when this machine has no Python 3, or the project has no
+# journal, so a global install is safe.
 # Registered automatically by the Claude Code plugin (hooks/hooks.json);
 # for a plain skill install, see hooks/README.md.
 set -uo pipefail
-command -v python3 >/dev/null 2>&1 || exit 0
-exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/decided_on_edit.py"
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$here/python.sh"
+[ -n "$py" ] || exit 0
+exec "$py" "$here/decided_on_edit.py"
