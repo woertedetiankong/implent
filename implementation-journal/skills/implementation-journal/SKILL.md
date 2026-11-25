@@ -66,7 +66,7 @@ Once a task is marked Complete, no new session is shown its record. What it deci
 python3 scripts/decided.py <files or folders>
 ```
 
-The script is in this skill folder (in Claude Code, `${CLAUDE_SKILL_DIR}/scripts/decided.py`). Given no path, it takes the files with uncommitted changes. For every record, open or finished, whose commits changed one of those files, it prints the task's name, whether it is finished, and its lines under `Decided`. Which files a record's work changed is measured from git: the commits the record cites, and the commits it was committed with.
+The script is in this skill folder (in Claude Code, `${CLAUDE_SKILL_DIR}/scripts/decided.py`). Given no path, it takes the files with uncommitted changes. For every record, open or finished, whose commits changed one of those files, it prints the task's name, whether it is finished, and its lines under `Decided`. Which files a record's work changed is measured from git: the commits the record cites, and the commits it was committed with. A file renamed or moved since then is followed to the name it has now.
 
 - Take those lines as still in force. When the work in front of you would go against one, say so to the user and name the task it came from, before doing it. A rule does not lapse because the request did not repeat it.
 - When the user now decides differently, write the new decision in your own record and name the earlier task. Leave the earlier record as it is, unless this is that task opened again (see below). Where two records disagree, the newer one holds.

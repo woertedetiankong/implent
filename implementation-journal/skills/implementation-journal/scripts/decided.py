@@ -14,6 +14,11 @@ Which files a record's work changed is measured, not written: the commits the re
 and the commits that changed the record itself and no other task's record. A record that was never
 committed with its work and cites no commit cannot be placed; those are counted at the end.
 
+A file that was renamed or moved afterwards is followed to the name it has now, from the renames git
+finds in the commits since: a rule made about src/pay.py still comes up when src/billing/pay.py is about
+to change. Asking by the old name works too. What git does not call a rename is not followed: a file
+split in two, or one moved and mostly rewritten in the same commit.
+
 Reads git and the records under docs/tasks/ (--tasks DIR for another place). Writes nothing.
 """
 import argparse
@@ -129,12 +134,48 @@ def place(root, rel, records):
         if len(ids) == 1 and ids <= set(revs):
             revs[ids.pop()].add(rev.strip())
     for r in records:
-        r["files"] = set()
+        r["files"], r["was"], when = set(), {}, {}
         if not revs[r["id"]]:
             continue
-        out = git(root, "show", "--no-renames", "--format=", "--name-only", *sorted(revs[r["id"]]))
-        r["files"] = {n for n in out.split("\n") if n.strip() and not n.startswith(rel + "/")}
-        r["placed"] = True
+        # --no-renames: a commit that moved a file counts as changing both of its names
+        out = git(root, "show", "--no-renames", "--format=%x01%ct", "--name-only", *sorted(revs[r["id"]]))
+        for block in out.split("\x01")[1:]:
+            at, _, names = block.partition("\n")
+            for n in names.split("\n"):
+                if n.strip() and not n.startswith(rel + "/"):
+                    when[n] = min(int(at.strip() or 0), when.get(n, 1 << 62))
+        r["files"], r["when"], r["placed"] = set(when), when, True
+    follow(root, [r for r in records if r.get("when")])
+
+
+def follow(root, records):
+    """Give each record `was`: for a file that has been renamed since the record's work changed it, the
+    name it has now -> the name it had then. The name it has now is added to `files`."""
+    if not records:
+        return
+    first = min(min(r["when"].values()) for r in records)
+    log = git(root, "log", "--no-merges", "-M", "--diff-filter=R", "--name-status", "--format=%x01%ct",
+              "--since=%d" % first)
+    moves = {}  # an old name -> [(when, the new name)], oldest first
+    for block in reversed(log.split("\x01")[1:]):
+        at, _, rows = block.partition("\n")
+        for row in rows.split("\n"):
+            bits = row.split("\t")
+            if len(bits) == 3 and bits[0].startswith("R"):
+                moves.setdefault(bits[1], []).append((int(at.strip() or 0), bits[2]))
+    if not moves:
+        return
+    for r in records:
+        for name, at in r["when"].items():
+            now, hops = name, 0
+            while now in moves and hops < 50:
+                step = next(((t, new) for t, new in moves[now] if t >= at), None)
+                if not step:
+                    break
+                (at, now), hops = step, hops + 1
+            if now != name and now not in r["when"]:
+                r["was"][now] = name
+                r["files"].add(now)
 
 
 def asked_paths(root, args):
@@ -168,6 +209,29 @@ def hits(files, asked):
     return found
 
 
+def look_up(root, rel, asked):
+    """(every record, [(record, its files among those asked about)] newest first, the records that could
+    not be placed). `asked` is paths relative to the repo root."""
+    records = load_records(root, rel)
+    if not records:
+        return [], [], []
+    place(root, rel, records)
+    found = []
+    for r in records:
+        mine = hits(r["files"], asked)
+        if mine:
+            found.append((r, sorted(mine)))
+    found.sort(key=lambda x: x[0]["updated"], reverse=True)
+    return records, found, [r for r in records if not r.get("placed")]
+
+
+def changed_line(r, mine):
+    """The files of a record among those asked about, each with the name it had when the record's work
+    changed it if that was another."""
+    shown = ["%s (then %s)" % (f, r["was"][f]) if f in r["was"] else f for f in mine[:FILES_SHOWN]]
+    return "changed: " + ", ".join(shown) + (" and %d more" % (len(mine) - FILES_SHOWN) if len(mine) > FILES_SHOWN else "")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__.split("\n\n", 1)[1])
@@ -182,8 +246,7 @@ def main():
         return 0
     root = os.path.realpath(top.stdout.decode().strip())
     rel = os.path.relpath(os.path.realpath(os.path.join(root, args.tasks)), root).replace(os.sep, "/")
-    records = load_records(root, rel)
-    if not records:
+    if not load_records(root, rel):
         print("decided: no task records under %s." % rel)
         return 0
     asked, from_work = asked_paths(root, args.paths)
@@ -192,14 +255,7 @@ def main():
         print("decided: no files to ask about (nothing uncommitted outside %s). Name the files or folders "
               "you are about to change." % rel)
         return 0
-    place(root, rel, records)
-    found = []
-    for r in records:
-        mine = hits(r["files"], asked)
-        if mine:
-            found.append((r, sorted(mine)))
-    found.sort(key=lambda x: x[0]["updated"], reverse=True)
-    unplaced = [r for r in records if not r.get("placed")]
+    records, found, unplaced = look_up(root, rel, asked)
 
     what = "the files with uncommitted changes" if from_work else ", ".join(a or "the whole project" for a in asked[:4]) + (
         " and %d more" % (len(asked) - 4) if len(asked) > 4 else "")
@@ -214,8 +270,7 @@ def main():
         for r, mine in shown:
             state = "finished" if r["done"] else "open"
             print("\n## %s (%s, updated %s) %s" % (r["name"], state, r["updated"] or "unknown", r["file"]))
-            more = " and %d more" % (len(mine) - FILES_SHOWN) if len(mine) > FILES_SHOWN else ""
-            print("changed: " + ", ".join(mine[:FILES_SHOWN]) + more)
+            print(changed_line(r, mine))
             print("\n".join(r["decided"]) if r["decided"] else "(nothing is written under Decided)")
         if len(found) > len(shown):
             print("\n%d older records also changed these files: %s. Run again with --all to print them." % (
