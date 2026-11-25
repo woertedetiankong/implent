@@ -8,12 +8,12 @@
     {
       "name": "bearings",
       "source": "./bearings",
-      "description": "A visual map of a project that AI is building: its parts, a flow diagram of how each part works, and where recent work landed."
+      "description": "A visual map of a project that AI is building: its parts explained in plain words, a flow diagram of how each part works, the chain of functions behind it, and where recent work landed. For understanding only."
     },
     {
       "name": "implementation-journal",
       "source": "./implementation-journal",
-      "description": "Cross-session memory for AI coding work: task dossier, decisions-only log, restart-ready handoff, docs kept in step."
+      "description": "Cross-session memory for AI coding work: one short record per task holding what the code and git cannot show (what was decided, what comes next) and a few plain lines for the person."
     }
   ]
 }

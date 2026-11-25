@@ -33,10 +33,11 @@ The map also counts the uncommitted work in the repository's other worktrees.
 Read-only towards the project, with one exception. It writes the map page, under the git dir unless --out
 says otherwise, and beside it a dated copy of the parts list whenever the list has changed, so that "what
 changed lately" can be measured for a list nobody has committed. The exception: `web --open` shows the page
-through a small service on this machine, and two things a reader writes on the page go into the project: a
-note on a function's page, into calls-notes.md beside the call chains, and a rewritten sentence on a function
-of a chain, onto that function's line in calls.md. The service listens on this machine only, writes those two
-files only, and stops by itself when no page has asked anything of it for half an hour. Python 3 standard
+through a small service on this machine, and three things a reader writes on the page go into the project: a
+note on a function's page, into calls-notes.md beside the call chains; a rewritten sentence on a function
+of a chain, onto that function's line in calls.md; and whether something a task made worked when they tried
+it, as one more line in tried.md beside the parts list. The service listens on this machine only, writes those
+three files only, and stops by itself when no page has asked anything of it for half an hour. Python 3 standard
 library only; the page carries Temml (scripts/vendor, MIT) to set the formulas in notes.
 """
 import argparse
@@ -4384,7 +4385,7 @@ def web_page(root, parts, t, args, save=None):
 # that has to end up in the project. So `web --open` shows the page through a small service on this machine:
 # it builds the page afresh each time it is loaded, and takes a note back and writes it into the notes file.
 # So does the sentence on a function of a chain, when a reader rewrites it: it goes onto its line in the calls file.
-# It listens on this machine only, writes those two files only, and stops by itself when no page has asked
+# It listens on this machine only, writes those three files only, and stops by itself when no page has asked
 # anything of it for a while.
 
 SERVE_IDLE = 1800     # seconds without a request before the service stops; an open page asks every few minutes
